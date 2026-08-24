@@ -1,0 +1,145 @@
+<?php
+
+namespace App\Http\Controllers\Inventory;
+
+use App\Http\Controllers\Controller;
+use App\Models\PartCategory;
+use App\Models\SparePart;
+use App\Models\StockAdjustment;
+use App\Models\StockAdjustmentItem;
+use App\Models\VehicleModel;
+use App\Models\VehicleType;
+use App\Services\StockService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class StockAdjustmentController extends Controller
+{
+    public function __construct(private StockService $stockService) {}
+
+    public function index(Request $request)
+    {
+        $query = StockAdjustment::with('user')->withCount('items');
+
+        if ($request->search) {
+            $query->where('adjustment_number', 'like', "%{$request->search}%")
+                  ->orWhere('reason', 'like', "%{$request->search}%");
+        }
+        if ($request->type) {
+            $query->where('adjustment_type', $request->type);
+        }
+        if ($request->date_from) {
+            $query->whereDate('adjustment_date', '>=', $request->date_from);
+        }
+        if ($request->date_to) {
+            $query->whereDate('adjustment_date', '<=', $request->date_to);
+        }
+
+        $adjustments = $query->latest()->paginate(15)->withQueryString();
+        return view('inventory.adjustments.index', compact('adjustments'));
+    }
+
+    public function create()
+    {
+        $vehicleTypes = VehicleType::active()->with('activeVehicleModels.stock')->get();
+        $categories   = PartCategory::active()->with('spareParts.unit')->orderBy('name')->get();
+        $number       = StockAdjustment::generateNumber();
+        return view('inventory.adjustments.create', compact('vehicleTypes', 'categories', 'number'));
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'adjustment_date'    => 'required|date',
+            'adjustment_type'    => 'required|in:increase,decrease,recount',
+            'reason'             => 'required|string|max:500',
+            'items'              => 'required|array|min:1',
+            'items.*.item_type'  => 'required|in:vehicle,spare_part',
+            'items.*.item_id'    => 'required|integer',
+            'items.*.quantity'   => 'required|integer|min:1',
+            'items.*.notes'      => 'nullable|string|max:300',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $adjustment = StockAdjustment::create([
+                'adjustment_number' => StockAdjustment::generateNumber(),
+                'user_id'           => auth()->id(),
+                'adjustment_date'   => $request->adjustment_date,
+                'adjustment_type'   => $request->adjustment_type,
+                'reason'            => $request->reason,
+                'status'            => 'approved',
+            ]);
+
+            $isIncrease = $request->adjustment_type === 'increase';
+
+            foreach ($request->items as $row) {
+                $qty      = (int) $row['quantity'];
+                $itemType = $row['item_type'];
+                $notes    = $row['notes'] ?? null;
+
+                if ($itemType === 'vehicle') {
+                    $model  = VehicleModel::findOrFail($row['item_id']);
+                    $before = $model->stock?->current_stock ?? 0;
+                    $after  = $isIncrease ? $before + $qty : max(0, $before - $qty);
+
+                    StockAdjustmentItem::create([
+                        'stock_adjustment_id' => $adjustment->id,
+                        'item_type'           => 'vehicle',
+                        'vehicle_model_id'    => $model->id,
+                        'quantity_before'     => $before,
+                        'quantity_adjusted'   => $isIncrease ? $qty : -$qty,
+                        'quantity_after'      => $after,
+                        'notes'               => $notes,
+                    ]);
+
+                    $movementType = $isIncrease ? 'adjustment_in' : 'adjustment_out';
+                    if ($isIncrease) {
+                        $this->stockService->increaseVehicleStock($model, $qty, $movementType, auth()->id(), 0,
+                            StockAdjustment::class, $adjustment->id, $request->reason);
+                    } else {
+                        $this->stockService->decreaseVehicleStock($model, $qty, $movementType, auth()->id(), 0,
+                            StockAdjustment::class, $adjustment->id, $request->reason);
+                    }
+
+                } else {
+                    $part   = SparePart::findOrFail($row['item_id']);
+                    $before = $part->current_stock;
+                    $after  = $isIncrease ? $before + $qty : max(0, $before - $qty);
+
+                    StockAdjustmentItem::create([
+                        'stock_adjustment_id' => $adjustment->id,
+                        'item_type'           => 'spare_part',
+                        'spare_part_id'       => $part->id,
+                        'quantity_before'     => $before,
+                        'quantity_adjusted'   => $isIncrease ? $qty : -$qty,
+                        'quantity_after'      => $after,
+                        'notes'               => $notes,
+                    ]);
+
+                    $movementType = $isIncrease ? 'adjustment_in' : 'adjustment_out';
+                    if ($isIncrease) {
+                        $this->stockService->increasePartStock($part, $qty, $movementType, auth()->id(), 0,
+                            StockAdjustment::class, $adjustment->id, $request->reason);
+                    } else {
+                        $this->stockService->decreasePartStock($part, $qty, $movementType, auth()->id(), 0,
+                            StockAdjustment::class, $adjustment->id, $request->reason);
+                    }
+                }
+            }
+
+            DB::commit();
+            return redirect()->route('inventory.adjustments.index')
+                ->with('success', "Adjustment #{$adjustment->adjustment_number} saved successfully.");
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return back()->with('error', 'Failed to save adjustment: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    public function show(StockAdjustment $adjustment)
+    {
+        $adjustment->load('user', 'items.vehicleModel.vehicleType', 'items.sparePart.category');
+        return view('inventory.adjustments.show', compact('adjustment'));
+    }
+}
