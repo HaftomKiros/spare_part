@@ -64,6 +64,21 @@ class SparePart extends Model
         return $this->hasMany(StockMovement::class)->where('item_type', 'spare_part');
     }
 
+    public function warehouses(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Warehouse::class, 'warehouse_spare_part_stock')
+            ->withPivot('current_stock', 'reorder_level')
+            ->withTimestamps();
+    }
+
+    public function getStockInWarehouse(int $warehouseId): int
+    {
+        return \DB::table('warehouse_spare_part_stock')
+            ->where('warehouse_id', $warehouseId)
+            ->where('spare_part_id', $this->id)
+            ->value('current_stock') ?? 0;
+    }
+
     // ──────────────────────────────────────────
     // Scopes
     // ──────────────────────────────────────────

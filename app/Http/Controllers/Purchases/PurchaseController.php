@@ -58,6 +58,8 @@ class PurchaseController extends Controller
         $vehicleTypes = VehicleType::active()->with('activeVehicleModels.stock')->get();
         $categories   = PartCategory::active()->with('spareParts.unit')->orderBy('name')->get();
         $number       = Purchase::generateNumber();
+        $warehouses   = \App\Models\Warehouse::active()->get();
+        $defaultWarehouse = \App\Models\Warehouse::getDefault();
 
         // Pre-encode JSON for JS (avoids PHP 8.5 parse issues with @json + arrow functions)
         $vehicleTypesJson = json_encode($vehicleTypes->map(function ($vt) {
@@ -91,7 +93,7 @@ class PurchaseController extends Controller
             ];
         })->values());
 
-        return view('purchases.purchases.create', compact('suppliers', 'vehicleTypes', 'categories', 'number', 'vehicleTypesJson', 'categoriesJson'));
+        return view('purchases.purchases.create', compact('suppliers', 'vehicleTypes', 'categories', 'number', 'vehicleTypesJson', 'categoriesJson', 'warehouses', 'defaultWarehouse'));
     }
 
     public function store(Request $request)
@@ -126,6 +128,7 @@ class PurchaseController extends Controller
                 'purchase_number' => Purchase::generateNumber(),
                 'supplier_id'     => $request->supplier_id,
                 'user_id'         => auth()->id(),
+                'warehouse_id'    => $request->warehouse_id ?: \App\Models\Warehouse::getDefault()?->id,
                 'purchase_date'   => $request->purchase_date,
                 'due_date'        => $request->due_date ?: null,
                 'subtotal'        => $request->subtotal,

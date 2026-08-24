@@ -32,6 +32,7 @@ use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\Settings\CompanyController;
 use App\Http\Controllers\Settings\UserController;
 use App\Http\Controllers\Settings\RoleController;
+use App\Http\Controllers\Settings\WarehouseController;
 
 use Illuminate\Support\Facades\Route;
 
@@ -117,8 +118,10 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('settings')->name('settings.')->group(function () {
         Route::get('company',  [CompanyController::class, 'edit'])->name('company');
         Route::put('company',  [CompanyController::class, 'update'])->name('company.update');
-        Route::resource('users', UserController::class);
-        Route::resource('roles', RoleController::class);
+        Route::resource('users',      UserController::class);
+        Route::resource('roles',      RoleController::class);
+        Route::resource('warehouses', WarehouseController::class);
+        Route::post('warehouses/transfer', [WarehouseController::class, 'transfer'])->name('warehouses.transfer');
     });
 
 });

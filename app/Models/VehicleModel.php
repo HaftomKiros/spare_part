@@ -63,6 +63,21 @@ class VehicleModel extends Model
         return $this->hasMany(StockMovement::class)->where('item_type', 'vehicle');
     }
 
+    public function warehouses(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Warehouse::class, 'warehouse_vehicle_stock')
+            ->withPivot('current_stock', 'reorder_level')
+            ->withTimestamps();
+    }
+
+    public function getStockInWarehouse(int $warehouseId): int
+    {
+        return \DB::table('warehouse_vehicle_stock')
+            ->where('warehouse_id', $warehouseId)
+            ->where('vehicle_model_id', $this->id)
+            ->value('current_stock') ?? 0;
+    }
+
     // ──────────────────────────────────────────
     // Scopes
     // ──────────────────────────────────────────

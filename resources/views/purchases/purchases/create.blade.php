@@ -48,6 +48,20 @@
         <label class="form-label">Due Date</label>
         <input type="date" name="due_date" class="form-control" value="{{ old('due_date') }}">
     </div>
+    @if($warehouses->count() > 1)
+    <div class="col-md-4">
+        <label class="form-label">Warehouse / Stock Location <span class="text-danger">*</span></label>
+        <select name="warehouse_id" class="form-select" required>
+            @foreach($warehouses as $wh)
+                <option value="{{ $wh->id }}" {{ $defaultWarehouse?->id == $wh->id ? 'selected' : '' }}>
+                    {{ $wh->name }} ({{ $wh->city ?? $wh->code }})
+                </option>
+            @endforeach
+        </select>
+    </div>
+    @else
+        <input type="hidden" name="warehouse_id" value="{{ $defaultWarehouse?->id }}">
+    @endif
     <div class="col-12">
         <label class="form-label">Notes</label>
         <textarea name="notes" class="form-control" rows="1" placeholder="Optional notes…"></textarea>

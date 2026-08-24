@@ -56,6 +56,8 @@ class SaleController extends Controller
         $vehicleTypes = VehicleType::active()->with('activeVehicleModels.stock')->get();
         $categories   = PartCategory::active()->with('spareParts.unit')->orderBy('name')->get();
         $invoice      = Sale::generateInvoiceNumber();
+        $warehouses   = \App\Models\Warehouse::active()->get();
+        $defaultWarehouse = \App\Models\Warehouse::getDefault();
 
         // Pre-encode JSON for JS (avoids PHP 8.5 parse issues with @json + arrow functions)
         $vehicleTypesJson = json_encode($vehicleTypes->map(function ($vt) {
@@ -89,7 +91,7 @@ class SaleController extends Controller
             ];
         })->values());
 
-        return view('sales.sales.create', compact('customers', 'vehicleTypes', 'categories', 'invoice', 'vehicleTypesJson', 'categoriesJson'));
+        return view('sales.sales.create', compact('customers', 'vehicleTypes', 'categories', 'invoice', 'vehicleTypesJson', 'categoriesJson', 'warehouses', 'defaultWarehouse'));
     }
 
     public function store(Request $request)
@@ -125,6 +127,7 @@ class SaleController extends Controller
                 'invoice_number' => Sale::generateInvoiceNumber(),
                 'customer_id'    => $request->customer_id ?: null,
                 'user_id'        => auth()->id(),
+                'warehouse_id'   => $request->warehouse_id ?: \App\Models\Warehouse::getDefault()?->id,
                 'sale_date'      => $request->sale_date,
                 'subtotal'       => $request->subtotal,
                 'discount'       => $request->discount ?? 0,

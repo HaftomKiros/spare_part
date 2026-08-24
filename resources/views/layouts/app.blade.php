@@ -664,6 +664,12 @@
                     <span class="sb-icon"><i class="fa-solid fa-shield-alt"></i></span>
                     <span class="sb-label">Roles</span>
                 </a>
+                <a href="{{ route('settings.warehouses.index') }}"
+                   class="sb-item {{ request()->routeIs('settings.warehouses*') ? 'active' : '' }}"
+                   data-tooltip="Warehouses">
+                    <span class="sb-icon"><i class="fa-solid fa-warehouse"></i></span>
+                    <span class="sb-label">Warehouses</span>
+                </a>
             </div>
         </div>
 
