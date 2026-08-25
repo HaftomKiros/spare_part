@@ -7,9 +7,9 @@
 @section('content')
 @include('partials.page-header',[
     'title'   => $warehouse->name,
-    'subtitle'=> $warehouse->code . ' — ' . ($warehouse->city ?? ''),
+    'subtitle'=> $warehouse->code . ' - ' . ($warehouse->city ?? ''),
     'actions' => [
-        ['label'=>'Edit','route'=>'settings.warehouses.edit','icon'=>'fa-pen','class'=>'btn-outline-primary'],
+        ['label'=>'Edit','url'=>route('settings.warehouses.edit', $warehouse),'icon'=>'fa-pen','class'=>'btn-outline-primary'],
         ['label'=>'Transfer Stock','url'=>'#transferModal','icon'=>'fa-right-left','class'=>'btn-outline-warning'],
     ],
 ])
@@ -143,7 +143,7 @@
         <tr>
             <td class="text-muted small">{{ \Carbon\Carbon::parse($mv->created_at)->format('M d, Y H:i') }}</td>
             <td class="small fw-semibold">
-                {{ $mv->item_type === 'spare_part' ? ($mv->part_name ?? '—') : ($mv->brand.' '.$mv->model_name) }}
+                {{ $mv->item_type === 'spare_part' ? ($mv->part_name ?? '-') : ($mv->brand.' '.$mv->model_name) }}
             </td>
             <td><span class="badge bg-secondary" style="font-size:.7rem">{{ ucfirst(str_replace('_',' ',$mv->movement_type)) }}</span></td>
             <td>
@@ -183,7 +183,7 @@
 <div class="mb-3">
     <label class="form-label">To Warehouse <span class="text-danger">*</span></label>
     <select name="to_warehouse_id" class="form-select" required>
-        <option value="">Select destination…</option>
+        <option value="">Select destination...</option>
         @foreach(\App\Models\Warehouse::active()->where('id','!=',$warehouse->id)->get() as $wh)
             <option value="{{ $wh->id }}">{{ $wh->name }} ({{ $wh->city }})</option>
         @endforeach
@@ -192,7 +192,7 @@
 <div class="mb-3">
     <label class="form-label">Item Type <span class="text-danger">*</span></label>
     <select name="item_type" class="form-select" id="transferType" required>
-        <option value="">Select type…</option>
+        <option value="">Select type...</option>
         <option value="spare_part">Spare Part</option>
         <option value="vehicle">Vehicle</option>
     </select>
@@ -200,7 +200,7 @@
 <div class="mb-3">
     <label class="form-label">Item <span class="text-danger">*</span></label>
     <select name="item_id" id="transferItem" class="form-select" required disabled>
-        <option value="">— Select type first —</option>
+        <option value="">- Select type first -</option>
     </select>
 </div>
 <div class="mb-3">
@@ -209,7 +209,7 @@
 </div>
 <div class="mb-3">
     <label class="form-label">Notes</label>
-    <input type="text" name="notes" class="form-control" placeholder="Reason for transfer…">
+    <input type="text" name="notes" class="form-control" placeholder="Reason for transfer...">
 </div>
 <div class="d-flex gap-2">
     <button type="submit" class="btn btn-warning px-4"><i class="fa fa-right-left me-1"></i>Transfer</button>
@@ -236,7 +236,7 @@ const VEHICLES = @json($vehicles->map(fn($v) => ['id'=>$v->id,'name'=>$v->brand.
 document.getElementById('transferType')?.addEventListener('change', function() {
     const sel  = document.getElementById('transferItem');
     const data = this.value === 'spare_part' ? PARTS : (this.value === 'vehicle' ? VEHICLES : []);
-    sel.innerHTML = '<option value="">— Select item —</option>';
+    sel.innerHTML = '<option value="">- Select item -</option>';
     data.forEach(d => {
         const o = document.createElement('option');
         o.value = d.id; o.textContent = d.name;

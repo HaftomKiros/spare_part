@@ -16,15 +16,15 @@
 <!-- Filters -->
 <div class="card mb-3">
 <div class="card-body py-3">
-<form method="GET" class="row g-2 align-items-end">
+<form method="GET" class="row g-2 align-items-end filter-form">
     <div class="col-12 col-md-4">
         <div class="input-group input-group-sm">
             <span class="input-group-text"><i class="fa fa-search"></i></span>
-            <input type="text" name="search" class="form-control" placeholder="Part name, number, OEM…" value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control live-search" placeholder="Part name, number, OEM…" value="{{ request('search') }}">
         </div>
     </div>
     <div class="col-auto">
-        <select name="category" class="form-select form-select-sm">
+        <select name="category" class="form-select form-select-sm ts-select">
             <option value="">All Categories</option>
             @foreach($categories as $cat)
                 <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
@@ -32,14 +32,14 @@
         </select>
     </div>
     <div class="col-auto">
-        <select name="stock_status" class="form-select form-select-sm">
+        <select name="stock_status" class="form-select form-select-sm ts-select">
             <option value="">All Stock</option>
             <option value="low" {{ request('stock_status') === 'low' ? 'selected' : '' }}>Low Stock</option>
             <option value="out" {{ request('stock_status') === 'out' ? 'selected' : '' }}>Out of Stock</option>
         </select>
     </div>
     <div class="col-auto">
-        <select name="status" class="form-select form-select-sm">
+        <select name="status" class="form-select form-select-sm ts-select">
             <option value="">All Status</option>
             <option value="active"   {{ request('status') === 'active'   ? 'selected' : '' }}>Active</option>
             <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>

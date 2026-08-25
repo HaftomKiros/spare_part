@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'name'     => env('APP_NAME', 'Ashu Spare Part'),
+    'name'     => env('APP_NAME', 'Abush Spare Part'),
     'env'      => env('APP_ENV', 'production'),
     'debug'    => (bool) env('APP_DEBUG', false),
     'url'      => env('APP_URL', 'http://localhost'),

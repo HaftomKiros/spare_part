@@ -29,17 +29,29 @@
     </div>
     <div class="col-md-4">
         <label class="form-label">Type <span class="text-danger">*</span></label>
-        <select name="adjustment_type" class="form-select @error('adjustment_type') is-invalid @enderror" required>
-            <option value="">Select type…</option>
+        <select name="adjustment_type" class="form-select ts-select @error('adjustment_type') is-invalid @enderror" required>
+            <option value="">Select type...</option>
             <option value="increase" {{ old('adjustment_type') === 'increase' ? 'selected' : '' }}>Increase (+)</option>
             <option value="decrease" {{ old('adjustment_type') === 'decrease' ? 'selected' : '' }}>Decrease (-)</option>
         </select>
         @error('adjustment_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
-    <div class="col-12">
+    <div class="col-md-6">
+        <label class="form-label">Warehouse <span class="text-danger">*</span></label>
+        <select name="warehouse_id" class="form-select ts-select @error('warehouse_id') is-invalid @enderror">
+            @foreach($warehouses as $wh)
+                <option value="{{ $wh->id }}"
+                    {{ old('warehouse_id', $defaultWarehouse?->id) == $wh->id ? 'selected' : '' }}>
+                    {{ $wh->name }}{{ $wh->is_default ? ' (Default)' : '' }}
+                </option>
+            @endforeach
+        </select>
+        @error('warehouse_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
+    <div class="col-md-6">
         <label class="form-label">Reason <span class="text-danger">*</span></label>
         <textarea name="reason" class="form-control @error('reason') is-invalid @enderror" rows="2"
-                  placeholder="e.g. Physical count correction, Damaged items write-off…">{{ old('reason') }}</textarea>
+                  placeholder="e.g. Physical count correction, Damaged items write-off...">{{ old('reason') }}</textarea>
         @error('reason')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 </div>
@@ -60,7 +72,7 @@
         <tr>
             <th style="width:40%">Item</th>
             <th>Type</th>
-            <th>Current Stock</th>
+            <th>Stock in Warehouse</th>
             <th>Qty to Adjust</th>
             <th>Notes</th>
             <th></th>
@@ -70,8 +82,8 @@
         <tr class="adj-row" data-index="0">
             <td>
                 <select name="items[0][item_id]" class="form-select form-select-sm item-select" required>
-                    <option value="">Select item…</option>
-                    <optgroup label="── Vehicles ──">
+                    <option value="">Select item...</option>
+                    <optgroup label="-- Vehicles --">
                         @foreach($vehicleTypes as $vt)
                             @foreach($vt->activeVehicleModels as $vm)
                                 <option value="{{ $vm->id }}" data-type="vehicle" data-stock="{{ $vm->stock?->current_stock ?? 0 }}">
@@ -84,7 +96,7 @@
                         <optgroup label="{{ $cat->name }}">
                             @foreach($cat->spareParts as $part)
                                 <option value="{{ $part->id }}" data-type="spare_part" data-stock="{{ $part->current_stock }}">
-                                    [P] {{ $part->name }} ({{ $part->part_number }}) — Stock: {{ $part->current_stock }}
+                                    [P] {{ $part->name }} ({{ $part->part_number }}) - Stock: {{ $part->current_stock }}
                                 </option>
                             @endforeach
                         </optgroup>
@@ -93,16 +105,16 @@
                 <input type="hidden" name="items[0][item_type]" class="item-type-hidden" value="">
             </td>
             <td>
-                <span class="badge bg-secondary item-type-badge">—</span>
+                <span class="badge bg-secondary item-type-badge">-</span>
             </td>
             <td>
-                <span class="current-stock-display fw-semibold">—</span>
+                <span class="current-stock-display fw-semibold">-</span>
             </td>
             <td>
                 <input type="number" name="items[0][quantity]" class="form-control form-control-sm" min="1" value="1" required style="width:80px">
             </td>
             <td>
-                <input type="text" name="items[0][notes]" class="form-control form-control-sm" placeholder="Optional…">
+                <input type="text" name="items[0][notes]" class="form-control form-control-sm" placeholder="Optional...">
             </td>
             <td>
                 <button type="button" class="btn btn-sm btn-outline-danger remove-adj-row" style="display:none">
@@ -131,6 +143,10 @@
         <strong class="float-end">{{ $number }}</strong>
     </div>
     <div class="mb-2 small">
+        <span class="text-muted">Warehouse:</span>
+        <strong class="float-end" id="selectedWarehouseName">{{ $defaultWarehouse?->name ?? '-' }}</strong>
+    </div>
+    <div class="mb-2 small">
         <span class="text-muted">Created by:</span>
         <strong class="float-end">{{ auth()->user()->name }}</strong>
     </div>
@@ -150,8 +166,10 @@
 
 @push('scripts')
 <script>
+const warehouseStockUrl = '{{ route("inventory.stock-in.warehouse-stock") }}';
 let rowIndex = 1;
 
+// -- Add row ---------------------------------------
 document.getElementById('addAdjRow').addEventListener('click', function () {
     const tbody    = document.getElementById('adjItemsBody');
     const template = tbody.querySelector('.adj-row').cloneNode(true);
@@ -163,8 +181,8 @@ document.getElementById('addAdjRow').addEventListener('click', function () {
         if (el.tagName === 'INPUT' && el.type !== 'hidden') el.value = el.type === 'number' ? 1 : '';
     });
     template.querySelector('.item-type-hidden').value = '';
-    template.querySelector('.item-type-badge').textContent = '—';
-    template.querySelector('.current-stock-display').textContent = '—';
+    template.querySelector('.item-type-badge').textContent = '-';
+    template.querySelector('.current-stock-display').textContent = '-';
     template.querySelector('.remove-adj-row').style.display = '';
 
     tbody.appendChild(template);
@@ -172,6 +190,7 @@ document.getElementById('addAdjRow').addEventListener('click', function () {
     rowIndex++;
 });
 
+// -- Remove row ------------------------------------
 document.getElementById('adjItemsBody').addEventListener('click', function (e) {
     if (e.target.closest('.remove-adj-row')) {
         const rows = document.querySelectorAll('.adj-row');
@@ -179,23 +198,67 @@ document.getElementById('adjItemsBody').addEventListener('click', function (e) {
     }
 });
 
+// -- Fetch per-warehouse stock for a row -----------
+function fetchRowStock(row) {
+    const sel         = row.querySelector('.item-select');
+    const itemId      = sel?.value;
+    const typeHidden  = row.querySelector('.item-type-hidden');
+    const itemType    = typeHidden?.value;
+    const warehouseId = document.querySelector('[name="warehouse_id"]')?.value;
+    const stockDisplay = row.querySelector('.current-stock-display');
+
+    if (!itemId || !itemType || !warehouseId) {
+        if (stockDisplay) stockDisplay.textContent = '-';
+        return;
+    }
+
+    stockDisplay.textContent = '...';
+
+    fetch(`${warehouseStockUrl}?warehouse_id=${warehouseId}&item_type=${itemType}&item_id=${itemId}`)
+        .then(r => r.json())
+        .then(data => {
+            stockDisplay.textContent = data.stock;
+            stockDisplay.className = 'current-stock-display fw-semibold ' +
+                (data.stock <= 0 ? 'text-danger' : (data.stock <= 5 ? 'text-warning' : 'text-success'));
+        })
+        .catch(() => {
+            // Fallback to data-stock attribute
+            const opt = sel.options[sel.selectedIndex];
+            stockDisplay.textContent = opt?.dataset.stock ?? '-';
+        });
+}
+
+// -- Bind item select events -----------------------
 function bindRowEvents(row) {
     const sel = row.querySelector('.item-select');
     if (sel) {
         sel.addEventListener('change', function () {
             const opt  = this.options[this.selectedIndex];
             const type = opt?.dataset.type || '';
-            const stock = opt?.dataset.stock ?? '—';
             row.querySelector('.item-type-hidden').value = type;
-            row.querySelector('.item-type-badge').textContent = type === 'vehicle' ? 'Vehicle' : (type === 'spare_part' ? 'Part' : '—');
-            row.querySelector('.item-type-badge').className = 'badge ' + (type === 'vehicle' ? 'bg-primary' : (type === 'spare_part' ? 'bg-success' : 'bg-secondary')) + ' item-type-badge';
-            row.querySelector('.current-stock-display').textContent = stock;
+            row.querySelector('.item-type-badge').textContent =
+                type === 'vehicle' ? 'Vehicle' : (type === 'spare_part' ? 'Part' : '-');
+            row.querySelector('.item-type-badge').className =
+                'badge ' + (type === 'vehicle' ? 'bg-primary' : (type === 'spare_part' ? 'bg-success' : 'bg-secondary')) + ' item-type-badge';
+            fetchRowStock(row);
         });
     }
 }
 
-// Bind on existing rows
+// Bind on page load
 document.querySelectorAll('.adj-row').forEach(bindRowEvents);
+
+// -- Warehouse change -> refresh ALL rows ----------
+const whSelect = document.querySelector('[name="warehouse_id"]');
+if (whSelect) {
+    whSelect.addEventListener('change', function () {
+        // Update sidebar label
+        const lbl = document.getElementById('selectedWarehouseName');
+        if (lbl) lbl.textContent = this.options[this.selectedIndex]?.text?.replace(' (Default)', '') || '-';
+        // Refresh stock for every row that has an item selected
+        document.querySelectorAll('.adj-row').forEach(row => fetchRowStock(row));
+    });
+}
 </script>
 @endpush
 @endsection

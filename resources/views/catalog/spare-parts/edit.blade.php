@@ -114,7 +114,7 @@
     <div class="mb-3">
         <label class="form-label">Current Stock</label>
         <input type="text" class="form-control" value="{{ $sparePart->current_stock }}" disabled>
-        <div class="form-text">Use Inventory → Stock In to add stock.</div>
+        <div class="form-text">Use Inventory → Stock Entry to add stock.</div>
     </div>
     <div>
         <label class="form-label">Reorder Level</label>

@@ -11,6 +11,7 @@ class StockAdjustment extends Model
     protected $fillable = [
         'adjustment_number',
         'user_id',
+        'warehouse_id',
         'adjustment_date',
         'adjustment_type',
         'reason',
@@ -28,6 +29,11 @@ class StockAdjustment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
     }
 
     public function items(): HasMany

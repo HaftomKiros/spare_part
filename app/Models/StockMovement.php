@@ -20,6 +20,7 @@ class StockMovement extends Model
         'reference_type',
         'reference_id',
         'user_id',
+        'warehouse_id',
         'notes',
     ];
 
@@ -34,6 +35,11 @@ class StockMovement extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
     }
 
     public function vehicleModel(): BelongsTo

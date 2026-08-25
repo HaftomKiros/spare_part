@@ -19,7 +19,7 @@
 <div class="row g-3">
     <div class="col-md-6">
         <label class="form-label">Vehicle Type <span class="text-danger">*</span></label>
-        <select name="vehicle_type_id" class="form-select" required>
+        <select name="vehicle_type_id" class="form-select ts-select" required>
             @foreach($types as $t)
                 <option value="{{ $t->id }}" {{ old('vehicle_type_id', $vehicleModel->vehicle_type_id) == $t->id ? 'selected' : '' }}>
                     {{ $t->name }}
@@ -79,7 +79,7 @@
         <div class="mb-3">
             <label class="form-label">Current Stock</label>
             <input type="text" class="form-control" value="{{ $vehicleModel->stock?->current_stock ?? 0 }}" disabled readonly>
-            <div class="form-text">Use Inventory → Stock In to add stock.</div>
+            <div class="form-text">Use Inventory → Stock Entry to add stock.</div>
         </div>
         <div>
             <label class="form-label">Reorder Level</label>

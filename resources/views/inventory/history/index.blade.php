@@ -18,7 +18,7 @@
             <div class="stat-icon bg-success-soft"><i class="fa fa-arrow-down-to-bracket"></i></div>
             <div class="stat-body">
                 <div class="stat-value">{{ number_format($totalIn) }}</div>
-                <div class="stat-label">Total Stock-In Events</div>
+                <div class="stat-label">Total Stock-Entry Events</div>
             </div>
         </div>
     </div>
@@ -36,22 +36,22 @@
 <!-- Filters -->
 <div class="card mb-3">
 <div class="card-body py-3">
-<form method="GET" class="row g-2 align-items-end">
+<form method="GET" class="row g-2 align-items-end filter-form">
     <div class="col-12 col-md-3">
         <div class="input-group input-group-sm">
             <span class="input-group-text"><i class="fa fa-search"></i></span>
-            <input type="text" name="search" class="form-control" placeholder="Item name or part number…" value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control live-search" placeholder="Item name or part number…" value="{{ request('search') }}">
         </div>
     </div>
     <div class="col-auto">
-        <select name="item_type" class="form-select form-select-sm">
+        <select name="item_type" class="form-select form-select-sm ts-select">
             <option value="">All Items</option>
             <option value="vehicle"    {{ request('item_type') === 'vehicle'    ? 'selected' : '' }}>Vehicles</option>
             <option value="spare_part" {{ request('item_type') === 'spare_part' ? 'selected' : '' }}>Spare Parts</option>
         </select>
     </div>
     <div class="col-auto">
-        <select name="movement_type" class="form-select form-select-sm">
+        <select name="movement_type" class="form-select form-select-sm ts-select">
             <option value="">All Movements</option>
             @foreach($movementTypes as $key => $label)
                 <option value="{{ $key }}" {{ request('movement_type') === $key ? 'selected' : '' }}>{{ $label }}</option>
@@ -65,8 +65,16 @@
         <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
     </div>
     <div class="col-auto">
+        <select name="warehouse_id" class="form-select form-select-sm ts-select" style="min-width:140px">
+            <option value="">All Warehouses</option>
+            @foreach($warehouses as $wh)
+                <option value="{{ $wh->id }}" {{ request('warehouse_id') == $wh->id ? 'selected' : '' }}>{{ $wh->name }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div class="col-auto">
         <button type="submit" class="btn btn-sm btn-primary"><i class="fa fa-filter me-1"></i>Filter</button>
-        @if(request()->hasAny(['search','item_type','movement_type','date_from','date_to']))
+        @if(request()->hasAny(['search','item_type','movement_type','date_from','date_to','warehouse_id']))
             <a href="{{ route('inventory.history') }}" class="btn btn-sm btn-outline-secondary ms-1"><i class="fa fa-xmark"></i></a>
         @endif
     </div>
@@ -87,6 +95,7 @@
             <th>Before</th>
             <th>After</th>
             <th>Unit Cost</th>
+            <th class="d-none d-lg-table-cell">Warehouse</th>
             <th>Reference</th>
             <th>By</th>
         </tr>
@@ -116,6 +125,7 @@
             <td class="text-muted">{{ $mv->quantity_before }}</td>
             <td class="fw-semibold">{{ $mv->quantity_after }}</td>
             <td class="text-muted small">{{ $mv->unit_cost > 0 ? 'Br '.number_format($mv->unit_cost,2) : '—' }}</td>
+            <td class="text-muted small d-none d-lg-table-cell">{{ $mv->warehouse?->name ?? '—' }}</td>
             <td class="text-muted small">
                 {{ $mv->reference_type ? class_basename($mv->reference_type).' #'.$mv->reference_id : '—' }}
             </td>

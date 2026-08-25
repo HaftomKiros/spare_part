@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign In — Ashu Spare Part</title>
+    <title>Sign In — Abush Spare Part</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -419,7 +419,7 @@
         <div class="brand-icon">
             <i class="fa-solid fa-gears"></i>
         </div>
-        <h1>Ashu Spare Part</h1>
+        <h1>Abush Spare Part</h1>
         <p>Complete inventory management system for your spare parts and vehicle business. Track stock, manage sales, and grow your business.</p>
 
         <div class="feature-item">
@@ -450,7 +450,7 @@
             </div>
 
             <h4 class="card-title">Welcome Back</h4>
-            <p class="card-subtitle">Sign in to <span>Ashu Spare Part System</span></p>
+            <p class="card-subtitle">Sign in to <span>Abush Spare Part System</span></p>
 
             @if(session('error'))
                 <div class="alert alert-danger mb-3">
@@ -509,7 +509,7 @@
             </form>
 
             <div class="card-footer-text">
-                &copy; {{ date('Y') }} Ashu Spare Part System. All rights reserved.
+                &copy; {{ date('Y') }} Abush Spare Part System. All rights reserved.
             </div>
         </div>
     </div>

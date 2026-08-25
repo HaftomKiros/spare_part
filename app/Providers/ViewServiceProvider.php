@@ -24,7 +24,7 @@ class ViewServiceProvider extends ServiceProvider
                         + VehicleStock::whereColumn('current_stock', '<=', 'reorder_level')->count();
                 });
             } catch (\Throwable $e) {
-                $company  = new CompanySetting(['company_name' => 'Ashu Spare Part', 'currency_symbol' => 'Br']);
+                $company  = new CompanySetting(['company_name' => 'Abush Spare Part', 'currency_symbol' => 'Br']);
                 $lowCount = 0;
             }
 

@@ -24,7 +24,7 @@ class CompanySetting extends Model
     public static function getInstance(): self
     {
         return static::firstOrCreate(['id' => 1], [
-            'company_name'    => 'Ashu Spare Part',
+            'company_name'    => 'Abush Spare Part',
             'currency'        => 'ETB',
             'currency_symbol' => 'Br',
         ]);

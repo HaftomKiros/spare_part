@@ -17,9 +17,13 @@
     <div class="col-auto"><label class="form-label small mb-1">To</label>
         <input type="date" name="date_to" class="form-control form-control-sm" value="{{ $dateTo }}">
     </div>
+    @include('partials.warehouse-filter')
     <div class="col-auto"><button type="submit" class="btn btn-sm btn-primary mt-3"><i class="fa fa-filter me-1"></i>Apply</button></div>
     <div class="col-auto ms-auto text-muted small mt-3">
         Showing: <strong>{{ \Carbon\Carbon::parse($dateFrom)->format('M d') }}</strong> — <strong>{{ \Carbon\Carbon::parse($dateTo)->format('M d, Y') }}</strong>
+        @if($warehouseId)
+            &nbsp;·&nbsp;<span class="badge bg-primary-subtle text-primary-emphasis"><i class="fa fa-warehouse me-1"></i>{{ $warehouses->find($warehouseId)?->name }}</span>
+        @endif
     </div>
 </form>
 </div>
@@ -76,7 +80,7 @@
 <div class="card-header"><i class="fa fa-list me-2 text-primary"></i>Sales List</div>
 <div class="table-responsive">
 <table class="table">
-    <thead><tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th><th>Payment</th><th>By</th></tr></thead>
+    <thead><tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th><th>Payment</th><th class="d-none d-lg-table-cell">Warehouse</th><th>By</th></tr></thead>
     <tbody>
         @forelse($sales as $s)
         <tr>
@@ -87,10 +91,11 @@
             <td class="text-success">Br {{ number_format($s->paid_amount,2) }}</td>
             <td class="{{ $s->balance > 0 ? 'text-danger' : 'text-muted' }}">{{ $s->balance > 0 ? 'Br '.number_format($s->balance,2) : '—' }}</td>
             <td><span class="badge bg-{{ $s->payment_status_badge }}">{{ ucfirst($s->payment_status) }}</span></td>
+            <td class="small text-muted d-none d-lg-table-cell">{{ $s->warehouse?->name ?? '—' }}</td>
             <td class="small text-muted">{{ $s->user->name }}</td>
         </tr>
         @empty
-        <tr><td colspan="8" class="text-center text-muted py-4">No sales in this period.</td></tr>
+        <tr><td colspan="9" class="text-center text-muted py-4">No sales in this period.</td></tr>
         @endforelse
     </tbody>
 </table>

@@ -5,16 +5,32 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
-// Determine if the application is in maintenance mode...
-if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
+/*
+|--------------------------------------------------------------------------
+| cPanel Shared Hosting - Path Configuration
+|--------------------------------------------------------------------------
+| The app folder (Stock) sits one level above public_html.
+| Structure:
+|   /home/username/Stock/          <- Laravel app
+|   /home/username/public_html/    <- Web root (contents of public/ go here)
+|
+| So from public_html/index.php, the app is at ../Stock
+|--------------------------------------------------------------------------
+*/
+$appPath = realpath(__DIR__ . '/../Stock');
+
+// Fallback: if running locally (XAMPP), app is one level up
+if (!$appPath || !file_exists($appPath . '/vendor/autoload.php')) {
+    $appPath = realpath(__DIR__ . '/..');
+}
+
+if (file_exists($maintenance = $appPath . '/storage/framework/maintenance.php')) {
     require $maintenance;
 }
 
-// Register the Composer autoloader...
-require __DIR__.'/../vendor/autoload.php';
+require $appPath . '/vendor/autoload.php';
 
-// Bootstrap Laravel and handle the request...
 /** @var Application $app */
-$app = require_once __DIR__.'/../bootstrap/app.php';
+$app = require_once $appPath . '/bootstrap/app.php';
 
 $app->handleRequest(Request::capture());

@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Dashboard') — {{ $company->company_name ?? 'Ashu Spare Part' }}</title>
+    <title>@yield('title', 'Dashboard') - {{ $company->company_name ?? 'Abush Spare Part' }}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <style>
-    /* ══ PROFESSIONAL SIDEBAR ══════════════════════════════════════ */
+    /* == PROFESSIONAL SIDEBAR ====================================== */
 
     :root {
         --sb-width: 268px;
@@ -30,7 +31,7 @@
 
     body { overflow-x: hidden; }
 
-    /* ── Sidebar shell ── */
+    /* -- Sidebar shell -- */
     .sidebar {
         position: fixed;
         top: 0; left: 0; bottom: 0;
@@ -51,7 +52,7 @@
 
     body.sb-collapsed .sidebar { width: var(--sb-collapsed); }
 
-    /* ── Brand / Logo ── */
+    /* -- Brand / Logo -- */
     .sb-brand {
         display: flex;
         align-items: center;
@@ -94,7 +95,7 @@
     }
     body.sb-collapsed .sb-brand-text { opacity: 0; width: 0; flex: 0; }
 
-    /* ── Toggle button ── */
+    /* -- Toggle button -- */
     .sb-toggle {
         position: absolute;
         top: 22px; right: -13px;
@@ -112,7 +113,7 @@
     .sb-toggle:hover { background: var(--sb-accent2); }
     body.sb-collapsed .sb-toggle { transform: rotate(180deg); }
 
-    /* ── Search ── */
+    /* -- Search -- */
     .sb-search {
         padding: 12px 12px 8px;
         flex-shrink: 0;
@@ -139,7 +140,7 @@
     .sb-search-inner input::placeholder { color: var(--sb-muted); }
     body.sb-collapsed .sb-search { opacity: 0; pointer-events: none; padding: 0; height: 0; }
 
-    /* ── Nav scroll area ── */
+    /* -- Nav scroll area -- */
     .sb-nav {
         flex: 1; overflow-y: auto; overflow-x: hidden;
         padding: 6px 0 20px;
@@ -149,7 +150,7 @@
     .sb-nav::-webkit-scrollbar { width: 4px; }
     .sb-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 4px; }
 
-    /* ── Section group ── */
+    /* -- Section group -- */
     .sb-group { margin-bottom: 4px; }
 
     .sb-group-header {
@@ -183,7 +184,7 @@
     .sb-group.collapsed .sb-group-items { max-height: 0; }
     body.sb-collapsed .sb-group.collapsed .sb-group-items { max-height: 600px; }
 
-    /* ── Nav item ── */
+    /* -- Nav item -- */
     .sb-item {
         display: flex; align-items: center; gap: 11px;
         padding: 9px 12px 9px 14px;
@@ -288,14 +289,14 @@
     body.sb-collapsed .sb-item:hover::after { opacity: 1; }
     body.sb-collapsed .sb-item.active::before { display: none; }
 
-    /* ── Divider ── */
+    /* -- Divider -- */
     .sb-divider {
         height: 1px;
         background: var(--sb-border);
         margin: 8px 16px;
     }
 
-    /* ── User footer ── */
+    /* -- User footer -- */
     .sb-user {
         flex-shrink: 0;
         border-top: 1px solid var(--sb-border);
@@ -359,7 +360,7 @@
     .sb-user-dropdown button:hover { background: rgba(239,68,68,.15); color: #f87171; }
     .sb-user-dropdown .divider { height: 1px; background: var(--sb-border); margin: 4px 0; }
 
-    /* ══ TOP NAVBAR ═══════════════════════════════════════════════ */
+    /* == TOP NAVBAR =============================================== */
     #content-wrapper {
         margin-left: var(--sb-width);
         min-height: 100vh;
@@ -380,7 +381,7 @@
         flex-shrink: 0;
     }
 
-    /* ══ RESPONSIVE ═══════════════════════════════════════════════ */
+    /* == RESPONSIVE =============================================== */
     @media (max-width: 991.98px) {
         .sidebar {
             transform: translateX(-100%);
@@ -396,7 +397,7 @@
 </head>
 <body>
 
-{{-- ══ SIDEBAR ══════════════════════════════════════════════════ --}}
+{{-- == SIDEBAR ================================================== --}}
 <nav class="sidebar" id="sidebar">
 
     {{-- Toggle button --}}
@@ -410,7 +411,7 @@
             <i class="fa-solid fa-motorcycle"></i>
         </div>
         <div class="sb-brand-text">
-            <span class="sb-name">{{ $company->company_name ?? 'Ashu Spare Part' }}</span>
+            <span class="sb-name">{{ $company->company_name ?? 'Abush Spare Part' }}</span>
             <span class="sb-tagline">Inventory System</span>
         </div>
     </a>
@@ -487,11 +488,17 @@
                 <i class="fa fa-chevron-down sb-group-arrow"></i>
             </div>
             <div class="sb-group-items">
+                <a href="{{ route('inventory.transfers.index') }}"
+                   class="sb-item {{ request()->routeIs('inventory.transfers*') ? 'active' : '' }}"
+                   data-tooltip="Stock Transfer">
+                    <span class="sb-icon" style="color:#f59e0b"><i class="fa-solid fa-right-left"></i></span>
+                    <span class="sb-label">Stock Transfer</span>
+                </a>
                 <a href="{{ route('inventory.stock-in.index') }}"
                    class="sb-item {{ request()->routeIs('inventory.stock-in*') ? 'active' : '' }}"
-                   data-tooltip="Stock In">
+                   data-tooltip="Stock Entry">
                     <span class="sb-icon" style="color:#34d399"><i class="fa-solid fa-download"></i></span>
-                    <span class="sb-label">Stock In</span>
+                    <span class="sb-label">Stock Entry</span>
                 </a>
                 <a href="{{ route('inventory.adjustments.index') }}"
                    class="sb-item {{ request()->routeIs('inventory.adjustments*') ? 'active' : '' }}"
@@ -707,7 +714,7 @@
 {{-- Mobile overlay --}}
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 
-{{-- ══ MAIN WRAPPER ══════════════════════════════════════════════ --}}
+{{-- == MAIN WRAPPER ============================================== --}}
 <div id="content-wrapper">
 
     {{-- Top Navbar --}}
@@ -816,19 +823,20 @@
     </main>
 
     <footer class="main-footer">
-        <span class="text-muted">&copy; {{ date('Y') }} {{ $company->company_name ?? 'Ashu Spare Part' }}. All rights reserved.</span>
+        <span class="text-muted">&copy; {{ date('Y') }} {{ $company->company_name ?? 'Abush Spare Part' }}. All rights reserved.</span>
         <span class="ms-auto text-muted small">v1.0.0</span>
-    </footer>
+    </footer>>
 
 </div>
 
-{{-- ══ SCRIPTS ══════════════════════════════════════════════════ --}}
+{{-- == SCRIPTS ================================================== --}}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script src="{{ asset('js/app.js') }}"></script>
 
 <script>
-// ── Sidebar collapse (desktop) ────────────────────────────────
+// -- Sidebar collapse (desktop) --------------------------------
 const sbToggle  = document.getElementById('sbToggle');
 const body      = document.body;
 
@@ -842,14 +850,14 @@ sbToggle?.addEventListener('click', () => {
     }
 });
 
-// Restore state — default is EXPANDED
+// Restore state - default is EXPANDED
 // Clear any old collapsed state so sidebar always starts expanded
 localStorage.removeItem('sbCollapsed');
 localStorage.removeItem('sbGroups');
 // Only collapse if user explicitly clicked toggle this session
 
 
-// ── Mobile sidebar ────────────────────────────────────────────
+// -- Mobile sidebar --------------------------------------------
 function openMobileSidebar() {
     body.classList.add('sb-mobile-open');
     document.getElementById('sidebarOverlay').style.display = 'block';
@@ -859,14 +867,14 @@ function closeMobileSidebar() {
     document.getElementById('sidebarOverlay').style.display = 'none';
 }
 
-// ── Collapsible nav groups ────────────────────────────────────
+// -- Collapsible nav groups ------------------------------------
 function toggleGroup(id) {
     if (body.classList.contains('sb-collapsed')) return;
     const grp = document.getElementById(id);
     grp.classList.toggle('collapsed');
 }
 
-// Restore group states — all expanded by default
+// Restore group states - all expanded by default
 (function restoreGroups() {
     // Don't restore any collapsed state, just ensure active group stays open
     document.querySelectorAll('.sb-group').forEach(grp => {
@@ -874,7 +882,7 @@ function toggleGroup(id) {
     });
 })();
 
-// ── User popup ────────────────────────────────────────────────
+// -- User popup ------------------------------------------------
 function toggleUserMenu() {
     document.getElementById('sbUserDropdown').classList.toggle('show');
 }
@@ -884,7 +892,7 @@ document.addEventListener('click', e => {
     }
 });
 
-// ── Sidebar search ────────────────────────────────────────────
+// -- Sidebar search --------------------------------------------
 document.getElementById('sidebarSearch')?.addEventListener('input', function () {
     const q = this.value.toLowerCase().trim();
     document.querySelectorAll('.sb-item').forEach(item => {
@@ -896,12 +904,12 @@ document.getElementById('sidebarSearch')?.addEventListener('input', function () 
     });
 });
 
-// ── Auto-dismiss flash alerts ─────────────────────────────────
+// -- Auto-dismiss flash alerts --------------------------------
 document.querySelectorAll('.alert-success').forEach(el => {
     setTimeout(() => bootstrap.Alert.getOrCreateInstance(el)?.close(), 4000);
 });
 
-// ── Confirm delete ────────────────────────────────────────────
+// -- Confirm delete --------------------------------------------
 document.querySelectorAll('[data-delete-url]').forEach(btn => {
     btn.addEventListener('click', function () {
         document.getElementById('deleteForm').action = this.dataset.deleteUrl;
@@ -913,5 +921,51 @@ document.querySelectorAll('[data-delete-url]').forEach(btn => {
 </script>
 
 @stack('scripts')
+
+<script>
+// GLOBAL UX - Tom Select + Live Search + Auto-submit
+document.addEventListener('DOMContentLoaded', function () {
+
+    // Tom Select: initialise every .ts-select
+    document.querySelectorAll('select.ts-select').forEach(function (el) {
+        if (el._tomSelect) return;
+        var isFilter = !!el.closest('.filter-form');
+        var opts = {
+            allowEmptyOption: true,
+            placeholder: el.dataset.placeholder || (el.options[0] ? el.options[0].text : 'Search...'),
+            maxOptions: 500,
+        };
+        if (isFilter) {
+            opts.onChange = function () {
+                var form = el.closest('form');
+                if (form) form.submit();
+            };
+        }
+        new TomSelect(el, opts);
+    });
+
+    // Live search: debounce .live-search inputs 350ms
+    document.querySelectorAll('input.live-search').forEach(function (input) {
+        var timer;
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                var form = input.closest('form');
+                if (form) form.submit();
+            }, 350);
+        });
+    });
+
+    // Auto-submit plain filter selects without ts-select
+    document.querySelectorAll('.filter-form select:not(.ts-select)').forEach(function (sel) {
+        if (sel._tomSelect) return;
+        sel.addEventListener('change', function () {
+            var form = sel.closest('form');
+            if (form) form.submit();
+        });
+    });
+
+});
+</script>
 </body>
 </html>

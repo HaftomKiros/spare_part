@@ -4,11 +4,11 @@
 --}}
 <div class="card mb-3">
     <div class="card-body py-3">
-        <form method="GET" class="row g-2 align-items-end">
+        <form method="GET" class="row g-2 align-items-end filter-form">
             <div class="col-12 col-md-5 col-lg-4">
                 <div class="input-group input-group-sm">
                     <span class="input-group-text"><i class="fa fa-search"></i></span>
-                    <input type="text" name="search" class="form-control"
+                    <input type="text" name="search" class="form-control live-search"
                            placeholder="{{ $searchPlaceholder ?? 'Search...' }}"
                            value="{{ request('search') }}">
                 </div>

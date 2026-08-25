@@ -45,15 +45,15 @@
 <!-- Filters -->
 <div class="card mb-3">
 <div class="card-body py-3">
-<form method="GET" class="row g-2 align-items-end">
+<form method="GET" class="row g-2 align-items-end filter-form">
     <div class="col-12 col-md-3">
         <div class="input-group input-group-sm">
             <span class="input-group-text"><i class="fa fa-search"></i></span>
-            <input type="text" name="search" class="form-control" placeholder="Invoice # or customer…" value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control live-search" placeholder="Invoice # or customer…" value="{{ request('search') }}">
         </div>
     </div>
     <div class="col-auto">
-        <select name="payment_status" class="form-select form-select-sm">
+        <select name="payment_status" class="form-select form-select-sm ts-select">
             <option value="">Payment</option>
             <option value="paid"    {{ request('payment_status')==='paid'?'selected':'' }}>Paid</option>
             <option value="partial" {{ request('payment_status')==='partial'?'selected':'' }}>Partial</option>

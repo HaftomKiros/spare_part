@@ -35,7 +35,7 @@
     </div>
     <div class="col-md-6">
         <label class="form-label">Category <span class="text-danger">*</span></label>
-        <select name="part_category_id" class="form-select @error('part_category_id') is-invalid @enderror" required>
+        <select name="part_category_id" class="form-select ts-select @error('part_category_id') is-invalid @enderror" required>
             <option value="">Select category…</option>
             @foreach($categories as $cat)
                 <optgroup label="{{ $cat->name }}">
@@ -54,7 +54,7 @@
     </div>
     <div class="col-md-6">
         <label class="form-label">Unit of Measure <span class="text-danger">*</span></label>
-        <select name="unit_id" class="form-select @error('unit_id') is-invalid @enderror" required>
+        <select name="unit_id" class="form-select ts-select @error('unit_id') is-invalid @enderror" required>
             <option value="">Select unit…</option>
             @foreach($units as $u)
                 <option value="{{ $u->id }}" {{ old('unit_id') == $u->id ? 'selected' : '' }}>

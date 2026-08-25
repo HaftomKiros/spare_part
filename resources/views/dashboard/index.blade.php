@@ -8,7 +8,7 @@
 
 @section('content')
 
-{{-- ── Welcome Banner ──────────────────────────────── --}}
+{{-- -- Welcome Banner -------------------------------- --}}
 <div class="welcome-banner mb-4">
     <div class="wb-deco"></div>
     <div class="wb-deco2"></div>
@@ -21,7 +21,12 @@
                 {{ now()->format('l, F j, Y') }}
             </p>
             <h1 class="wb-title">Welcome back, {{ auth()->user()->name }} 👋</h1>
-            <p class="wb-sub">Here's what's happening at <strong>Ashu Spare Part</strong> today.</p>
+            <p class="wb-sub">
+                Here's what's happening at <strong>Abush Spare Part</strong> today.
+                @if($warehouse)
+                    - <span class="badge bg-light text-dark"><i class="fa fa-warehouse me-1"></i>{{ $warehouse->name }}</span>
+                @endif
+            </p>
             <div class="wb-actions">
                 <a href="{{ route('sales.create') }}" class="wb-btn wb-btn-white">
                     <i class="fa fa-plus"></i> New Sale
@@ -35,14 +40,43 @@
             </div>
         </div>
         <div class="col-12 col-md-4 text-md-end d-none d-md-block">
-            <div style="font-size:5.5rem;opacity:.2;line-height:1">
-                <i class="fa-solid fa-motorcycle"></i>
+            {{-- Warehouse selector --}}
+            <div class="d-flex flex-column align-items-end gap-2">
+                <form method="GET" action="{{ route('dashboard') }}" class="d-flex align-items-center gap-2">
+                    <label class="text-white small opacity-75 mb-0 text-nowrap"><i class="fa fa-warehouse me-1"></i>Warehouse</label>
+                    <select name="warehouse_id" class="form-select form-select-sm" style="min-width:160px;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff" onchange="this.form.submit()">
+                        <option value="" {{ !$warehouseId ? 'selected' : '' }} style="color:#333">All Warehouses</option>
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->id }}" {{ $warehouseId == $wh->id ? 'selected' : '' }} style="color:#333">
+                                {{ $wh->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </form>
+                <div style="font-size:4rem;opacity:.15;line-height:1">
+                    <i class="fa-solid fa-motorcycle"></i>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-{{-- ── Stat Cards Row ──────────────────────────────── --}}
+{{-- Mobile warehouse selector --}}
+@if($warehouses->count() > 1)
+<div class="d-md-none mb-3">
+    <form method="GET" action="{{ route('dashboard') }}" class="d-flex align-items-center gap-2">
+        <label class="form-label small mb-0 text-nowrap"><i class="fa fa-warehouse me-1"></i>Warehouse:</label>
+        <select name="warehouse_id" class="form-select form-select-sm flex-grow-1" onchange="this.form.submit()">
+            <option value="" {{ !$warehouseId ? 'selected' : '' }}>All Warehouses</option>
+            @foreach($warehouses as $wh)
+                <option value="{{ $wh->id }}" {{ $warehouseId == $wh->id ? 'selected' : '' }}>{{ $wh->name }}</option>
+            @endforeach
+        </select>
+    </form>
+</div>
+@endif
+
+{{-- -- Stat Cards Row -------------------------------- --}}
 <div class="row g-3 mb-4">
 
     {{-- Today's Sales --}}
@@ -144,7 +178,7 @@
 
 </div>
 
-{{-- ── Count Strip ─────────────────────────────────── --}}
+{{-- -- Count Strip ----------------------------------- --}}
 <div class="count-strip mb-4">
     <div class="row g-0">
         <div class="col-3">
@@ -174,7 +208,7 @@
     </div>
 </div>
 
-{{-- ── Charts Row ──────────────────────────────────── --}}
+{{-- -- Charts Row ------------------------------------ --}}
 <div class="row g-3 mb-4">
 
     {{-- Sales Trend --}}
@@ -185,7 +219,7 @@
                     <div style="width:30px;height:30px;background:var(--brand-light);border-radius:8px;display:flex;align-items:center;justify-content:center">
                         <i class="fa fa-chart-area" style="color:var(--brand-1);font-size:.85rem"></i>
                     </div>
-                    <span>Sales — Last 7 Days</span>
+                    <span>Sales - Last 7 Days</span>
                 </div>
                 <a href="{{ route('reports.sales') }}" class="btn btn-sm btn-outline-primary">Full Report</a>
             </div>
@@ -205,7 +239,7 @@
                     <div style="width:30px;height:30px;background:var(--brand-light);border-radius:8px;display:flex;align-items:center;justify-content:center">
                         <i class="fa fa-chart-pie" style="color:var(--brand-1);font-size:.85rem"></i>
                     </div>
-                    <span>Sales Mix — {{ now()->format('M Y') }}</span>
+                    <span>Sales Mix - {{ now()->format('M Y') }}</span>
                 </div>
             </div>
             <div class="card-body d-flex flex-column align-items-center justify-content-center">
@@ -243,7 +277,7 @@
 
 </div>
 
-{{-- ── Recent Sales + Low Stock ────────────────────── --}}
+{{-- -- Recent Sales + Low Stock ---------------------- --}}
 <div class="row g-3 mb-4">
 
     {{-- Recent Sales --}}
@@ -327,8 +361,15 @@
                     @foreach($lowStockVehicles as $vs)
                     <div class="d-flex justify-content-between align-items-center py-2 border-bottom border-light">
                         <div>
-                            <div class="fw-medium small">{{ $vs->vehicleModel->full_name }}</div>
-                            <div class="text-muted" style="font-size:.73rem">{{ $vs->vehicleModel->vehicleType->name }}</div>
+                            @if(is_object($vs) && isset($vs->vehicleModel))
+                                {{-- Eloquent VehicleStock model (global view) --}}
+                                <div class="fw-medium small">{{ $vs->vehicleModel->full_name }}</div>
+                                <div class="text-muted" style="font-size:.73rem">{{ $vs->vehicleModel->vehicleType->name }}</div>
+                            @else
+                                {{-- Raw DB result (per-warehouse view) --}}
+                                <div class="fw-medium small">{{ $vs->brand }} {{ $vs->model_name }}{{ $vs->model_code ? ' ('.$vs->model_code.')' : '' }}</div>
+                                <div class="text-muted" style="font-size:.73rem">{{ $vs->type_name }}</div>
+                            @endif
                         </div>
                         <span class="stock-pill {{ $vs->current_stock <= 0 ? 'out' : 'low' }}">
                             {{ $vs->current_stock }} / {{ $vs->reorder_level }}
@@ -348,7 +389,7 @@
                             <div class="text-muted" style="font-size:.73rem">{{ $part->part_number }}</div>
                         </div>
                         <span class="stock-pill {{ $part->current_stock <= 0 ? 'out' : 'low' }}">
-                            {{ $part->current_stock }} {{ $part->unit?->abbreviation }}
+                            {{ $part->current_stock }} {{ $part->unit?->abbreviation ?? '' }}
                         </span>
                     </div>
                     @endforeach
@@ -367,7 +408,7 @@
 
 </div>
 
-{{-- ── Quick Actions ───────────────────────────────── --}}
+{{-- -- Quick Actions --------------------------------- --}}
 <div class="card mb-2">
     <div class="card-header">
         <div class="d-flex align-items-center gap-2">
@@ -412,7 +453,7 @@
                     <div style="width:42px;height:42px;background:linear-gradient(135deg,#d97706,#fbbf24);border-radius:11px;display:flex;align-items:center;justify-content:center">
                         <i class="fa fa-arrow-down-to-bracket text-white fs-5"></i>
                     </div>
-                    <span class="small fw-semibold text-warning">Stock In</span>
+                    <span class="small fw-semibold text-warning">Stock Entry</span>
                 </a>
             </div>
             <div class="col-6 col-md-4 col-lg-2">
@@ -459,7 +500,7 @@
 
 @push('scripts')
 <script>
-// ── Sales Trend Line Chart ───────────────────────
+// -- Sales Trend Line Chart -----------------------
 const trendCtx = document.getElementById('salesTrendChart');
 if (trendCtx) {
     new Chart(trendCtx, {
@@ -521,7 +562,7 @@ if (trendCtx) {
     });
 }
 
-// ── Sales Mix Donut ──────────────────────────────
+// -- Sales Mix Donut ------------------------------
 const mixCtx = document.getElementById('salesMixChart');
 if (mixCtx) {
     new Chart(mixCtx, {

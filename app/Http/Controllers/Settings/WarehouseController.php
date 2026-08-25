@@ -140,6 +140,13 @@ class WarehouseController extends Controller
             ->where('current_stock', '>', 0)
             ->exists();
 
+        if (!$hasStock) {
+            $hasStock = DB::table('warehouse_vehicle_stock')
+                ->where('warehouse_id', $warehouse->id)
+                ->where('current_stock', '>', 0)
+                ->exists();
+        }
+
         if ($hasStock) {
             return back()->with('error', 'Cannot delete: warehouse still has stock. Transfer or clear stock first.');
         }

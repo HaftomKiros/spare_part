@@ -30,7 +30,7 @@
     </div>
     <div class="col-md-6">
         <label class="form-label">Role</label>
-        <select name="role_id" class="form-select">
+        <select name="role_id" class="form-select ts-select">
             <option value="">No Role</option>
             @foreach($roles as $r)
                 <option value="{{ $r->id }}" {{ old('role_id') == $r->id ? 'selected' : '' }}>{{ $r->display_name }}</option>
@@ -48,7 +48,7 @@
     </div>
     <div class="col-md-6">
         <label class="form-label">Status</label>
-        <select name="status" class="form-select">
+        <select name="status" class="form-select ts-select">
             <option value="active">Active</option>
             <option value="inactive" {{ old('status')==='inactive'?'selected':'' }}>Inactive</option>
         </select>

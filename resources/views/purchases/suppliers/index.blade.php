@@ -13,15 +13,15 @@
 
 <div class="card mb-3">
 <div class="card-body py-3">
-<form method="GET" class="row g-2 align-items-end">
+<form method="GET" class="row g-2 align-items-end filter-form">
     <div class="col-12 col-md-5">
         <div class="input-group input-group-sm">
             <span class="input-group-text"><i class="fa fa-search"></i></span>
-            <input type="text" name="search" class="form-control" placeholder="Name, company, code, phone…" value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control live-search" placeholder="Name, company, code, phone…" value="{{ request('search') }}">
         </div>
     </div>
     <div class="col-auto">
-        <select name="status" class="form-select form-select-sm">
+        <select name="status" class="form-select form-select-sm ts-select">
             <option value="">All Status</option>
             <option value="active"   {{ request('status')==='active'?'selected':'' }}>Active</option>
             <option value="inactive" {{ request('status')==='inactive'?'selected':'' }}>Inactive</option>

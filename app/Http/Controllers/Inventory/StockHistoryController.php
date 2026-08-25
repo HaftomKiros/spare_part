@@ -4,13 +4,14 @@ namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\Controller;
 use App\Models\StockMovement;
+use App\Models\Warehouse;
 use Illuminate\Http\Request;
 
 class StockHistoryController extends Controller
 {
     public function index(Request $request)
     {
-        $query = StockMovement::with('user', 'vehicleModel.vehicleType', 'sparePart.category');
+        $query = StockMovement::with('user', 'vehicleModel.vehicleType', 'sparePart.category', 'warehouse');
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {
@@ -28,6 +29,9 @@ class StockHistoryController extends Controller
         }
         if ($request->movement_type) {
             $query->where('movement_type', $request->movement_type);
+        }
+        if ($request->warehouse_id) {
+            $query->where('warehouse_id', $request->warehouse_id);
         }
         if ($request->date_from) {
             $query->whereDate('created_at', '>=', $request->date_from);
@@ -48,10 +52,17 @@ class StockHistoryController extends Controller
             'opening'        => 'Opening Stock',
         ];
 
-        // Summary totals
-        $totalIn  = StockMovement::whereIn('movement_type', ['purchase','return_in','adjustment_in','opening'])->count();
-        $totalOut = StockMovement::whereIn('movement_type', ['sale','return_out','adjustment_out'])->count();
+        // Summary totals — respect warehouse filter
+        $baseIn  = StockMovement::whereIn('movement_type', ['purchase','return_in','adjustment_in','opening'])
+            ->when($request->warehouse_id, fn($q) => $q->where('warehouse_id', $request->warehouse_id));
+        $baseOut = StockMovement::whereIn('movement_type', ['sale','return_out','adjustment_out'])
+            ->when($request->warehouse_id, fn($q) => $q->where('warehouse_id', $request->warehouse_id));
 
-        return view('inventory.history.index', compact('movements', 'movementTypes', 'totalIn', 'totalOut'));
+        $totalIn  = $baseIn->count();
+        $totalOut = $baseOut->count();
+
+        $warehouses = Warehouse::active()->get();
+
+        return view('inventory.history.index', compact('movements', 'movementTypes', 'totalIn', 'totalOut', 'warehouses'));
     }
 }

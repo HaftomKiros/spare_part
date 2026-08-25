@@ -29,8 +29,8 @@
     </div>
     <div class="col-md-4">
         <label class="form-label">Supplier <span class="text-danger">*</span></label>
-        <select name="supplier_id" class="form-select @error('supplier_id') is-invalid @enderror" required>
-            <option value="">Select supplier…</option>
+        <select name="supplier_id" class="form-select ts-select @error('supplier_id') is-invalid @enderror" required>
+            <option value="">Select supplier...</option>
             @foreach($suppliers as $s)
                 <option value="{{ $s->id }}" {{ old('supplier_id') == $s->id ? 'selected' : '' }}>
                     {{ $s->name }}
@@ -51,7 +51,7 @@
     @if($warehouses->count() > 1)
     <div class="col-md-4">
         <label class="form-label">Warehouse / Stock Location <span class="text-danger">*</span></label>
-        <select name="warehouse_id" class="form-select" required>
+        <select name="warehouse_id" class="form-select ts-select" required>
             @foreach($warehouses as $wh)
                 <option value="{{ $wh->id }}" {{ $defaultWarehouse?->id == $wh->id ? 'selected' : '' }}>
                     {{ $wh->name }} ({{ $wh->city ?? $wh->code }})
@@ -64,7 +64,7 @@
     @endif
     <div class="col-12">
         <label class="form-label">Notes</label>
-        <textarea name="notes" class="form-control" rows="1" placeholder="Optional notes…"></textarea>
+        <textarea name="notes" class="form-control" rows="1" placeholder="Optional notes..."></textarea>
     </div>
 </div>
 </div>
@@ -183,7 +183,7 @@
     const paidInput     = document.getElementById('paidInput');
 
     function buildOptionsHtml(type) {
-        let html = '<option value="">— Select item —</option>';
+        let html = '<option value="">- Select item -</option>';
         if (type === 'vehicle') {
             VEHICLES.forEach(vt => {
                 if (!vt.models.length) return;
@@ -217,14 +217,14 @@
                 <input type="hidden" name="items[${idx}][item_id]"    class="inp-item-id" value="">
                 <input type="hidden" name="items[${idx}][total]"      class="inp-total"   value="0">
                 <select class="form-select form-select-sm sel-type">
-                    <option value="">Select…</option>
+                    <option value="">Select...</option>
                     <option value="spare_part">Spare Part</option>
                     <option value="vehicle">Vehicle</option>
                 </select>
             </td>
             <td>
                 <select class="form-select form-select-sm sel-item" disabled>
-                    <option value="">— Choose type first —</option>
+                    <option value="">- Choose type first -</option>
                 </select>
             </td>
             <td>
@@ -285,7 +285,7 @@
                 selItem.innerHTML = buildOptionsHtml(type);
                 selItem.disabled  = false;
             } else {
-                selItem.innerHTML = '<option value="">— Choose type first —</option>';
+                selItem.innerHTML = '<option value="">- Choose type first -</option>';
                 selItem.disabled  = true;
             }
             updateRowTotal();

@@ -91,19 +91,20 @@ class SaleReturnController extends Controller
                     'total'            => $row['quantity'] * $row['unit_price'],
                 ]);
 
-                // Return stock back
+                // Return stock back to the same warehouse the sale came from
+                $warehouseId = $sale->warehouse_id ?? \App\Models\Warehouse::getDefault()?->id;
                 $qty = (int) $row['quantity'];
                 if ($row['item_type'] === 'vehicle') {
                     $model = \App\Models\VehicleModel::findOrFail($row['item_id']);
                     $this->stockService->increaseVehicleStock(
                         $model, $qty, 'return_in', auth()->id(), $row['unit_price'],
-                        SaleReturn::class, $return->id, "Return #{$return->return_number}"
+                        SaleReturn::class, $return->id, "Return #{$return->return_number}", $warehouseId
                     );
                 } else {
                     $part = \App\Models\SparePart::findOrFail($row['item_id']);
                     $this->stockService->increasePartStock(
                         $part, $qty, 'return_in', auth()->id(), $row['unit_price'],
-                        SaleReturn::class, $return->id, "Return #{$return->return_number}"
+                        SaleReturn::class, $return->id, "Return #{$return->return_number}", $warehouseId
                     );
                 }
             }

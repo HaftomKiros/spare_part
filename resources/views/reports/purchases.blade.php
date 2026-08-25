@@ -16,7 +16,13 @@
     <div class="col-auto"><label class="form-label small mb-1">To</label>
         <input type="date" name="date_to" class="form-control form-control-sm" value="{{ $dateTo }}">
     </div>
+    @include('partials.warehouse-filter')
     <div class="col-auto"><button type="submit" class="btn btn-sm btn-primary mt-3"><i class="fa fa-filter me-1"></i>Apply</button></div>
+    @if($warehouseId)
+    <div class="col-auto ms-auto mt-3">
+        <span class="badge bg-primary-subtle text-primary-emphasis"><i class="fa fa-warehouse me-1"></i>{{ $warehouses->find($warehouseId)?->name }}</span>
+    </div>
+    @endif
 </form>
 </div>
 </div>
@@ -56,7 +62,7 @@
 <div class="card-header"><i class="fa fa-list me-2 text-primary"></i>Purchase Orders</div>
 <div class="table-responsive">
 <table class="table">
-    <thead><tr><th>PO #</th><th>Supplier</th><th>Date</th><th>Total</th><th>Status</th></tr></thead>
+    <thead><tr><th>PO #</th><th>Supplier</th><th>Date</th><th>Total</th><th class="d-none d-lg-table-cell">Warehouse</th><th>Status</th></tr></thead>
     <tbody>
         @forelse($purchases as $po)
         <tr>
@@ -64,10 +70,11 @@
             <td class="text-muted small">{{ $po->supplier->name }}</td>
             <td class="text-muted small">{{ $po->purchase_date->format('M d, Y') }}</td>
             <td class="fw-semibold">Br {{ number_format($po->total,2) }}</td>
+            <td class="text-muted small d-none d-lg-table-cell">{{ $po->warehouse?->name ?? '—' }}</td>
             <td><span class="badge bg-{{ $po->payment_status_badge }}">{{ ucfirst($po->payment_status) }}</span></td>
         </tr>
         @empty
-        <tr><td colspan="5" class="text-center text-muted py-3">No purchases in this period.</td></tr>
+        <tr><td colspan="6" class="text-center text-muted py-3">No purchases in this period.</td></tr>
         @endforelse
     </tbody>
 </table>

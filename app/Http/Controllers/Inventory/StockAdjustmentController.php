@@ -19,7 +19,7 @@ class StockAdjustmentController extends Controller
 
     public function index(Request $request)
     {
-        $query = StockAdjustment::with('user')->withCount('items');
+        $query = StockAdjustment::with('user', 'warehouse')->withCount('items');
 
         if ($request->search) {
             $query->where('adjustment_number', 'like', "%{$request->search}%")
@@ -44,7 +44,9 @@ class StockAdjustmentController extends Controller
         $vehicleTypes = VehicleType::active()->with('activeVehicleModels.stock')->get();
         $categories   = PartCategory::active()->with('spareParts.unit')->orderBy('name')->get();
         $number       = StockAdjustment::generateNumber();
-        return view('inventory.adjustments.create', compact('vehicleTypes', 'categories', 'number'));
+        $warehouses   = \App\Models\Warehouse::active()->get();
+        $defaultWarehouse = \App\Models\Warehouse::getDefault();
+        return view('inventory.adjustments.create', compact('vehicleTypes', 'categories', 'number', 'warehouses', 'defaultWarehouse'));
     }
 
     public function store(Request $request)
@@ -53,6 +55,7 @@ class StockAdjustmentController extends Controller
             'adjustment_date'    => 'required|date',
             'adjustment_type'    => 'required|in:increase,decrease,recount',
             'reason'             => 'required|string|max:500',
+            'warehouse_id'       => 'nullable|exists:warehouses,id',
             'items'              => 'required|array|min:1',
             'items.*.item_type'  => 'required|in:vehicle,spare_part',
             'items.*.item_id'    => 'required|integer',
@@ -62,9 +65,12 @@ class StockAdjustmentController extends Controller
 
         DB::beginTransaction();
         try {
+            $warehouseId = $request->warehouse_id ?: \App\Models\Warehouse::getDefault()?->id;
+
             $adjustment = StockAdjustment::create([
                 'adjustment_number' => StockAdjustment::generateNumber(),
                 'user_id'           => auth()->id(),
+                'warehouse_id'      => $warehouseId,
                 'adjustment_date'   => $request->adjustment_date,
                 'adjustment_type'   => $request->adjustment_type,
                 'reason'            => $request->reason,
@@ -96,10 +102,10 @@ class StockAdjustmentController extends Controller
                     $movementType = $isIncrease ? 'adjustment_in' : 'adjustment_out';
                     if ($isIncrease) {
                         $this->stockService->increaseVehicleStock($model, $qty, $movementType, auth()->id(), 0,
-                            StockAdjustment::class, $adjustment->id, $request->reason);
+                            StockAdjustment::class, $adjustment->id, $request->reason, $warehouseId);
                     } else {
                         $this->stockService->decreaseVehicleStock($model, $qty, $movementType, auth()->id(), 0,
-                            StockAdjustment::class, $adjustment->id, $request->reason);
+                            StockAdjustment::class, $adjustment->id, $request->reason, $warehouseId);
                     }
 
                 } else {
@@ -120,10 +126,10 @@ class StockAdjustmentController extends Controller
                     $movementType = $isIncrease ? 'adjustment_in' : 'adjustment_out';
                     if ($isIncrease) {
                         $this->stockService->increasePartStock($part, $qty, $movementType, auth()->id(), 0,
-                            StockAdjustment::class, $adjustment->id, $request->reason);
+                            StockAdjustment::class, $adjustment->id, $request->reason, $warehouseId);
                     } else {
                         $this->stockService->decreasePartStock($part, $qty, $movementType, auth()->id(), 0,
-                            StockAdjustment::class, $adjustment->id, $request->reason);
+                            StockAdjustment::class, $adjustment->id, $request->reason, $warehouseId);
                     }
                 }
             }

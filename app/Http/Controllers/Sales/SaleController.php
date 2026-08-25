@@ -52,46 +52,14 @@ class SaleController extends Controller
 
     public function create()
     {
-        $customers    = Customer::active()->orderBy('name')->get();
-        $vehicleTypes = VehicleType::active()->with('activeVehicleModels.stock')->get();
-        $categories   = PartCategory::active()->with('spareParts.unit')->orderBy('name')->get();
-        $invoice      = Sale::generateInvoiceNumber();
-        $warehouses   = \App\Models\Warehouse::active()->get();
+        $customers        = Customer::active()->orderBy('name')->get();
+        $warehouses       = \App\Models\Warehouse::active()->get();
         $defaultWarehouse = \App\Models\Warehouse::getDefault();
+        $invoice          = Sale::generateInvoiceNumber();
 
-        // Pre-encode JSON for JS (avoids PHP 8.5 parse issues with @json + arrow functions)
-        $vehicleTypesJson = json_encode($vehicleTypes->map(function ($vt) {
-            return [
-                'id'     => $vt->id,
-                'name'   => $vt->name,
-                'models' => $vt->activeVehicleModels->map(function ($m) {
-                    return [
-                        'id'    => $m->id,
-                        'name'  => $m->brand . ' ' . $m->model_name . ($m->model_code ? ' (' . $m->model_code . ')' : ''),
-                        'price' => $m->selling_price,
-                        'stock' => $m->stock?->current_stock ?? 0,
-                    ];
-                })->values(),
-            ];
-        })->values());
-
-        $categoriesJson = json_encode($categories->map(function ($cat) {
-            return [
-                'id'    => $cat->id,
-                'name'  => $cat->name,
-                'parts' => $cat->spareParts->map(function ($p) {
-                    return [
-                        'id'    => $p->id,
-                        'name'  => $p->name . ' (' . $p->part_number . ')',
-                        'price' => $p->selling_price,
-                        'stock' => $p->current_stock,
-                        'unit'  => $p->unit->abbreviation,
-                    ];
-                })->values(),
-            ];
-        })->values());
-
-        return view('sales.sales.create', compact('customers', 'vehicleTypes', 'categories', 'invoice', 'vehicleTypesJson', 'categoriesJson', 'warehouses', 'defaultWarehouse'));
+        return view('sales.sales.create', compact(
+            'customers', 'warehouses', 'defaultWarehouse', 'invoice'
+        ));
     }
 
     public function store(Request $request)
@@ -122,6 +90,32 @@ class SaleController extends Controller
             $balance    = max(0, $total - $paid);
 
             $payStatus = $balance <= 0 ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid');
+
+            // Server-side stock check per warehouse
+            $warehouseId = $request->warehouse_id ?: \App\Models\Warehouse::getDefault()?->id;
+            foreach ($request->items as $row) {
+                $qty = (int) $row['quantity'];
+                if ($row['item_type'] === 'spare_part') {
+                    $available = DB::table('warehouse_spare_part_stock')
+                        ->where('warehouse_id', $warehouseId)
+                        ->where('spare_part_id', $row['item_id'])
+                        ->value('current_stock') ?? 0;
+                } else {
+                    $available = DB::table('warehouse_vehicle_stock')
+                        ->where('warehouse_id', $warehouseId)
+                        ->where('vehicle_model_id', $row['item_id'])
+                        ->value('current_stock') ?? 0;
+                }
+                if ($qty > $available) {
+                    $name = $row['item_type'] === 'spare_part'
+                        ? \App\Models\SparePart::find($row['item_id'])?->name
+                        : \App\Models\VehicleModel::find($row['item_id'])?->full_name;
+                    DB::rollBack();
+                    return back()
+                        ->with('error', "Insufficient stock for '{$name}'. Available: {$available}, Requested: {$qty}.")
+                        ->withInput();
+                }
+            }
 
             $sale = Sale::create([
                 'invoice_number' => Sale::generateInvoiceNumber(),
@@ -193,6 +187,98 @@ class SaleController extends Controller
         $sale->delete();
         return redirect()->route('sales.index')
             ->with('success', 'Sale deleted.');
+    }
+
+    /**
+     * AJAX: get items that exist in a specific warehouse with their warehouse stock
+     */
+    public function warehouseItems(Request $request)
+    {
+        $warehouseId = (int) $request->warehouse_id;
+
+        if (!$warehouseId) {
+            return response()->json(['vehicles' => [], 'categories' => []]);
+        }
+
+        // Spare parts that exist in this warehouse (current_stock > 0)
+        $parts = DB::table('warehouse_spare_part_stock as ws')
+            ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
+            ->join('part_categories as pc', 'sp.part_category_id', '=', 'pc.id')
+            ->join('units as u', 'sp.unit_id', '=', 'u.id')
+            ->where('ws.warehouse_id', $warehouseId)
+            ->where('ws.current_stock', '>', 0)
+            ->where('sp.status', 'active')
+            ->select(
+                'sp.id', 'sp.name', 'sp.part_number', 'sp.selling_price',
+                'ws.current_stock', 'ws.reorder_level',
+                'pc.id as category_id', 'pc.name as category_name',
+                'u.abbreviation as unit'
+            )
+            ->orderBy('pc.name')
+            ->orderBy('sp.name')
+            ->get();
+
+        // Group parts by category
+        $categories = [];
+        foreach ($parts as $p) {
+            $catId = $p->category_id;
+            if (!isset($categories[$catId])) {
+                $categories[$catId] = [
+                    'id'    => $catId,
+                    'name'  => $p->category_name,
+                    'parts' => [],
+                ];
+            }
+            $categories[$catId]['parts'][] = [
+                'id'    => $p->id,
+                'name'  => $p->name . ' (' . $p->part_number . ')',
+                'price' => $p->selling_price,
+                'stock' => $p->current_stock,
+                'unit'  => $p->unit,
+            ];
+        }
+
+        // Vehicle models that exist in this warehouse (current_stock > 0)
+        $vehicles = DB::table('warehouse_vehicle_stock as wv')
+            ->join('vehicle_models as vm', 'wv.vehicle_model_id', '=', 'vm.id')
+            ->join('vehicle_types as vt', 'vm.vehicle_type_id', '=', 'vt.id')
+            ->where('wv.warehouse_id', $warehouseId)
+            ->where('wv.current_stock', '>', 0)
+            ->where('vm.status', 'active')
+            ->select(
+                'vm.id', 'vm.brand', 'vm.model_name', 'vm.model_code', 'vm.selling_price',
+                'wv.current_stock',
+                'vt.id as type_id', 'vt.name as type_name'
+            )
+            ->orderBy('vt.name')
+            ->orderBy('vm.brand')
+            ->get();
+
+        // Group vehicles by type
+        $vehicleTypes = [];
+        foreach ($vehicles as $v) {
+            $typeId = $v->type_id;
+            if (!isset($vehicleTypes[$typeId])) {
+                $vehicleTypes[$typeId] = [
+                    'id'     => $typeId,
+                    'name'   => $v->type_name,
+                    'models' => [],
+                ];
+            }
+            $name = $v->brand . ' ' . $v->model_name;
+            if ($v->model_code) $name .= ' (' . $v->model_code . ')';
+            $vehicleTypes[$typeId]['models'][] = [
+                'id'    => $v->id,
+                'name'  => $name,
+                'price' => $v->selling_price,
+                'stock' => $v->current_stock,
+            ];
+        }
+
+        return response()->json([
+            'vehicles'   => array_values($vehicleTypes),
+            'categories' => array_values($categories),
+        ]);
     }
 
     /**

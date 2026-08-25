@@ -19,7 +19,7 @@
 <div class="row g-3">
     <div class="col-md-6">
         <label class="form-label">Vehicle Type <span class="text-danger">*</span></label>
-        <select name="vehicle_type_id" class="form-select @error('vehicle_type_id') is-invalid @enderror" required>
+        <select name="vehicle_type_id" class="form-select ts-select @error('vehicle_type_id') is-invalid @enderror" required>
             <option value="">Select type…</option>
             @foreach($types as $t)
                 <option value="{{ $t->id }}" {{ old('vehicle_type_id') == $t->id ? 'selected' : '' }}>

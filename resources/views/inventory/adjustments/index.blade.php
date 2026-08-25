@@ -13,15 +13,15 @@
 
 <div class="card mb-3">
 <div class="card-body py-3">
-<form method="GET" class="row g-2 align-items-end">
+<form method="GET" class="row g-2 align-items-end filter-form">
     <div class="col-12 col-md-4">
         <div class="input-group input-group-sm">
             <span class="input-group-text"><i class="fa fa-search"></i></span>
-            <input type="text" name="search" class="form-control" placeholder="Adjustment # or reason…" value="{{ request('search') }}">
+            <input type="text" name="search" class="form-control live-search" placeholder="Adjustment # or reason…" value="{{ request('search') }}">
         </div>
     </div>
     <div class="col-auto">
-        <select name="type" class="form-select form-select-sm">
+        <select name="type" class="form-select form-select-sm ts-select">
             <option value="">All Types</option>
             <option value="increase" {{ request('type') === 'increase' ? 'selected' : '' }}>Increase</option>
             <option value="decrease" {{ request('type') === 'decrease' ? 'selected' : '' }}>Decrease</option>

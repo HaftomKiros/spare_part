@@ -13,6 +13,7 @@ use App\Http\Controllers\Catalog\UnitController;
 // ── Inventory
 use App\Http\Controllers\Inventory\StockInController;
 use App\Http\Controllers\Inventory\StockAdjustmentController;
+use App\Http\Controllers\Inventory\StockTransferController;
 use App\Http\Controllers\Inventory\CurrentStockController;
 use App\Http\Controllers\Inventory\StockHistoryController;
 
@@ -67,9 +68,15 @@ Route::middleware(['auth'])->group(function () {
     // ── Inventory ─────────────────────────────────
     Route::prefix('inventory')->name('inventory.')->group(function () {
         Route::resource('stock-in',    StockInController::class);
+        Route::get('stock-in-warehouse-stock', [StockInController::class, 'warehouseStock'])->name('stock-in.warehouse-stock');
         Route::resource('adjustments', StockAdjustmentController::class);
         Route::get('current-stock',    [CurrentStockController::class, 'index'])->name('current-stock');
         Route::get('history',          [StockHistoryController::class, 'index'])->name('history');
+        // Stock Transfer
+        Route::get('transfers',         [StockTransferController::class, 'index'])->name('transfers.index');
+        Route::get('transfers/create',  [StockTransferController::class, 'create'])->name('transfers.create');
+        Route::post('transfers',        [StockTransferController::class, 'store'])->name('transfers.store');
+        Route::get('transfers/warehouse-stock', [StockTransferController::class, 'warehouseStock'])->name('transfers.warehouse-stock');
     });
 
     // ── Sales ──────────────────────────────────────
@@ -77,7 +84,8 @@ Route::middleware(['auth'])->group(function () {
         // Sub-resources FIRST (before the main resource) to avoid {sale} swallowing them
         Route::resource('returns',   SaleReturnController::class);
         Route::resource('customers', CustomerController::class);
-        Route::get('ajax/search-items', [SaleController::class, 'searchItems'])->name('ajax.search-items');
+        Route::get('ajax/search-items',      [SaleController::class, 'searchItems'])->name('ajax.search-items');
+        Route::get('ajax/warehouse-items',   [SaleController::class, 'warehouseItems'])->name('ajax.warehouse-items');
 
         // Main sales resource
         Route::get('/',              [SaleController::class, 'index'])->name('index');

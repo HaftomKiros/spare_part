@@ -28,7 +28,13 @@
             @endfor
         </select>
     </div>
+    @include('partials.warehouse-filter')
     <div class="col-auto"><button type="submit" class="btn btn-sm btn-primary mt-3"><i class="fa fa-filter me-1"></i>Apply</button></div>
+    @if($warehouseId)
+    <div class="col-auto ms-auto mt-3">
+        <span class="badge bg-primary-subtle text-primary-emphasis"><i class="fa fa-warehouse me-1"></i>{{ $warehouses->find($warehouseId)?->name }}</span>
+    </div>
+    @endif
 </form>
 </div>
 </div>

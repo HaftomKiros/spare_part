@@ -33,6 +33,11 @@ class Warehouse extends Model
         return $this->hasMany(StockMovement::class);
     }
 
+    public function stockAdjustments(): HasMany
+    {
+        return $this->hasMany(StockAdjustment::class);
+    }
+
     public function spareParts(): BelongsToMany
     {
         return $this->belongsToMany(SparePart::class, 'warehouse_spare_part_stock')
