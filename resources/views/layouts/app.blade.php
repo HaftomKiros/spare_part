@@ -395,6 +395,47 @@
         body.sb-collapsed .sb-item::after { display: none; }
     }
     </style>
+
+    {{-- Loader CSS is inline so it renders before app.css finishes loading --}}
+    <style>
+    #pageLoader {
+        position: fixed;
+        inset: 0;
+        background: #13112a;          /* solid dark — matches sidebar bg, no white bleed */
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.25s ease;
+    }
+    #pageLoader.hide {
+        opacity: 0;
+        pointer-events: none;
+    }
+    .loader-inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+    }
+    .loader-spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(255,255,255,.15);
+        border-top-color: #7c6fe0;
+        border-radius: 50%;
+        animation: loaderSpin 0.75s linear infinite;
+    }
+    .loader-text {
+        font-size: .82rem;
+        font-weight: 600;
+        color: rgba(255,255,255,.7);
+        letter-spacing: .1em;
+        text-transform: uppercase;
+    }
+    @keyframes loaderSpin { to { transform: rotate(360deg); } }
+    </style>
+
     @stack('styles')
 </head>
 <body>
@@ -1017,12 +1058,16 @@
     var loader = document.getElementById('pageLoader');
     if (!loader) return;
 
-    // Hide once the DOM is ready (page content is painted, no flash)
-    document.addEventListener('DOMContentLoaded', function () {
-        loader.style.display = 'none';
-    });
+    function hideLoader() {
+        loader.classList.add('hide');
+        // Remove from DOM after the opacity transition finishes (250ms)
+        setTimeout(function () { loader.style.display = 'none'; }, 260);
+    }
 
-    // Show only when user clicks a navigation link
+    // Hide once the DOM is ready — page is painted, no flash
+    document.addEventListener('DOMContentLoaded', hideLoader);
+
+    // Show when user clicks a navigation link
     document.addEventListener('click', function (e) {
         var link = e.target.closest('a[href]');
         if (!link) return;
@@ -1031,18 +1076,18 @@
             link.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey ||
             link.dataset.deleteUrl || link.dataset.bsToggle) return;
         loader.style.display = 'flex';
+        loader.classList.remove('hide');
     });
 
     // Show when submitting a form (page navigation)
     document.addEventListener('submit', function (e) {
         if (e.target.dataset.ajax) return;
         loader.style.display = 'flex';
+        loader.classList.remove('hide');
     });
 
     // Safety: hide after 8 seconds in case something gets stuck
-    setTimeout(function () {
-        loader.style.display = 'none';
-    }, 8000);
+    setTimeout(hideLoader, 8000);
 })();
 </script>
 <script src="{{ asset('js/app.js') }}"></script>

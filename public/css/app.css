@@ -563,47 +563,8 @@ body.sidebar-mobile-open .sidebar-overlay { display: block; }
     .stat-value { font-size: 1.35rem; }
 }
 
-/* == Page Loader ======================================= */
-#pageLoader {
-    position: fixed;
-    inset: 0;
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(4px);
-    z-index: 99999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
-}
-#pageLoader.hide {
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-}
-.loader-inner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-}
-.loader-spinner {
-    width: 52px;
-    height: 52px;
-    border: 4px solid #e0e7ff;
-    border-top-color: #5b4fcf;
-    border-radius: 50%;
-    animation: loaderSpin 0.75s linear infinite;
-}
-.loader-text {
-    font-size: .85rem;
-    font-weight: 600;
-    color: #5b4fcf;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-}
-@keyframes loaderSpin {
-    to { transform: rotate(360deg); }
-}
+/* == Page Loader — styles live inline in layouts/app.blade.php head == */
+/* Defined inline so the loader renders before app.css finishes loading  */
 
 /* == Warehouse FAB ===================================== */
 #whFab {
