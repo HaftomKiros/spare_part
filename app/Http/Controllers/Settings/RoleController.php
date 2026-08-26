@@ -8,21 +8,108 @@ use Illuminate\Http\Request;
 
 class RoleController extends Controller
 {
+    /**
+     * Granular permission keys.
+     *
+     * Rules enforced everywhere:
+     *  - If a section has NO sub-permission granted → the whole header is hidden
+     *  - view   = read-only access (index / show)
+     *  - create = can add new records
+     *  - edit   = can modify existing records
+     *  - delete = can delete records
+     *  - manage = shorthand for view+create+edit+delete on that resource
+     *  - 'all'  = Full Admin (bypasses everything)
+     */
     public const PERMISSION_LIST = [
-        'catalog.view'       => 'View Catalog',
-        'catalog.manage'     => 'Manage Catalog',
-        'inventory.view'     => 'View Inventory',
-        'inventory.manage'   => 'Manage Inventory',
-        'sales.view'         => 'View Sales',
-        'sales.create'       => 'Create Sales',
-        'sales.manage'       => 'Manage Sales',
-        'purchases.view'     => 'View Purchases',
-        'purchases.create'   => 'Create Purchases',
-        'purchases.manage'   => 'Manage Purchases',
-        'reports.view'       => 'View Reports',
-        'settings.view'      => 'View Settings',
-        'settings.manage'    => 'Manage Settings',
-        'all'                => 'Full Access (Admin)',
+        // ── CATALOG ──────────────────────────────────────
+        'catalog.vehicle-types.view'        => 'Catalog — Vehicle Types: View',
+        'catalog.vehicle-types.create'      => 'Catalog — Vehicle Types: Create',
+        'catalog.vehicle-types.edit'        => 'Catalog — Vehicle Types: Edit',
+        'catalog.vehicle-types.delete'      => 'Catalog — Vehicle Types: Delete',
+
+        'catalog.vehicle-models.view'       => 'Catalog — Vehicle Models: View',
+        'catalog.vehicle-models.create'     => 'Catalog — Vehicle Models: Create',
+        'catalog.vehicle-models.edit'       => 'Catalog — Vehicle Models: Edit',
+        'catalog.vehicle-models.delete'     => 'Catalog — Vehicle Models: Delete',
+
+        'catalog.part-categories.view'      => 'Catalog — Part Categories: View',
+        'catalog.part-categories.create'    => 'Catalog — Part Categories: Create',
+        'catalog.part-categories.edit'      => 'Catalog — Part Categories: Edit',
+        'catalog.part-categories.delete'    => 'Catalog — Part Categories: Delete',
+
+        'catalog.spare-parts.view'          => 'Catalog — Spare Parts: View',
+        'catalog.spare-parts.create'        => 'Catalog — Spare Parts: Create',
+        'catalog.spare-parts.edit'          => 'Catalog — Spare Parts: Edit',
+        'catalog.spare-parts.delete'        => 'Catalog — Spare Parts: Delete',
+
+        'catalog.units.view'                => 'Catalog — Units: View',
+        'catalog.units.create'              => 'Catalog — Units: Create',
+        'catalog.units.edit'                => 'Catalog — Units: Edit',
+        'catalog.units.delete'              => 'Catalog — Units: Delete',
+
+        // ── INVENTORY ─────────────────────────────────────
+        'inventory.current-stock.view'      => 'Inventory — Current Stock: View',
+
+        'inventory.stock-in.view'           => 'Inventory — Stock Entry: View',
+        'inventory.stock-in.create'         => 'Inventory — Stock Entry: Create',
+
+        'inventory.adjustments.view'        => 'Inventory — Adjustments: View',
+        'inventory.adjustments.create'      => 'Inventory — Adjustments: Create',
+
+        'inventory.transfers.view'          => 'Inventory — Stock Transfer: View',
+        'inventory.transfers.create'        => 'Inventory — Stock Transfer: Create',
+
+        'inventory.history.view'            => 'Inventory — History: View',
+
+        // ── SALES ─────────────────────────────────────────
+        'sales.view'                        => 'Sales — Sales History: View',
+        'sales.create'                      => 'Sales — New Sale: Create',
+        'sales.delete'                      => 'Sales — Sale: Delete',
+
+        'sales.returns.view'                => 'Sales — Returns: View',
+        'sales.returns.create'              => 'Sales — Returns: Create',
+
+        'sales.customers.view'              => 'Sales — Customers: View',
+        'sales.customers.create'            => 'Sales — Customers: Create',
+        'sales.customers.edit'              => 'Sales — Customers: Edit',
+        'sales.customers.delete'            => 'Sales — Customers: Delete',
+
+        // ── PURCHASES ─────────────────────────────────────
+        'purchases.view'                    => 'Purchases — Purchase History: View',
+        'purchases.create'                  => 'Purchases — New Purchase: Create',
+        'purchases.delete'                  => 'Purchases — Purchase: Delete',
+
+        'purchases.suppliers.view'          => 'Purchases — Suppliers: View',
+        'purchases.suppliers.create'        => 'Purchases — Suppliers: Create',
+        'purchases.suppliers.edit'          => 'Purchases — Suppliers: Edit',
+        'purchases.suppliers.delete'        => 'Purchases — Suppliers: Delete',
+
+        // ── REPORTS ───────────────────────────────────────
+        'reports.sales'                     => 'Reports — Sales Report',
+        'reports.vehicles'                  => 'Reports — Vehicles Report',
+        'reports.spare-parts'               => 'Reports — Spare Parts Report',
+        'reports.stock'                     => 'Reports — Stock Report',
+        'reports.low-stock'                 => 'Reports — Low Stock Report',
+        'reports.purchases'                 => 'Reports — Purchases Report',
+        'reports.profit'                    => 'Reports — Profit Report',
+
+        // ── SETTINGS ──────────────────────────────────────
+        'settings.company'                  => 'Settings — Company Profile',
+        'settings.users.view'               => 'Settings — Users: View',
+        'settings.users.create'             => 'Settings — Users: Create',
+        'settings.users.edit'               => 'Settings — Users: Edit',
+        'settings.users.delete'             => 'Settings — Users: Delete',
+        'settings.roles.view'               => 'Settings — Roles: View',
+        'settings.roles.create'             => 'Settings — Roles: Create',
+        'settings.roles.edit'               => 'Settings — Roles: Edit',
+        'settings.roles.delete'             => 'Settings — Roles: Delete',
+        'settings.warehouses.view'          => 'Settings — Warehouses: View',
+        'settings.warehouses.create'        => 'Settings — Warehouses: Create',
+        'settings.warehouses.edit'          => 'Settings — Warehouses: Edit',
+        'settings.warehouses.delete'        => 'Settings — Warehouses: Delete',
+
+        // ── ADMIN ─────────────────────────────────────────
+        'all'                               => 'Full Access (Admin)',
     ];
 
     public function index()

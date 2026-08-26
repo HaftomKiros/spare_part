@@ -447,7 +447,7 @@
     {{-- Navigation --}}
     <div class="sb-nav" id="sidebarNav">
 
-        {{-- Dashboard --}}
+        {{-- Dashboard — always visible ──────────────────────────────── --}}
         <div class="sb-group">
             <a href="{{ route('dashboard') }}"
                class="sb-item {{ request()->routeIs('dashboard') ? 'active' : '' }}"
@@ -459,187 +459,276 @@
 
         <div class="sb-divider"></div>
 
-        {{-- CATALOG --}}
+        {{-- ── CATALOG ─────────────────────────────────────────────── --}}
+        @php
+            $canSeeVehicleTypes    = auth()->user()->hasPermission('catalog.vehicle-types.view');
+            $canSeeVehicleModels   = auth()->user()->hasPermission('catalog.vehicle-models.view');
+            $canSeePartCategories  = auth()->user()->hasPermission('catalog.part-categories.view');
+            $canSeeSpareParts      = auth()->user()->hasPermission('catalog.spare-parts.view');
+            $canSeeUnits           = auth()->user()->hasPermission('catalog.units.view');
+            $showCatalog           = $canSeeVehicleTypes || $canSeeVehicleModels || $canSeePartCategories || $canSeeSpareParts || $canSeeUnits;
+        @endphp
+        @if($showCatalog)
         <div class="sb-group" id="grp-catalog">
             <div class="sb-group-header" onclick="toggleGroup('grp-catalog')">
                 <span class="sb-group-title">Catalog</span>
                 <i class="fa fa-chevron-down sb-group-arrow"></i>
             </div>
             <div class="sb-group-items">
+                @if($canSeeVehicleTypes)
                 <a href="{{ route('catalog.vehicle-types.index') }}"
                    class="sb-item {{ request()->routeIs('catalog.vehicle-types*') ? 'active' : '' }}"
                    data-tooltip="Vehicle Types">
                     <span class="sb-icon"><i class="fa-solid fa-motorcycle"></i></span>
                     <span class="sb-label">Vehicle Types</span>
                 </a>
+                @endif
+                @if($canSeeVehicleModels)
                 <a href="{{ route('catalog.vehicle-models.index') }}"
                    class="sb-item {{ request()->routeIs('catalog.vehicle-models*') ? 'active' : '' }}"
                    data-tooltip="Vehicle Models">
                     <span class="sb-icon"><i class="fa-solid fa-car-side"></i></span>
                     <span class="sb-label">Vehicle Models</span>
                 </a>
+                @endif
+                @if($canSeePartCategories)
                 <a href="{{ route('catalog.part-categories.index') }}"
                    class="sb-item {{ request()->routeIs('catalog.part-categories*') ? 'active' : '' }}"
                    data-tooltip="Part Categories">
                     <span class="sb-icon"><i class="fa-solid fa-layer-group"></i></span>
                     <span class="sb-label">Part Categories</span>
                 </a>
+                @endif
+                @if($canSeeSpareParts)
                 <a href="{{ route('catalog.spare-parts.index') }}"
                    class="sb-item {{ request()->routeIs('catalog.spare-parts*') ? 'active' : '' }}"
                    data-tooltip="Spare Parts">
                     <span class="sb-icon"><i class="fa-solid fa-gears"></i></span>
                     <span class="sb-label">Spare Parts</span>
                 </a>
+                @endif
+                @if($canSeeUnits)
                 <a href="{{ route('catalog.units.index') }}"
                    class="sb-item {{ request()->routeIs('catalog.units*') ? 'active' : '' }}"
                    data-tooltip="Units">
                     <span class="sb-icon"><i class="fa-solid fa-ruler"></i></span>
                     <span class="sb-label">Units</span>
                 </a>
+                @endif
             </div>
         </div>
-
         <div class="sb-divider"></div>
+        @endif
 
-        {{-- INVENTORY --}}
+        {{-- ── INVENTORY ───────────────────────────────────────────── --}}
+        @php
+            $canSeeTransfers    = auth()->user()->hasPermission('inventory.transfers.view');
+            $canSeeStockIn      = auth()->user()->hasPermission('inventory.stock-in.view');
+            $canSeeAdjustments  = auth()->user()->hasPermission('inventory.adjustments.view');
+            $canSeeCurrentStock = auth()->user()->hasPermission('inventory.current-stock.view');
+            $canSeeHistory      = auth()->user()->hasPermission('inventory.history.view');
+            $showInventory      = $canSeeTransfers || $canSeeStockIn || $canSeeAdjustments || $canSeeCurrentStock || $canSeeHistory;
+        @endphp
+        @if($showInventory)
         <div class="sb-group" id="grp-inventory">
             <div class="sb-group-header" onclick="toggleGroup('grp-inventory')">
                 <span class="sb-group-title">Inventory</span>
                 <i class="fa fa-chevron-down sb-group-arrow"></i>
             </div>
             <div class="sb-group-items">
+                @if($canSeeTransfers)
                 <a href="{{ route('inventory.transfers.index') }}"
                    class="sb-item {{ request()->routeIs('inventory.transfers*') ? 'active' : '' }}"
                    data-tooltip="Stock Transfer">
                     <span class="sb-icon" style="color:#f59e0b"><i class="fa-solid fa-right-left"></i></span>
                     <span class="sb-label">Stock Transfer</span>
                 </a>
+                @endif
+                @if($canSeeStockIn)
                 <a href="{{ route('inventory.stock-in.index') }}"
                    class="sb-item {{ request()->routeIs('inventory.stock-in*') ? 'active' : '' }}"
                    data-tooltip="Stock Entry">
                     <span class="sb-icon" style="color:#34d399"><i class="fa-solid fa-download"></i></span>
                     <span class="sb-label">Stock Entry</span>
                 </a>
+                @endif
+                @if($canSeeAdjustments)
                 <a href="{{ route('inventory.adjustments.index') }}"
                    class="sb-item {{ request()->routeIs('inventory.adjustments*') ? 'active' : '' }}"
                    data-tooltip="Adjustments">
                     <span class="sb-icon"><i class="fa-solid fa-sliders"></i></span>
                     <span class="sb-label">Adjustments</span>
                 </a>
+                @endif
+                @if($canSeeCurrentStock)
                 <a href="{{ route('inventory.current-stock') }}"
                    class="sb-item {{ request()->routeIs('inventory.current-stock*') ? 'active' : '' }}"
                    data-tooltip="Current Stock">
                     <span class="sb-icon"><i class="fa-solid fa-warehouse"></i></span>
                     <span class="sb-label">Current Stock</span>
                 </a>
+                @endif
+                @if($canSeeHistory)
                 <a href="{{ route('inventory.history') }}"
                    class="sb-item {{ request()->routeIs('inventory.history*') ? 'active' : '' }}"
                    data-tooltip="History">
                     <span class="sb-icon"><i class="fa-solid fa-history"></i></span>
                     <span class="sb-label">History</span>
                 </a>
+                @endif
             </div>
         </div>
-
         <div class="sb-divider"></div>
+        @endif
 
-        {{-- SALES --}}
+        {{-- ── SALES ───────────────────────────────────────────────── --}}
+        @php
+            $canCreateSale    = auth()->user()->hasPermission('sales.create');
+            $canViewSales     = auth()->user()->hasPermission('sales.view');
+            $canViewReturns   = auth()->user()->hasPermission('sales.returns.view');
+            $canViewCustomers = auth()->user()->hasPermission('sales.customers.view');
+            $showSales        = $canCreateSale || $canViewSales || $canViewReturns || $canViewCustomers;
+        @endphp
+        @if($showSales)
         <div class="sb-group" id="grp-sales">
             <div class="sb-group-header" onclick="toggleGroup('grp-sales')">
                 <span class="sb-group-title">Sales</span>
                 <i class="fa fa-chevron-down sb-group-arrow"></i>
             </div>
             <div class="sb-group-items">
+                @if($canCreateSale)
                 <a href="{{ route('sales.create') }}"
                    class="sb-item sb-cta {{ request()->routeIs('sales.create') ? 'active' : '' }}"
                    data-tooltip="New Sale">
                     <span class="sb-icon"><i class="fa-solid fa-plus-circle"></i></span>
                     <span class="sb-label">New Sale</span>
                 </a>
+                @endif
+                @if($canViewSales)
                 <a href="{{ route('sales.index') }}"
                    class="sb-item {{ request()->routeIs('sales.index') || request()->routeIs('sales.show*') ? 'active' : '' }}"
                    data-tooltip="Sales History">
                     <span class="sb-icon"><i class="fa-solid fa-receipt"></i></span>
                     <span class="sb-label">Sales History</span>
                 </a>
+                @endif
+                @if($canViewReturns)
                 <a href="{{ route('sales.returns.index') }}"
                    class="sb-item {{ request()->routeIs('sales.returns*') ? 'active' : '' }}"
                    data-tooltip="Returns">
                     <span class="sb-icon"><i class="fa-solid fa-undo"></i></span>
                     <span class="sb-label">Returns</span>
                 </a>
+                @endif
+                @if($canViewCustomers)
                 <a href="{{ route('sales.customers.index') }}"
                    class="sb-item {{ request()->routeIs('sales.customers*') ? 'active' : '' }}"
                    data-tooltip="Customers">
                     <span class="sb-icon"><i class="fa-solid fa-users"></i></span>
                     <span class="sb-label">Customers</span>
                 </a>
+                @endif
             </div>
         </div>
-
         <div class="sb-divider"></div>
+        @endif
 
-        {{-- PURCHASES --}}
+        {{-- ── PURCHASES ───────────────────────────────────────────── --}}
+        @php
+            $canCreatePurchase  = auth()->user()->hasPermission('purchases.create');
+            $canViewPurchases   = auth()->user()->hasPermission('purchases.view');
+            $canViewSuppliers   = auth()->user()->hasPermission('purchases.suppliers.view');
+            $showPurchases      = $canCreatePurchase || $canViewPurchases || $canViewSuppliers;
+        @endphp
+        @if($showPurchases)
         <div class="sb-group" id="grp-purchases">
             <div class="sb-group-header" onclick="toggleGroup('grp-purchases')">
                 <span class="sb-group-title">Purchases</span>
                 <i class="fa fa-chevron-down sb-group-arrow"></i>
             </div>
             <div class="sb-group-items">
+                @if($canCreatePurchase)
                 <a href="{{ route('purchases.create') }}"
                    class="sb-item sb-cta {{ request()->routeIs('purchases.create') ? 'active' : '' }}"
                    data-tooltip="New Purchase">
                     <span class="sb-icon"><i class="fa-solid fa-file-invoice"></i></span>
                     <span class="sb-label">New Purchase</span>
                 </a>
+                @endif
+                @if($canViewPurchases)
                 <a href="{{ route('purchases.index') }}"
                    class="sb-item {{ request()->routeIs('purchases.index') || request()->routeIs('purchases.show*') ? 'active' : '' }}"
                    data-tooltip="Purchase History">
                     <span class="sb-icon"><i class="fa-solid fa-boxes-stacked"></i></span>
                     <span class="sb-label">Purchase History</span>
                 </a>
+                @endif
+                @if($canViewSuppliers)
                 <a href="{{ route('purchases.suppliers.index') }}"
                    class="sb-item {{ request()->routeIs('purchases.suppliers*') ? 'active' : '' }}"
                    data-tooltip="Suppliers">
                     <span class="sb-icon"><i class="fa-solid fa-truck"></i></span>
                     <span class="sb-label">Suppliers</span>
                 </a>
+                @endif
             </div>
         </div>
-
         <div class="sb-divider"></div>
+        @endif
 
-        {{-- REPORTS --}}
+        {{-- ── REPORTS ─────────────────────────────────────────────── --}}
+        @php
+            $canSeeReportSales      = auth()->user()->hasPermission('reports.sales');
+            $canSeeReportVehicles   = auth()->user()->hasPermission('reports.vehicles');
+            $canSeeReportParts      = auth()->user()->hasPermission('reports.spare-parts');
+            $canSeeReportStock      = auth()->user()->hasPermission('reports.stock');
+            $canSeeReportLowStock   = auth()->user()->hasPermission('reports.low-stock');
+            $canSeeReportPurchases  = auth()->user()->hasPermission('reports.purchases');
+            $canSeeReportProfit     = auth()->user()->hasPermission('reports.profit');
+            $showReports            = $canSeeReportSales || $canSeeReportVehicles || $canSeeReportParts
+                                   || $canSeeReportStock || $canSeeReportLowStock
+                                   || $canSeeReportPurchases || $canSeeReportProfit;
+        @endphp
+        @if($showReports)
         <div class="sb-group" id="grp-reports">
             <div class="sb-group-header" onclick="toggleGroup('grp-reports')">
                 <span class="sb-group-title">Reports</span>
                 <i class="fa fa-chevron-down sb-group-arrow"></i>
             </div>
             <div class="sb-group-items">
+                @if($canSeeReportSales)
                 <a href="{{ route('reports.sales') }}"
                    class="sb-item {{ request()->routeIs('reports.sales') ? 'active' : '' }}"
                    data-tooltip="Sales Report">
                     <span class="sb-icon"><i class="fa-solid fa-chart-line"></i></span>
                     <span class="sb-label">Sales</span>
                 </a>
+                @endif
+                @if($canSeeReportVehicles)
                 <a href="{{ route('reports.vehicles') }}"
                    class="sb-item {{ request()->routeIs('reports.vehicles') ? 'active' : '' }}"
                    data-tooltip="Vehicles Report">
                     <span class="sb-icon"><i class="fa-solid fa-motorcycle"></i></span>
                     <span class="sb-label">Vehicles</span>
                 </a>
+                @endif
+                @if($canSeeReportParts)
                 <a href="{{ route('reports.spare-parts') }}"
                    class="sb-item {{ request()->routeIs('reports.spare-parts') ? 'active' : '' }}"
                    data-tooltip="Spare Parts Report">
                     <span class="sb-icon"><i class="fa-solid fa-gears"></i></span>
                     <span class="sb-label">Spare Parts</span>
                 </a>
+                @endif
+                @if($canSeeReportStock)
                 <a href="{{ route('reports.stock') }}"
                    class="sb-item {{ request()->routeIs('reports.stock') ? 'active' : '' }}"
                    data-tooltip="Stock Report">
                     <span class="sb-icon"><i class="fa-solid fa-boxes-stacked"></i></span>
                     <span class="sb-label">Stock</span>
                 </a>
+                @endif
+                @if($canSeeReportLowStock)
                 <a href="{{ route('reports.low-stock') }}"
                    class="sb-item {{ request()->routeIs('reports.low-stock') ? 'active' : '' }}"
                    data-tooltip="Low Stock">
@@ -649,56 +738,78 @@
                         <span class="sb-badge warn">{{ $lowCount }}</span>
                     @endif
                 </a>
+                @endif
+                @if($canSeeReportPurchases)
                 <a href="{{ route('reports.purchases') }}"
                    class="sb-item {{ request()->routeIs('reports.purchases') ? 'active' : '' }}"
                    data-tooltip="Purchases Report">
                     <span class="sb-icon"><i class="fa-solid fa-truck-loading"></i></span>
                     <span class="sb-label">Purchases</span>
                 </a>
+                @endif
+                @if($canSeeReportProfit)
                 <a href="{{ route('reports.profit') }}"
                    class="sb-item {{ request()->routeIs('reports.profit') ? 'active' : '' }}"
                    data-tooltip="Profit Report">
                     <span class="sb-icon" style="color:#34d399"><i class="fa-solid fa-coins"></i></span>
                     <span class="sb-label">Profit</span>
                 </a>
+                @endif
             </div>
         </div>
-
         <div class="sb-divider"></div>
+        @endif
 
-        {{-- SETTINGS --}}
+        {{-- ── SETTINGS ────────────────────────────────────────────── --}}
+        @php
+            $canSeeCompany    = auth()->user()->hasPermission('settings.company');
+            $canSeeUsers      = auth()->user()->hasPermission('settings.users.view');
+            $canSeeRoles      = auth()->user()->hasPermission('settings.roles.view');
+            $canSeeWarehouses = auth()->user()->hasPermission('settings.warehouses.view');
+            $showSettings     = $canSeeCompany || $canSeeUsers || $canSeeRoles || $canSeeWarehouses;
+        @endphp
+        @if($showSettings)
         <div class="sb-group" id="grp-settings">
             <div class="sb-group-header" onclick="toggleGroup('grp-settings')">
                 <span class="sb-group-title">Settings</span>
                 <i class="fa fa-chevron-down sb-group-arrow"></i>
             </div>
             <div class="sb-group-items">
+                @if($canSeeCompany)
                 <a href="{{ route('settings.company') }}"
                    class="sb-item {{ request()->routeIs('settings.company') ? 'active' : '' }}"
                    data-tooltip="Company">
                     <span class="sb-icon"><i class="fa-solid fa-building"></i></span>
                     <span class="sb-label">Company</span>
                 </a>
+                @endif
+                @if($canSeeUsers)
                 <a href="{{ route('settings.users.index') }}"
                    class="sb-item {{ request()->routeIs('settings.users*') ? 'active' : '' }}"
                    data-tooltip="Users">
                     <span class="sb-icon"><i class="fa-solid fa-user-cog"></i></span>
                     <span class="sb-label">Users</span>
                 </a>
+                @endif
+                @if($canSeeRoles)
                 <a href="{{ route('settings.roles.index') }}"
                    class="sb-item {{ request()->routeIs('settings.roles*') ? 'active' : '' }}"
                    data-tooltip="Roles">
                     <span class="sb-icon"><i class="fa-solid fa-shield-alt"></i></span>
                     <span class="sb-label">Roles</span>
                 </a>
+                @endif
+                @if($canSeeWarehouses)
                 <a href="{{ route('settings.warehouses.index') }}"
                    class="sb-item {{ request()->routeIs('settings.warehouses*') ? 'active' : '' }}"
                    data-tooltip="Warehouses">
                     <span class="sb-icon"><i class="fa-solid fa-warehouse"></i></span>
                     <span class="sb-label">Warehouses</span>
                 </a>
+                @endif
             </div>
         </div>
+        @endif
 
     </div>{{-- /sb-nav --}}
 
