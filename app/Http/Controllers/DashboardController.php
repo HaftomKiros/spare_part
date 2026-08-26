@@ -165,6 +165,10 @@ class DashboardController extends Controller
             'vehicleSales', 'partSales',
             'recentSales', 'lowStockParts', 'lowStockVehicles',
             'recentPurchases'
-        ));
+        ) + [
+            // Legacy compatibility — prevents crash if cached view still references $warehouse
+            'warehouse'   => null,
+            'warehouseId' => null,
+        ]);
     }
 }
