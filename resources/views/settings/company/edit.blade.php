@@ -1,11 +1,11 @@
 @extends('layouts.app')
-@section('title','Company Settings')
+@section('title','Company Profile')
 @section('breadcrumb')
     <li class="breadcrumb-item active">Settings</li>
-    <li class="breadcrumb-item active">Company</li>
+    <li class="breadcrumb-item active">Company Profile</li>
 @endsection
 @section('content')
-@include('partials.page-header',['title'=>'Company Settings','subtitle'=>'Configure your business information'])
+@include('partials.page-header',['title'=>'Company Profile','subtitle'=>'Configure your business information'])
 
 <form method="POST" action="{{ route('settings.company.update') }}" enctype="multipart/form-data">
 @csrf @method('PUT')

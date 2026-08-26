@@ -5,11 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Dashboard') - {{ $company->company_name ?? 'Abush Spare Part' }}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
+    <link rel="stylesheet" href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/fonts/inter/inter.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/tom-select/tom-select.bootstrap5.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+
+    {{-- Anti-FOUC: hide body until all stylesheets are parsed --}}
+    <style id="fouc-guard">body { visibility: hidden; }</style>
+
     <style>
     /* == PROFESSIONAL SIDEBAR ====================================== */
 
@@ -394,6 +398,14 @@
     }
     </style>
     @stack('styles')
+
+    {{-- Reveal page once all <head> stylesheets have loaded --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var guard = document.getElementById('fouc-guard');
+            if (guard) { guard.remove(); }
+        });
+    </script>
 </head>
 <body>
 
@@ -701,7 +713,7 @@
 
         {{-- User popup --}}
         <div class="sb-user-dropdown" id="sbUserDropdown">
-            <a href="{{ route('settings.users.edit', auth()->id()) }}">
+            <a href="{{ route('profile.edit') }}">
                 <i class="fa fa-user-pen"></i> My Profile
             </a>
             <a href="{{ route('settings.company') }}">
@@ -776,7 +788,7 @@
                         <div class="text-muted" style="font-size:.75rem">{{ auth()->user()->email }}</div>
                     </li>
                     <li>
-                        <a class="dropdown-item rounded-2" href="{{ route('settings.users.edit', auth()->id()) }}"
+                        <a class="dropdown-item rounded-2" href="{{ route('profile.edit') }}"
                            style="font-size:.84rem;padding:8px 12px">
                             <i class="fa fa-user-pen me-2 text-muted" style="width:16px"></i>My Profile
                         </a>
@@ -784,7 +796,7 @@
                     <li>
                         <a class="dropdown-item rounded-2" href="{{ route('settings.company') }}"
                            style="font-size:.84rem;padding:8px 12px">
-                            <i class="fa fa-building me-2 text-muted" style="width:16px"></i>Settings
+                            <i class="fa fa-building me-2 text-muted" style="width:16px"></i>Company Profile
                         </a>
                     </li>
                     <li><hr class="dropdown-divider my-1"></li>
@@ -838,9 +850,9 @@
 </div>
 
 {{-- == SCRIPTS ================================================== --}}
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<script src="{{ asset('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ asset('vendor/chartjs/chart.umd.min.js') }}"></script>
+<script src="{{ asset('vendor/tom-select/tom-select.complete.min.js') }}"></script>
 <script>
 // Page loader - only show when navigating AWAY, never on initial load
 (function () {

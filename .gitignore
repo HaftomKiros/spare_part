@@ -1,6 +1,8 @@
 /vendor/
 /node_modules/
 /public/storage
+/storage/app/public/avatars/
+/storage/app/public/logos/
 /storage/*.key
 /storage/logs/*
 /storage/framework/cache/*

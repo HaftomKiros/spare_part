@@ -31,6 +31,7 @@ use App\Http\Controllers\Reports\ReportController;
 
 // ── Settings
 use App\Http\Controllers\Settings\CompanyController;
+use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\UserController;
 use App\Http\Controllers\Settings\RoleController;
 use App\Http\Controllers\Settings\WarehouseController;
@@ -121,6 +122,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('purchases',   [ReportController::class, 'purchases'])->name('purchases');
         Route::get('profit',      [ReportController::class, 'profit'])->name('profit');
     });
+
+    // ── Profile ────────────────────────────────────
+    Route::get('profile',  [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('profile',  [ProfileController::class, 'update'])->name('profile.update');
 
     // ── Settings ───────────────────────────────────
     Route::prefix('settings')->name('settings.')->group(function () {
