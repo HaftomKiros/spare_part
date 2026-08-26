@@ -396,44 +396,85 @@
     }
     </style>
 
-    {{-- Loader CSS is inline so it renders before app.css finishes loading --}}
+    {{-- Loader CSS inline in <head> so it renders before app.css loads --}}
     <style>
+    /* ── Page Loader ──────────────────────────────────────────────── */
     #pageLoader {
         position: fixed;
         inset: 0;
-        background: #13112a;          /* solid dark — matches sidebar bg, no white bleed */
+        background: linear-gradient(135deg, #0f0c29 0%, #1a1040 50%, #13112a 100%);
         z-index: 99999;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        transition: opacity 0.25s ease;
+        gap: 0;
+        transition: opacity 0.35s ease;
     }
     #pageLoader.hide {
         opacity: 0;
         pointer-events: none;
     }
-    .loader-inner {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 14px;
+
+    /* Top progress bar */
+    #pageLoader .ldr-bar {
+        position: absolute;
+        top: 0; left: 0;
+        height: 3px;
+        width: 0%;
+        background: linear-gradient(90deg, #5b4fcf, #a78bfa, #7c6fe0);
+        box-shadow: 0 0 12px rgba(124, 111, 224, 0.8);
+        animation: ldrBarGrow 1.8s cubic-bezier(.4,0,.2,1) forwards;
+        border-radius: 0 2px 2px 0;
     }
-    .loader-spinner {
-        width: 48px;
-        height: 48px;
-        border: 4px solid rgba(255,255,255,.15);
-        border-top-color: #7c6fe0;
+    @keyframes ldrBarGrow {
+        0%   { width: 0%; opacity: 1; }
+        70%  { width: 85%; opacity: 1; }
+        100% { width: 92%; opacity: 1; }
+    }
+
+    /* Logo mark / icon */
+    #pageLoader .ldr-icon {
+        width: 72px; height: 72px;
+        background: linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%);
+        border-radius: 20px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.9rem; color: #fff;
+        box-shadow: 0 0 0 0 rgba(124,111,224,.6);
+        animation: ldrPulse 1.8s ease-in-out infinite;
+        margin-bottom: 28px;
+    }
+    @keyframes ldrPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(124,111,224,.55); transform: scale(1); }
+        50%       { box-shadow: 0 0 0 14px rgba(124,111,224,0); transform: scale(1.04); }
+    }
+
+    /* Three dot track */
+    #pageLoader .ldr-dots {
+        display: flex; gap: 8px; margin-bottom: 20px;
+    }
+    #pageLoader .ldr-dots span {
+        width: 8px; height: 8px;
         border-radius: 50%;
-        animation: loaderSpin 0.75s linear infinite;
+        background: #5b4fcf;
+        animation: ldrDot 1.2s ease-in-out infinite;
     }
-    .loader-text {
-        font-size: .82rem;
+    #pageLoader .ldr-dots span:nth-child(2) { animation-delay: .2s; background: #7c6fe0; }
+    #pageLoader .ldr-dots span:nth-child(3) { animation-delay: .4s; background: #a78bfa; }
+    @keyframes ldrDot {
+        0%, 80%, 100% { transform: scale(.7); opacity: .4; }
+        40%           { transform: scale(1.1); opacity: 1; }
+    }
+
+    /* Label */
+    #pageLoader .ldr-label {
+        font-family: 'Inter', system-ui, sans-serif;
+        font-size: .72rem;
         font-weight: 600;
-        color: rgba(255,255,255,.7);
-        letter-spacing: .1em;
+        letter-spacing: .2em;
         text-transform: uppercase;
+        color: rgba(255,255,255,.35);
     }
-    @keyframes loaderSpin { to { transform: rotate(360deg); } }
     </style>
 
     @stack('styles')
@@ -442,10 +483,14 @@
 
 {{-- == PAGE LOADER ============================================== --}}
 <div id="pageLoader" style="display:flex">
-    <div class="loader-inner">
-        <div class="loader-spinner"></div>
-        <div class="loader-text">Loading...</div>
+    <div class="ldr-bar"></div>
+    <div class="ldr-icon">
+        <i class="fa-solid fa-motorcycle"></i>
     </div>
+    <div class="ldr-dots">
+        <span></span><span></span><span></span>
+    </div>
+    <div class="ldr-label">Loading</div>
 </div>
 
 {{-- == SIDEBAR ================================================== --}}
