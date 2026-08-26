@@ -26,7 +26,7 @@ class SaleController extends Controller
         $query = Sale::with('customer', 'user')
             ->whereIn('warehouse_id', $accessibleIds);
 
-        // Non-admins only see their own sales
+        // Scope to current user's own sales within their warehouses
         if (! $user->isAdmin()) {
             $query->where('user_id', $user->id);
         }

@@ -26,6 +26,11 @@ class PurchaseController extends Controller
         $query = Purchase::with('supplier', 'user')
             ->whereIn('warehouse_id', $accessibleIds);
 
+        // Non-admins only see their own purchases within their warehouses
+        if (! $user->isAdmin()) {
+            $query->where('user_id', $user->id);
+        }
+
         if ($request->search) {
             $query->where(function ($q) use ($request) {
                 $q->where('purchase_number', 'like', "%{$request->search}%")
@@ -47,7 +52,11 @@ class PurchaseController extends Controller
 
         $purchases = $query->latest()->paginate(20)->withQueryString();
 
-        $totals = Purchase::selectRaw('
+        $totalsQuery = Purchase::whereIn('warehouse_id', $accessibleIds);
+        if (! $user->isAdmin()) {
+            $totalsQuery->where('user_id', $user->id);
+        }
+        $totals = $totalsQuery->selectRaw('
             SUM(total) as grand_total,
             SUM(paid_amount) as grand_paid,
             SUM(balance) as grand_balance
