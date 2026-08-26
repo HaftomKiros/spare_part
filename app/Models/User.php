@@ -72,22 +72,21 @@ class User extends Authenticatable
     // ──────────────────────────────────────────
 
     /**
-     * Super Admin — access_level = 'super_admin'
+     * Super Admin — role has 'all' permission.
      * Sees ALL warehouses, ALL transactions. No filters applied.
      */
     public function isAdmin(): bool
     {
-        return $this->access_level === 'super_admin';
+        return $this->hasPermission('all');
     }
 
     /**
-     * Manager — access_level = 'manager' or 'super_admin'
-     * Sees all transactions in assigned warehouses (no user_id filter),
-     * but only assigned warehouses (not all).
+     * Manager — role has 'warehouse.full_access' OR 'all' permission.
+     * Sees ALL transactions in assigned warehouses (no user_id filter).
      */
     public function isManager(): bool
     {
-        return in_array($this->access_level, ['manager', 'super_admin']);
+        return $this->hasPermission('warehouse.full_access') || $this->hasPermission('all');
     }
 
     /**
@@ -96,12 +95,13 @@ class User extends Authenticatable
      */
     public function seesAllUsers(): bool
     {
-        return $this->isManager(); // covers both manager and super_admin
+        return $this->isManager();
     }
 
     /**
      * Returns the warehouse IDs this user can access.
-     * Super Admin sees ALL warehouses. Others see only assigned warehouses.
+     * Super Admin (has 'all' permission) sees ALL warehouses.
+     * Others see only their assigned warehouses.
      */
     public function accessibleWarehouseIds(): array
     {
@@ -111,7 +111,6 @@ class User extends Authenticatable
 
         $ids = $this->warehouses()->pluck('warehouses.id')->toArray();
 
-        // Fallback: if no warehouses assigned, show all (avoids locking user out)
         if (empty($ids)) {
             return \App\Models\Warehouse::active()->pluck('id')->toArray();
         }

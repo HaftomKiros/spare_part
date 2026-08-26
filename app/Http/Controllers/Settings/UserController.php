@@ -50,7 +50,6 @@ class UserController extends Controller
             'role_id'       => 'nullable|exists:roles,id',
             'password'      => 'required|string|min:8|confirmed',
             'status'        => 'required|in:active,inactive',
-            'access_level'  => 'required|in:regular,manager,super_admin',
             'warehouse_ids' => 'nullable|array',
             'warehouse_ids.*' => 'exists:warehouses,id',
         ]);
@@ -81,7 +80,6 @@ class UserController extends Controller
             'phone'         => 'nullable|string|max:20',
             'role_id'       => 'nullable|exists:roles,id',
             'status'        => 'required|in:active,inactive',
-            'access_level'  => 'required|in:regular,manager,super_admin',
             'warehouse_ids' => 'nullable|array',
             'warehouse_ids.*' => 'exists:warehouses,id',
         ]);
