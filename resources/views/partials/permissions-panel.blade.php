@@ -13,13 +13,14 @@ use App\Http\Controllers\Settings\RoleController;
 $groups = [];
 foreach ($permissions as $key => $label) {
     if ($key === 'all') {
-        $groups['__admin'][$key] = $label;
+        // Keep __admin consistent: module → resource → [key => label]
+        $groups['__admin']['__admin.all'][$key] = $label;
         continue;
     }
-    // e.g. 'catalog.vehicle-types.view' → group 'catalog', sub-group 'vehicle-types'
-    $parts     = explode('.', $key);
-    $module    = $parts[0];                                  // catalog / inventory / sales / ...
-    $resource  = isset($parts[2]) ? $parts[0].'.'.$parts[1] : $parts[0]; // catalog.vehicle-types
+    // e.g. 'catalog.vehicle-types.view' → group 'catalog', sub-group 'catalog.vehicle-types'
+    $parts    = explode('.', $key);
+    $module   = $parts[0];
+    $resource = isset($parts[2]) ? $parts[0].'.'.$parts[1] : $parts[0];
     $groups[$module][$resource][$key] = $label;
 }
 
@@ -86,15 +87,15 @@ function resourceLabel(string $resource): string {
 
             @foreach($resources as $resource => $keys)
                 @if($module === '__admin')
-                    {{-- Admin permission has no sub-group --}}
+                    {{-- Admin permission — rendered as a single full-width chip --}}
                     @foreach($keys as $key => $label)
                     <div class="form-check mb-2 ms-1">
                         <input class="form-check-input perm-cb pmod-{{ $module }}"
                                type="checkbox" name="permissions[]"
-                               value="{{ $key }}" id="perm_{{ $loop->parent->index }}_{{ $loop->index }}"
+                               value="{{ $key }}" id="perm_admin_{{ $loop->index }}"
                                {{ in_array($key, $selected) ? 'checked' : '' }}
                                onchange="updateBadge('{{ $module }}')">
-                        <label class="form-check-label small fw-semibold text-dark" for="perm_{{ $loop->parent->index }}_{{ $loop->index }}">
+                        <label class="form-check-label small fw-semibold text-dark" for="perm_admin_{{ $loop->index }}">
                             {{ $label }}
                         </label>
                     </div>
