@@ -428,7 +428,13 @@
     {{-- Brand --}}
     <a href="{{ route('dashboard') }}" class="sb-brand">
         <div class="sb-logo">
-            <i class="fa-solid fa-motorcycle"></i>
+            @if(!empty($company->company_logo))
+                <img src="{{ asset('storage/' . $company->company_logo) }}"
+                     alt="{{ $company->company_name }}"
+                     style="width:100%;height:100%;object-fit:contain;border-radius:inherit">
+            @else
+                <i class="fa-solid fa-motorcycle"></i>
+            @endif
         </div>
         <div class="sb-brand-text">
             <span class="sb-name">{{ $company->company_name ?? 'Abush Spare Part' }}</span>

@@ -67,14 +67,14 @@
 <div class="card mb-3">
 <div class="card-header"><i class="fa fa-image me-2 text-primary"></i>Company Logo</div>
 <div class="card-body text-center">
-    @if($company->company_logo)
-        <img src="{{ asset('storage/'.$company->company_logo) }}" class="mb-3 rounded" style="max-height:80px;max-width:180px" alt="Logo">
+    @if($company->logo_url)
+        <img src="{{ $company->logo_url }}" class="mb-3 rounded" style="max-height:80px;max-width:180px" alt="Logo" id="logoPreview">
     @else
-        <div class="mb-3 p-4 bg-light rounded text-muted small">
+        <div class="mb-3 p-4 bg-light rounded text-muted small" id="logoPlaceholder">
             <i class="fa fa-image fa-2x mb-1 d-block opacity-25"></i>No logo uploaded
         </div>
     @endif
-    <input type="file" name="company_logo" class="form-control form-control-sm" accept="image/*">
+    <input type="file" name="company_logo" class="form-control form-control-sm" accept="image/*" id="logoInput">
     <div class="form-text">PNG, JPG — max 2 MB</div>
 </div>
 </div>
@@ -91,3 +91,29 @@
 </div>
 </form>
 @endsection
+@push('scripts')
+<script>
+// Live logo preview before upload
+document.getElementById('logoInput').addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        let preview = document.getElementById('logoPreview');
+        const placeholder = document.getElementById('logoPlaceholder');
+        if (!preview) {
+            preview = document.createElement('img');
+            preview.id = 'logoPreview';
+            preview.className = 'mb-3 rounded';
+            preview.style = 'max-height:80px;max-width:180px';
+            preview.alt = 'Logo';
+            if (placeholder) placeholder.replaceWith(preview);
+            else document.getElementById('logoInput').before(preview);
+        }
+        preview.src = e.target.result;
+        if (placeholder) placeholder.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+});
+</script>
+@endpush

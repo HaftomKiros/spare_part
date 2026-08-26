@@ -62,6 +62,9 @@ class ProfileController extends Controller
 
         $user->update($data);
 
+        // Re-login so the session reflects the new avatar / name
+        auth()->setUser($user->fresh());
+
         return back()->with('success', 'Profile updated successfully.');
     }
 }

@@ -29,4 +29,14 @@ class CompanySetting extends Model
             'currency_symbol' => 'Br',
         ]);
     }
+
+    /**
+     * Full public URL for the company logo, or null if none uploaded.
+     */
+    public function getLogoUrlAttribute(): ?string
+    {
+        return $this->company_logo
+            ? asset('storage/' . $this->company_logo)
+            : null;
+    }
 }
