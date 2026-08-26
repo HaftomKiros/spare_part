@@ -2,38 +2,26 @@
 /**
  * One-time storage symlink creator for cPanel hosts without SSH.
  *
+ * This script is for setups where the ENTIRE Laravel project lives
+ * inside public_html (not a separate Stock folder).
+ *
+ * Correct paths:
+ *   link   → /home/user/public_html/public/storage
+ *   target → /home/user/public_html/storage/app/public
+ *
  * INSTRUCTIONS:
- *   1. Upload this file to your public_html/ directory
+ *   1. Upload this file to your public_html/public/ directory
  *   2. Visit https://yourdomain.com/storage_link.php in your browser
  *   3. DELETE THIS FILE immediately after — it is a security risk if left on the server
  */
 
-$publicHtml = __DIR__;                          // e.g. /home/user/public_html
-$link       = $publicHtml . '/storage';         // where the symlink will live
+$publicHtml  = __DIR__;                              // /home/abushspq/public_html/public
+$link        = $publicHtml . '/storage';             // where the symlink will live
 
-// Auto-detect the project root — look for artisan file going up from public_html
-$projectRoot = null;
-$search      = dirname($publicHtml);            // go one level up from public_html
-
-foreach (['Stock', 'spare_part', 'app', 'project'] as $candidate) {
-    $try = $search . '/' . $candidate;
-    if (file_exists($try . '/artisan')) {
-        $projectRoot = $try;
-        break;
-    }
-}
-
-// Also try the parent directly
-if (!$projectRoot && file_exists($search . '/artisan')) {
-    $projectRoot = $search;
-}
-
-// Manual fallback — edit this if auto-detect fails
-if (!$projectRoot) {
-    $projectRoot = dirname($publicHtml) . '/Stock'; // adjust folder name if needed
-}
-
-$target = $projectRoot . '/storage/app/public';
+// The project root IS public_html (Laravel is deployed directly into public_html)
+// So storage is at public_html/../storage — one level up from public/
+$projectRoot = dirname($publicHtml);                 // /home/abushspq/public_html
+$target      = $projectRoot . '/storage/app/public'; // /home/abushspq/public_html/storage/app/public
 
 echo '<pre>';
 echo 'public_html : ' . $publicHtml  . PHP_EOL;
