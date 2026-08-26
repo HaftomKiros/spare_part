@@ -735,7 +735,35 @@ body.sidebar-mobile-open .sidebar-overlay { display: block; }
 .whfab-close-btn:hover { background: rgba(255,255,255,.35); }
 
 .whfab-form {
-    padding: 16px 18px;
+    padding: 14px 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+/* Tom Select inside FAB — constrain dropdown height with scroll */
+#whFab .ts-wrapper {
+    position: relative;
+}
+#whFab .ts-dropdown {
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 10px !important;
+    max-height: 180px;
+    overflow-y: auto;
+    margin-top: 4px;
+}
+#whFab .ts-control {
+    border-radius: 10px !important;
+    border: 1.5px solid #c4b5fd !important;
+    min-height: 42px;
+}
+#whFab .ts-control:focus-within {
+    border-color: #5b4fcf !important;
+    box-shadow: 0 0 0 3px rgba(91,79,207,.15) !important;
 }
 .whfab-active-badge {
     background: #f0fdf4;
@@ -745,12 +773,10 @@ body.sidebar-mobile-open .sidebar-overlay { display: block; }
     padding: 7px 12px;
     font-size: .75rem;
     font-weight: 600;
-    margin-top: 12px;
 }
 .whfab-actions {
     display: flex;
     gap: 8px;
-    margin-top: 14px;
 }
 .whfab-actions .btn { border-radius: 10px; font-size: .85rem; padding: 8px 14px; }
 

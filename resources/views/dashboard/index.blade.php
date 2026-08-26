@@ -488,7 +488,18 @@
         </div>
 
         <form method="GET" action="{{ route('dashboard') }}" id="whFabForm" class="whfab-form">
-            {{-- Do NOT set display:none here — Tom Select needs the select visible to init --}}
+            {{-- Apply button ABOVE the select so it's always visible --}}
+            <div class="whfab-actions">
+                <button type="submit" class="btn btn-primary flex-grow-1" id="whFabApply">
+                    <i class="fa fa-filter me-1"></i>Apply Filter
+                </button>
+                @if(!empty($hasFilter))
+                <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fa fa-xmark me-1"></i>Clear
+                </a>
+                @endif
+            </div>
+
             <select name="warehouse_ids[]"
                     id="whFabSelect"
                     multiple
@@ -507,17 +518,6 @@
                 Filtered: {{ $filterLabels ?? '' }}
             </div>
             @endif
-
-            <div class="whfab-actions">
-                <button type="submit" class="btn btn-primary flex-grow-1" id="whFabApply">
-                    <i class="fa fa-filter me-1"></i>Apply Filter
-                </button>
-                @if(!empty($hasFilter))
-                <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary">
-                    <i class="fa fa-xmark me-1"></i>Clear
-                </a>
-                @endif
-            </div>
         </form>
     </div>
 
@@ -654,9 +654,11 @@ if (mixCtx) {
         placeholder: 'Search warehouses...',
         closeAfterSelect: false,
         maxOptions: 200,
+        dropdownParent: null,
+        openOnFocus: true,
         render: {
             option: function (data, escape) {
-                return '<div class="d-flex align-items-center gap-2">' +
+                return '<div class="d-flex align-items-center gap-2 py-1">' +
                     '<i class="fa fa-warehouse" style="font-size:.72rem;color:#9d8ff0"></i>' +
                     '<span>' + escape(data.text) + '</span>' +
                     '</div>';
