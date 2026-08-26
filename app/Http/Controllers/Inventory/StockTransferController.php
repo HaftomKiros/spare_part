@@ -16,6 +16,8 @@ class StockTransferController extends Controller
         $user          = auth()->user();
         $accessibleIds = $user->accessibleWarehouseIds();
 
+        // Show transfers where the user's warehouse appears as FROM or TO
+        // Also scope to transfers made by this user for non-admins
         $query = DB::table('stock_movements as sm')
             ->join('warehouses as w', 'sm.warehouse_id', '=', 'w.id')
             ->join('users as u', 'sm.user_id', '=', 'u.id')
@@ -24,7 +26,15 @@ class StockTransferController extends Controller
             ->whereIn('sm.movement_type', ['adjustment_in', 'adjustment_out'])
             ->whereNotNull('sm.notes')
             ->where('sm.notes', 'like', '%transfer%')
-            ->whereIn('sm.warehouse_id', $accessibleIds); // scope
+            ->where(function ($q) use ($accessibleIds) {
+                // Show if this warehouse is source OR destination
+                $q->whereIn('sm.warehouse_id', $accessibleIds);
+            });
+
+        // Non-admins: only see transfers they initiated
+        if (! $user->isAdmin()) {
+            $query->where('sm.user_id', $user->id);
+        }
 
         if ($request->warehouse_id && in_array((int)$request->warehouse_id, $accessibleIds)) {
             $query->where('sm.warehouse_id', $request->warehouse_id);

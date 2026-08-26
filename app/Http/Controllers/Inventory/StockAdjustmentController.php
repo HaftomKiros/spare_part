@@ -25,6 +25,8 @@ class StockAdjustmentController extends Controller
         $query = StockAdjustment::with('user', 'warehouse')->withCount('items')
             ->whereIn('warehouse_id', $accessibleIds);
 
+        // Inventory adjustments: warehouse only — all users in the same warehouse see all adjustments
+
         if ($request->search) {
             $query->where('adjustment_number', 'like', "%{$request->search}%")
                   ->orWhere('reason', 'like', "%{$request->search}%");
