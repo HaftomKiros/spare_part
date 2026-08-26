@@ -1098,11 +1098,12 @@
 <script src="{{ asset('vendor/chartjs/chart.umd.min.js') }}"></script>
 <script src="{{ asset('vendor/tom-select/tom-select.complete.min.js') }}"></script>
 <script>
-// Page loader — shown on initial load and during navigation, hidden only when
-// window fully loads (all CSS, JS, images ready — no half-rendered flash).
+// Page loader — one clean show/hide cycle per page, no double-flash.
 (function () {
     var loader = document.getElementById('pageLoader');
     if (!loader) return;
+
+    var navigating = false; // true while we're waiting for the next page to load
 
     function hideLoader() {
         loader.classList.add('hide');
@@ -1110,24 +1111,41 @@
     }
 
     function showLoader() {
-        // Reset progress bar animation so it replays from zero
+        navigating = true;
         var bar = loader.querySelector('.ldr-bar');
         if (bar) {
             bar.style.animation = 'none';
-            bar.offsetWidth; // force reflow
+            bar.offsetWidth; // force reflow to restart animation
             bar.style.animation = '';
         }
         loader.style.display = 'flex';
         loader.classList.remove('hide');
     }
 
-    // Hide only when EVERYTHING is loaded (CSS, JS, images) — no white flash
-    window.addEventListener('load', hideLoader);
+    // On initial page load / arriving at a new page:
+    // - window 'load'     → fires after all resources (CSS, JS, images) are ready
+    // - window 'pageshow' → also fires when page is restored from bfcache (persisted=true)
+    // In both cases: hide the loader ONLY if we are NOT mid-navigation
+    // (i.e. this event belongs to THIS page arriving, not us leaving it)
+    window.addEventListener('load', function () {
+        if (!navigating) hideLoader();
+    });
 
-    // Safety: hide after 10 seconds in case window load never fires
-    setTimeout(hideLoader, 10000);
+    window.addEventListener('pageshow', function (e) {
+        // bfcache restore — the page was served from cache; loader may still be visible
+        if (e.persisted) {
+            navigating = false;
+            hideLoader();
+        }
+    });
 
-    // Show when user clicks a navigation link
+    // Safety: hide after 10 s in case load never fires
+    setTimeout(function () {
+        navigating = false;
+        hideLoader();
+    }, 10000);
+
+    // Show loader when navigating away via a link
     document.addEventListener('click', function (e) {
         var link = e.target.closest('a[href]');
         if (!link) return;
@@ -1138,7 +1156,7 @@
         showLoader();
     });
 
-    // Show when submitting a form
+    // Show loader when submitting a form (full-page navigation)
     document.addEventListener('submit', function (e) {
         if (e.target.dataset.ajax) return;
         showLoader();
