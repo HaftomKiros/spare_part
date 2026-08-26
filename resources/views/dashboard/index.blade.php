@@ -470,10 +470,10 @@
 <div id="whFab">
 
     {{-- Backdrop --}}
-    <div id="whFabBackdrop"></div>
+    <div id="whFabBackdrop" style="display:none"></div>
 
     {{-- Panel --}}
-    <div id="whFabPanel">
+    <div id="whFabPanel" style="display:none">
         <div class="whfab-panel-header">
             <div class="d-flex align-items-center gap-2">
                 <div class="whfab-icon-sm"><i class="fa fa-warehouse"></i></div>
@@ -491,7 +491,8 @@
             <select name="warehouse_ids[]"
                     id="whFabSelect"
                     multiple
-                    placeholder="Search warehouses...">
+                    placeholder="Search warehouses..."
+                    style="display:none">
                 @foreach($warehouses as $wh)
                     <option value="{{ $wh->id }}"
                         {{ in_array($wh->id, $warehouseIds) ? 'selected' : '' }}>
