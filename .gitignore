@@ -1,8 +1,10 @@
 /vendor/
 /node_modules/
 /public/storage
-/storage/app/public/avatars/
-/storage/app/public/logos/
+/storage/app/public/avatars/*
+/storage/app/public/logos/*
+!/storage/app/public/avatars/.gitkeep
+!/storage/app/public/logos/.gitkeep
 /storage/*.key
 /storage/logs/*
 /storage/framework/cache/*
