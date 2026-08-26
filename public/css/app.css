@@ -687,14 +687,15 @@ body.sidebar-mobile-open .sidebar-overlay { display: block; }
     border-radius: 20px;
     box-shadow: 0 16px 48px rgba(0,0,0,.18);
     border: 1px solid rgba(91,79,207,.12);
-    overflow: visible;
+    overflow: hidden;
     z-index: 2;
     transform: scale(.92) translateY(12px);
     opacity: 0;
     transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .2s ease;
 }
 #whFabPanel.open {
-    display: block;
+    display: flex;
+    flex-direction: column;
     transform: scale(1) translateY(0);
     opacity: 1;
 }
@@ -707,6 +708,7 @@ body.sidebar-mobile-open .sidebar-overlay { display: block; }
     justify-content: space-between;
     color: #fff;
     border-radius: 20px 20px 0 0;
+    flex-shrink: 0;
 }
 
 .whfab-icon-sm {
@@ -741,31 +743,39 @@ body.sidebar-mobile-open .sidebar-overlay { display: block; }
     display: flex;
     flex-direction: column;
     gap: 10px;
+    overflow: hidden;
 }
-/* Tom Select inside FAB — constrain dropdown height with scroll */
+/* Tom Select inside FAB — fixed height scrollable list */
 #whFab .ts-wrapper {
     position: relative;
 }
 #whFab .ts-dropdown {
-    position: relative !important;
-    top: 0 !important;
-    left: 0 !important;
+    position: static !important;
     width: 100% !important;
     box-shadow: none !important;
     border: 1px solid #e5e7eb !important;
-    border-radius: 10px !important;
-    max-height: 220px;
+    border-top: none !important;
+    border-radius: 0 0 10px 10px !important;
+    max-height: 200px !important;
+    overflow-y: auto !important;
+    margin-top: 0;
+}
+#whFab .ts-dropdown-content {
+    max-height: 200px;
     overflow-y: auto;
-    margin-top: 4px;
 }
 #whFab .ts-control {
-    border-radius: 10px !important;
+    border-radius: 10px 10px 0 0 !important;
     border: 1.5px solid #c4b5fd !important;
-    min-height: 42px;
+    border-bottom: 1px solid #e5e7eb !important;
+    min-height: 40px;
 }
 #whFab .ts-control:focus-within {
     border-color: #5b4fcf !important;
     box-shadow: 0 0 0 3px rgba(91,79,207,.15) !important;
+}
+#whFab .ts-wrapper.focus .ts-control {
+    border-color: #5b4fcf !important;
 }
 .whfab-active-badge {
     background: #f0fdf4;
@@ -801,9 +811,11 @@ body.sidebar-mobile-open .sidebar-overlay { display: block; }
         border-radius: 20px 20px 0 0;
         transform: translateY(100%);
         opacity: 1;
-        overflow: visible;
     }
-    #whFabPanel.open { transform: translateY(0); }
+    #whFabPanel.open {
+        display: flex;
+        transform: translateY(0);
+    }
     .whfab-panel-header { border-radius: 20px 20px 0 0; }
 }
 
