@@ -418,7 +418,7 @@
                    onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(217,119,6,.2)'"
                    onmouseout="this.style.transform='';this.style.boxShadow=''">
                     <div style="width:42px;height:42px;background:linear-gradient(135deg,#d97706,#fbbf24);border-radius:11px;display:flex;align-items:center;justify-content:center">
-                        <i class="fa fa-arrow-down-to-bracket text-white fs-5"></i>
+                        <i class="fa-solid fa-boxes-stacked text-white fs-5"></i>
                     </div>
                     <span class="small fw-semibold text-warning">Stock Entry</span>
                 </a>
