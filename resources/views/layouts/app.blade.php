@@ -424,13 +424,14 @@
         width: 0%;
         background: linear-gradient(90deg, #5b4fcf, #a78bfa, #7c6fe0);
         box-shadow: 0 0 12px rgba(124, 111, 224, 0.8);
-        animation: ldrBarGrow 1.8s cubic-bezier(.4,0,.2,1) forwards;
+        animation: ldrBarGrow 8s cubic-bezier(.1,0,.2,1) forwards;
         border-radius: 0 2px 2px 0;
     }
     @keyframes ldrBarGrow {
-        0%   { width: 0%; opacity: 1; }
-        70%  { width: 85%; opacity: 1; }
-        100% { width: 92%; opacity: 1; }
+        0%   { width: 0%; }
+        60%  { width: 75%; }
+        90%  { width: 90%; }
+        100% { width: 92%; }
     }
 
     /* Logo mark / icon */
@@ -1097,20 +1098,34 @@
 <script src="{{ asset('vendor/chartjs/chart.umd.min.js') }}"></script>
 <script src="{{ asset('vendor/tom-select/tom-select.complete.min.js') }}"></script>
 <script>
-// Page loader — visible on initial load (covers FOUC), hidden on DOMContentLoaded.
-// Also shown when navigating away to a new page.
+// Page loader — shown on initial load and during navigation, hidden only when
+// window fully loads (all CSS, JS, images ready — no half-rendered flash).
 (function () {
     var loader = document.getElementById('pageLoader');
     if (!loader) return;
 
     function hideLoader() {
         loader.classList.add('hide');
-        // Remove from DOM after the opacity transition finishes (250ms)
-        setTimeout(function () { loader.style.display = 'none'; }, 260);
+        setTimeout(function () { loader.style.display = 'none'; }, 380);
     }
 
-    // Hide once the DOM is ready — page is painted, no flash
-    document.addEventListener('DOMContentLoaded', hideLoader);
+    function showLoader() {
+        // Reset progress bar animation so it replays from zero
+        var bar = loader.querySelector('.ldr-bar');
+        if (bar) {
+            bar.style.animation = 'none';
+            bar.offsetWidth; // force reflow
+            bar.style.animation = '';
+        }
+        loader.style.display = 'flex';
+        loader.classList.remove('hide');
+    }
+
+    // Hide only when EVERYTHING is loaded (CSS, JS, images) — no white flash
+    window.addEventListener('load', hideLoader);
+
+    // Safety: hide after 10 seconds in case window load never fires
+    setTimeout(hideLoader, 10000);
 
     // Show when user clicks a navigation link
     document.addEventListener('click', function (e) {
@@ -1120,19 +1135,14 @@
         if (!href || href.startsWith('#') || href.startsWith('javascript') ||
             link.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey ||
             link.dataset.deleteUrl || link.dataset.bsToggle) return;
-        loader.style.display = 'flex';
-        loader.classList.remove('hide');
+        showLoader();
     });
 
-    // Show when submitting a form (page navigation)
+    // Show when submitting a form
     document.addEventListener('submit', function (e) {
         if (e.target.dataset.ajax) return;
-        loader.style.display = 'flex';
-        loader.classList.remove('hide');
+        showLoader();
     });
-
-    // Safety: hide after 8 seconds in case something gets stuck
-    setTimeout(hideLoader, 8000);
 })();
 </script>
 <script src="{{ asset('js/app.js') }}"></script>
