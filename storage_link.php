@@ -15,12 +15,12 @@
  *   3. DELETE THIS FILE immediately after — it is a security risk if left on the server
  */
 
-$publicHtml  = __DIR__;                              // /home/abushspq/public_html/public
+$publicHtml  = __DIR__;                              // /home/abushspq/public_html
 $link        = $publicHtml . '/storage';             // where the symlink will live
 
-// The project root IS public_html (Laravel is deployed directly into public_html)
-// So storage is at public_html/../storage — one level up from public/
-$projectRoot = dirname($publicHtml);                 // /home/abushspq/public_html
+// Laravel is deployed directly INTO public_html
+// so storage/app/public is INSIDE public_html
+$projectRoot = $publicHtml;                          // /home/abushspq/public_html
 $target      = $projectRoot . '/storage/app/public'; // /home/abushspq/public_html/storage/app/public
 
 echo '<pre>';
