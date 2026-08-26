@@ -39,6 +39,11 @@ class Purchase extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(PurchaseItem::class);

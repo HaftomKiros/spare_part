@@ -23,8 +23,8 @@
             <h1 class="wb-title">Welcome back, {{ auth()->user()->name }} 👋</h1>
             <p class="wb-sub">
                 Here's what's happening at <strong>Abush Spare Part</strong> today.
-                @if($warehouse)
-                    - <span class="badge bg-light text-dark"><i class="fa fa-warehouse me-1"></i>{{ $warehouse->name }}</span>
+                @if($hasFilter)
+                    &mdash; <span class="badge bg-light text-dark"><i class="fa fa-warehouse me-1"></i>{{ $filterLabels }}</span>
                 @endif
             </p>
             <div class="wb-actions">
@@ -40,52 +40,23 @@
             </div>
         </div>
         <div class="col-12 col-md-4 text-md-end d-none d-md-block">
-            {{-- Warehouse selector --}}
-            <div class="d-flex flex-column align-items-end gap-2">
-                <form method="GET" action="{{ route('dashboard') }}" class="d-flex align-items-center gap-2">
-                    <label class="text-white small opacity-75 mb-0 text-nowrap"><i class="fa fa-warehouse me-1"></i>Warehouse</label>
-                    <select name="warehouse_id" class="form-select form-select-sm" style="min-width:160px;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff" onchange="this.form.submit()">
-                        <option value="" {{ !$warehouseId ? 'selected' : '' }} style="color:#333">All Warehouses</option>
-                        @foreach($warehouses as $wh)
-                            <option value="{{ $wh->id }}" {{ $warehouseId == $wh->id ? 'selected' : '' }} style="color:#333">
-                                {{ $wh->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </form>
-                <div style="font-size:4rem;opacity:.15;line-height:1">
-                    <i class="fa-solid fa-motorcycle"></i>
-                </div>
+            <div style="font-size:4rem;opacity:.15;line-height:1">
+                <i class="fa-solid fa-motorcycle"></i>
             </div>
         </div>
     </div>
 </div>
 
-{{-- Mobile warehouse selector --}}
-@if($warehouses->count() > 1)
-<div class="d-md-none mb-3">
-    <form method="GET" action="{{ route('dashboard') }}" class="d-flex align-items-center gap-2">
-        <label class="form-label small mb-0 text-nowrap"><i class="fa fa-warehouse me-1"></i>Warehouse:</label>
-        <select name="warehouse_id" class="form-select form-select-sm flex-grow-1" onchange="this.form.submit()">
-            <option value="" {{ !$warehouseId ? 'selected' : '' }}>All Warehouses</option>
-            @foreach($warehouses as $wh)
-                <option value="{{ $wh->id }}" {{ $warehouseId == $wh->id ? 'selected' : '' }}>{{ $wh->name }}</option>
-            @endforeach
-        </select>
-    </form>
-</div>
-@endif
-
-{{-- -- Stat Cards Row -------------------------------- --}}
+{{-- Stat Cards Row --}}
 <div class="row g-3 mb-4">
 
     {{-- Today's Sales --}}
-    <div class="col-6 col-sm-6 col-lg-4 col-xl-2">
+    <div class="col-6 col-md-4 col-xl-4">
         <div class="stat-card brand">
-            <div class="stat-icon brand">
-                <i class="fa-solid fa-receipt"></i>
+            <div class="stat-icon brand"><i class="fa-solid fa-receipt"></i></div>
+            <div class="stat-value">
+                <span class="stat-currency">Br</span>{{ number_format($stats['today_sales'], 0) }}
             </div>
-            <div class="stat-value">Br {{ number_format($stats['today_sales'], 0) }}</div>
             <div class="stat-label">Today's Sales</div>
             <div class="stat-change {{ $stats['today_sales_count'] > 0 ? 'up' : 'neutral' }}">
                 <i class="fa fa-{{ $stats['today_sales_count'] > 0 ? 'arrow-up' : 'minus' }}"></i>
@@ -96,12 +67,12 @@
     </div>
 
     {{-- Month Sales --}}
-    <div class="col-6 col-sm-6 col-lg-4 col-xl-2">
+    <div class="col-6 col-md-4 col-xl-4">
         <div class="stat-card success">
-            <div class="stat-icon success">
-                <i class="fa-solid fa-chart-line"></i>
+            <div class="stat-icon success"><i class="fa-solid fa-chart-line"></i></div>
+            <div class="stat-value">
+                <span class="stat-currency">Br</span>{{ number_format($stats['month_sales'], 0) }}
             </div>
-            <div class="stat-value">Br {{ number_format($stats['month_sales'], 0) }}</div>
             <div class="stat-label">Month Sales</div>
             <div class="stat-change neutral">
                 <i class="fa fa-calendar"></i>
@@ -112,13 +83,11 @@
     </div>
 
     {{-- Month Profit --}}
-    <div class="col-6 col-sm-6 col-lg-4 col-xl-2">
+    <div class="col-6 col-md-4 col-xl-4">
         <div class="stat-card purple">
-            <div class="stat-icon purple">
-                <i class="fa-solid fa-sack-dollar"></i>
-            </div>
+            <div class="stat-icon purple"><i class="fa-solid fa-sack-dollar"></i></div>
             <div class="stat-value {{ $stats['month_profit'] < 0 ? 'text-danger' : '' }}">
-                Br {{ number_format($stats['month_profit'], 0) }}
+                <span class="stat-currency">Br</span>{{ number_format($stats['month_profit'], 0) }}
             </div>
             <div class="stat-label">Month Profit</div>
             <div class="stat-change {{ $stats['month_profit'] >= 0 ? 'up' : 'down' }}">
@@ -130,12 +99,12 @@
     </div>
 
     {{-- Purchases --}}
-    <div class="col-6 col-sm-6 col-lg-4 col-xl-2">
+    <div class="col-6 col-md-4 col-xl-4">
         <div class="stat-card warning">
-            <div class="stat-icon warning">
-                <i class="fa-solid fa-truck"></i>
+            <div class="stat-icon warning"><i class="fa-solid fa-truck"></i></div>
+            <div class="stat-value">
+                <span class="stat-currency">Br</span>{{ number_format($stats['month_purchases'], 0) }}
             </div>
-            <div class="stat-value">Br {{ number_format($stats['month_purchases'], 0) }}</div>
             <div class="stat-label">Month Purchases</div>
             <div class="stat-change neutral">
                 <i class="fa fa-box-open"></i>
@@ -146,12 +115,12 @@
     </div>
 
     {{-- Stock Value --}}
-    <div class="col-6 col-sm-6 col-lg-4 col-xl-2">
+    <div class="col-6 col-md-4 col-xl-4">
         <div class="stat-card info">
-            <div class="stat-icon info">
-                <i class="fa-solid fa-warehouse"></i>
+            <div class="stat-icon info"><i class="fa-solid fa-warehouse"></i></div>
+            <div class="stat-value">
+                <span class="stat-currency">Br</span>{{ number_format($stats['total_inventory_value'], 0) }}
             </div>
-            <div class="stat-value">Br {{ number_format($stats['total_inventory_value'], 0) }}</div>
             <div class="stat-label">Stock Value</div>
             <div class="stat-change neutral">
                 <i class="fa fa-boxes-stacked"></i>
@@ -162,11 +131,9 @@
     </div>
 
     {{-- Low Stock --}}
-    <div class="col-6 col-sm-6 col-lg-4 col-xl-2">
+    <div class="col-6 col-md-4 col-xl-4">
         <div class="stat-card danger">
-            <div class="stat-icon danger">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-            </div>
+            <div class="stat-icon danger"><i class="fa-solid fa-triangle-exclamation"></i></div>
             <div class="stat-value">{{ $stats['low_stock_parts'] + $stats['low_stock_vehicles'] }}</div>
             <div class="stat-label">Low Stock</div>
             <a href="{{ route('reports.low-stock') }}" class="stat-change down text-decoration-none">
@@ -498,6 +465,72 @@
 
 @endsection
 
+{{-- ── Warehouse FAB (Floating Action Button) ────────────── --}}
+@if($warehouses->count() > 0)
+<div id="whFab">
+
+    {{-- Backdrop --}}
+    <div id="whFabBackdrop"></div>
+
+    {{-- Panel --}}
+    <div id="whFabPanel">
+        <div class="whfab-panel-header">
+            <div class="d-flex align-items-center gap-2">
+                <div class="whfab-icon-sm"><i class="fa fa-warehouse"></i></div>
+                <div>
+                    <div class="fw-bold" style="font-size:.9rem">Filter by Warehouse</div>
+                    <div class="text-muted" style="font-size:.72rem">Select one or more warehouses</div>
+                </div>
+            </div>
+            <button type="button" id="whFabClose" class="whfab-close-btn">
+                <i class="fa fa-xmark"></i>
+            </button>
+        </div>
+
+        <form method="GET" action="{{ route('dashboard') }}" id="whFabForm" class="whfab-form">
+            <select name="warehouse_ids[]"
+                    id="whFabSelect"
+                    multiple
+                    placeholder="Search warehouses...">
+                @foreach($warehouses as $wh)
+                    <option value="{{ $wh->id }}"
+                        {{ in_array($wh->id, $warehouseIds) ? 'selected' : '' }}>
+                        {{ $wh->name }}{{ $wh->is_default ? ' (Default)' : '' }}
+                    </option>
+                @endforeach
+            </select>
+
+            @if($hasFilter)
+            <div class="whfab-active-badge">
+                <i class="fa fa-circle-check me-1"></i>
+                Filtered: {{ $filterLabels }}
+            </div>
+            @endif
+
+            <div class="whfab-actions">
+                <button type="submit" class="btn btn-primary flex-grow-1" id="whFabApply">
+                    <i class="fa fa-filter me-1"></i>Apply Filter
+                </button>
+                @if($hasFilter)
+                <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fa fa-xmark me-1"></i>Clear
+                </a>
+                @endif
+            </div>
+        </form>
+    </div>
+
+    {{-- FAB button --}}
+    <button type="button" id="whFabBtn" title="Filter by Warehouse">
+        <i class="fa fa-warehouse" id="whFabIcon"></i>
+        @if($hasFilter)
+        <span id="whFabBadge">{{ count($warehouseIds) }}</span>
+        @endif
+    </button>
+
+</div>
+@endif
+
 @push('scripts')
 <script>
 // -- Sales Trend Line Chart -----------------------
@@ -594,5 +627,74 @@ if (mixCtx) {
         }
     });
 }
+</script>
+
+<script>
+// -- Warehouse FAB ------------------------------------
+(function () {
+    var btn      = document.getElementById('whFabBtn');
+    var panel    = document.getElementById('whFabPanel');
+    var backdrop = document.getElementById('whFabBackdrop');
+    var closeBtn = document.getElementById('whFabClose');
+    var selEl    = document.getElementById('whFabSelect');
+    var form     = document.getElementById('whFabForm');
+    var applyBtn = document.getElementById('whFabApply');
+    var fabIcon  = document.getElementById('whFabIcon');
+
+    if (!btn || !panel || !selEl) return;
+
+    // Init Tom Select
+    var ts = new TomSelect(selEl, {
+        plugins: ['remove_button', 'checkbox_options'],
+        placeholder: 'Search warehouses...',
+        closeAfterSelect: false,
+        maxOptions: 200,
+        render: {
+            option: function (data, escape) {
+                return '<div class="d-flex align-items-center gap-2">' +
+                    '<i class="fa fa-warehouse" style="font-size:.72rem;color:#9d8ff0"></i>' +
+                    '<span>' + escape(data.text) + '</span>' +
+                    '</div>';
+            },
+            item: function (data, escape) {
+                return '<div style="font-size:.8rem">' +
+                    '<i class="fa fa-warehouse me-1" style="font-size:.68rem;color:#5b4fcf"></i>' +
+                    escape(data.text) + '</div>';
+            }
+        }
+    });
+
+    function openPanel() {
+        panel.classList.add('open');
+        backdrop.classList.add('show');
+        fabIcon.className = 'fa fa-xmark';
+        setTimeout(function () { ts.focus(); }, 150);
+    }
+
+    function closePanel() {
+        panel.classList.remove('open');
+        backdrop.classList.remove('show');
+        fabIcon.className = 'fa fa-warehouse';
+    }
+
+    btn.addEventListener('click', function () {
+        panel.classList.contains('open') ? closePanel() : openPanel();
+    });
+
+    if (closeBtn) closeBtn.addEventListener('click', closePanel);
+    backdrop.addEventListener('click', closePanel);
+
+    // Show loader on submit
+    if (form) {
+        form.addEventListener('submit', function () {
+            if (applyBtn) {
+                applyBtn.disabled = true;
+                applyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading...';
+            }
+            var loader = document.getElementById('pageLoader');
+            if (loader) { loader.style.display = 'flex'; loader.classList.remove('hide'); }
+        });
+    }
+})();
 </script>
 @endpush

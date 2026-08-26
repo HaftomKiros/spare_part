@@ -63,20 +63,21 @@
     </thead>
     <tbody>
         @foreach($sale->items as $i => $item)
-        <tr>
-            <td><input type="checkbox" name="return_items[{{ $i }}][selected]" class="form-check-input item-check" value="1"></td>
+        <tr class="return-row" data-index="{{ $i }}">
+            <td><input type="checkbox" class="form-check-input item-check" value="{{ $i }}"></td>
             <td>
-                <input type="hidden" name="items[{{ $i }}][sale_item_id]" value="{{ $item->id }}">
-                <input type="hidden" name="items[{{ $i }}][item_type]" value="{{ $item->item_type }}">
-                <input type="hidden" name="items[{{ $i }}][item_id]" value="{{ $item->item_type === 'vehicle' ? $item->vehicle_model_id : $item->spare_part_id }}">
-                <input type="hidden" name="items[{{ $i }}][unit_price]" value="{{ $item->unit_price }}">
+                {{-- Hidden inputs disabled by default — enabled by JS when checkbox is checked --}}
+                <input type="hidden" name="items[{{ $i }}][sale_item_id]" value="{{ $item->id }}" disabled class="row-input">
+                <input type="hidden" name="items[{{ $i }}][item_type]" value="{{ $item->item_type }}" disabled class="row-input">
+                <input type="hidden" name="items[{{ $i }}][item_id]" value="{{ $item->item_type === 'vehicle' ? $item->vehicle_model_id : $item->spare_part_id }}" disabled class="row-input">
+                <input type="hidden" name="items[{{ $i }}][unit_price]" value="{{ $item->unit_price }}" disabled class="row-input">
                 <div class="fw-semibold small">{{ $item->item_name }}</div>
                 <div class="text-muted" style="font-size:.75rem">{{ $item->item_type === 'spare_part' ? $item->sparePart?->part_number : $item->vehicleModel?->vehicleType?->name }}</div>
             </td>
             <td class="text-muted">{{ $item->quantity }}</td>
             <td class="text-muted">Br {{ number_format($item->unit_price,2) }}</td>
             <td>
-                <input type="number" name="items[{{ $i }}][quantity]" class="form-control form-control-sm return-qty"
+                <input type="number" name="items[{{ $i }}][quantity]" class="form-control form-control-sm return-qty row-input"
                        value="{{ $item->quantity }}" min="1" max="{{ $item->quantity }}" style="width:80px" disabled>
             </td>
         </tr>
@@ -115,20 +116,33 @@
 
 @push('scripts')
 <script>
-// Enable/disable qty inputs based on checkbox
-document.querySelectorAll('.item-check').forEach(cb => {
+// Enable/disable ALL inputs in the row based on checkbox
+document.querySelectorAll('.item-check').forEach(function(cb) {
     cb.addEventListener('change', function () {
-        const qtyInput = this.closest('tr').querySelector('.return-qty');
-        qtyInput.disabled = !this.checked;
+        var row = this.closest('tr');
+        row.querySelectorAll('.row-input').forEach(function(inp) {
+            inp.disabled = !cb.checked;
+        });
+        // Visual feedback
+        row.style.opacity = cb.checked ? '1' : '0.45';
     });
 });
 
 // Select all
 document.getElementById('selectAll')?.addEventListener('change', function () {
-    document.querySelectorAll('.item-check').forEach(cb => {
+    document.querySelectorAll('.item-check').forEach(function(cb) {
         cb.checked = this.checked;
         cb.dispatchEvent(new Event('change'));
-    });
+    }, this);
+});
+
+// Validate at least one item selected before submit
+document.getElementById('returnForm')?.addEventListener('submit', function(e) {
+    var anyChecked = document.querySelectorAll('.item-check:checked').length > 0;
+    if (!anyChecked) {
+        e.preventDefault();
+        alert('Please select at least one item to return.');
+    }
 });
 
 // Reload page with sale selected

@@ -397,6 +397,14 @@
 </head>
 <body>
 
+{{-- == PAGE LOADER ============================================== --}}
+<div id="pageLoader">
+    <div class="loader-inner">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">Loading...</div>
+    </div>
+</div>
+
 {{-- == SIDEBAR ================================================== --}}
 <nav class="sidebar" id="sidebar">
 
@@ -833,6 +841,44 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<script>
+// Page loader - hide when page is ready
+(function () {
+    var loader = document.getElementById('pageLoader');
+    // Hide loader when page fully loaded
+    window.addEventListener('load', function () {
+        if (loader) {
+            loader.classList.add('hide');
+            setTimeout(function () { loader.style.display = 'none'; }, 350);
+        }
+    });
+    // Show loader when navigating away
+    document.addEventListener('click', function (e) {
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+        var href = link.getAttribute('href');
+        // Skip: external, anchor, javascript, new tab
+        if (!href || href.startsWith('#') || href.startsWith('javascript') ||
+            link.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        // Skip: data-delete-url buttons (modal triggers)
+        if (link.dataset.deleteUrl || link.dataset.bsToggle) return;
+        if (loader) {
+            loader.style.display = 'flex';
+            loader.classList.remove('hide');
+        }
+    });
+    // Show loader on form submit (page navigation)
+    document.addEventListener('submit', function (e) {
+        var form = e.target;
+        // Skip AJAX forms
+        if (form.dataset.ajax) return;
+        if (loader) {
+            loader.style.display = 'flex';
+            loader.classList.remove('hide');
+        }
+    });
+})();
+</script>
 <script src="{{ asset('js/app.js') }}"></script>
 
 <script>
@@ -926,8 +972,8 @@ document.querySelectorAll('[data-delete-url]').forEach(btn => {
 // GLOBAL UX - Tom Select + Live Search + Auto-submit
 document.addEventListener('DOMContentLoaded', function () {
 
-    // Tom Select: initialise every .ts-select
-    document.querySelectorAll('select.ts-select').forEach(function (el) {
+    // Tom Select: initialise every .ts-select (skip dashboard warehouse which self-inits)
+    document.querySelectorAll('select.ts-select:not(.ts-dashboard-wh)').forEach(function (el) {
         if (el._tomSelect) return;
         var isFilter = !!el.closest('.filter-form');
         var opts = {

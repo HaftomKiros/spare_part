@@ -81,6 +81,9 @@ class SaleReturnController extends Controller
             ]);
 
             foreach ($request->items as $row) {
+                // Skip if required fields missing (safety guard)
+                if (empty($row['item_id']) || empty($row['item_type'])) continue;
+
                 SaleReturnItem::create([
                     'sale_return_id'   => $return->id,
                     'item_type'        => $row['item_type'],

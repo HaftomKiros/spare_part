@@ -18,48 +18,55 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $today      = now()->toDateString();
-        $warehouses = Warehouse::active()->get();
-        $warehouseId = $request->warehouse_id ? (int) $request->warehouse_id : null;
-        $warehouse   = $warehouseId ? Warehouse::find($warehouseId) : null;
+        $warehouses = Warehouse::active()->orderBy('name')->get();
 
-        // Helper closure: applies optional warehouse filter to Sale queries
-        $saleScope = function ($q) use ($warehouseId) {
-            if ($warehouseId) $q->where('warehouse_id', $warehouseId);
-        };
-        $purchaseScope = function ($q) use ($warehouseId) {
-            if ($warehouseId) $q->where('warehouse_id', $warehouseId);
+        // Support multiple warehouse IDs: ?warehouse_ids[]=1&warehouse_ids[]=2
+        $warehouseIds = collect($request->input('warehouse_ids', []))
+            ->map(fn($id) => (int) $id)
+            ->filter()
+            ->values()
+            ->toArray();
+
+        $hasFilter    = count($warehouseIds) > 0;
+        $filterLabels = $hasFilter
+            ? $warehouses->whereIn('id', $warehouseIds)->pluck('name')->implode(', ')
+            : null;
+
+        // Helper: apply warehouse filter to a query builder
+        $wf = function ($q) use ($hasFilter, $warehouseIds) {
+            if ($hasFilter) $q->whereIn('warehouse_id', $warehouseIds);
         };
 
         // ── Stat Cards ────────────────────────────────
         $stats = [
             'today_sales'       => Sale::whereDate('sale_date', $today)->where('status', 'completed')
-                                       ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))->sum('total'),
+                                       ->when($hasFilter, fn($q) => $q->whereIn('warehouse_id', $warehouseIds))->sum('total'),
             'today_sales_count' => Sale::whereDate('sale_date', $today)->where('status', 'completed')
-                                       ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))->count(),
+                                       ->when($hasFilter, fn($q) => $q->whereIn('warehouse_id', $warehouseIds))->count(),
             'month_sales'       => Sale::whereYear('sale_date', now()->year)->whereMonth('sale_date', now()->month)
                                        ->where('status', 'completed')
-                                       ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))->sum('total'),
+                                       ->when($hasFilter, fn($q) => $q->whereIn('warehouse_id', $warehouseIds))->sum('total'),
             'month_purchases'   => Purchase::whereYear('purchase_date', now()->year)->whereMonth('purchase_date', now()->month)
-                                            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))->sum('total'),
+                                            ->when($hasFilter, fn($q) => $q->whereIn('warehouse_id', $warehouseIds))->sum('total'),
             'total_vehicles'    => VehicleModel::active()->count(),
             'total_spare_parts' => SparePart::active()->count(),
             'total_customers'   => Customer::active()->count(),
             'total_suppliers'   => Supplier::active()->count(),
         ];
 
-        // Stock & low-stock — per warehouse or global
-        if ($warehouseId) {
-            $stats['low_stock_parts']    = DB::table('warehouse_spare_part_stock')
-                ->where('warehouse_id', $warehouseId)->whereColumn('current_stock', '<=', 'reorder_level')->count();
+        // Stock & low-stock
+        if ($hasFilter) {
+            $stats['low_stock_parts'] = DB::table('warehouse_spare_part_stock')
+                ->whereIn('warehouse_id', $warehouseIds)->whereColumn('current_stock', '<=', 'reorder_level')->count();
             $stats['low_stock_vehicles'] = DB::table('warehouse_vehicle_stock')
-                ->where('warehouse_id', $warehouseId)->whereColumn('current_stock', '<=', 'reorder_level')->count();
+                ->whereIn('warehouse_id', $warehouseIds)->whereColumn('current_stock', '<=', 'reorder_level')->count();
             $stats['inventory_value_parts'] = DB::table('warehouse_spare_part_stock as ws')
                 ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
-                ->where('ws.warehouse_id', $warehouseId)
+                ->whereIn('ws.warehouse_id', $warehouseIds)
                 ->sum(DB::raw('ws.current_stock * sp.buying_price'));
             $stats['inventory_value_vehicles'] = DB::table('warehouse_vehicle_stock as wv')
                 ->join('vehicle_models as vm', 'wv.vehicle_model_id', '=', 'vm.id')
-                ->where('wv.warehouse_id', $warehouseId)
+                ->whereIn('wv.warehouse_id', $warehouseIds)
                 ->sum(DB::raw('wv.current_stock * vm.buying_price'));
         } else {
             $stats['low_stock_parts']    = SparePart::lowStock()->count();
@@ -77,7 +84,7 @@ class DashboardController extends Controller
             ->where('s.status', 'completed')
             ->whereYear('s.sale_date', now()->year)
             ->whereMonth('s.sale_date', now()->month);
-        if ($warehouseId) $profitQuery->where('s.warehouse_id', $warehouseId);
+        if ($hasFilter) $profitQuery->whereIn('s.warehouse_id', $warehouseIds);
         $salesItems = $profitQuery->select('si.item_type', 'si.vehicle_model_id', 'si.spare_part_id', 'si.quantity', 'si.unit_price')->get();
 
         $profit = 0;
@@ -92,7 +99,7 @@ class DashboardController extends Controller
         // ── Charts: Sales last 7 days ────────────────
         $salesChart = Sale::selectRaw('DATE(sale_date) as date, SUM(total) as total, COUNT(*) as count')
             ->where('status', 'completed')
-            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
+            ->when($hasFilter, fn($q) => $q->whereIn('warehouse_id', $warehouseIds))
             ->whereBetween('sale_date', [now()->subDays(6)->toDateString(), $today])
             ->groupBy('date')->orderBy('date')->get()->keyBy('date');
 
@@ -104,41 +111,40 @@ class DashboardController extends Controller
             $chartData[]   = $salesChart[$d]->total ?? 0;
         }
 
-        // ── Charts: Sales mix (vehicles vs parts) ──
+        // Sales mix
         $vehicleSales = Sale::completed()
-            ->when($warehouseId, fn($q) => $q->where('sales.warehouse_id', $warehouseId))
+            ->when($hasFilter, fn($q) => $q->whereIn('sales.warehouse_id', $warehouseIds))
             ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
             ->where('sale_items.item_type', 'vehicle')
             ->whereYear('sales.sale_date', now()->year)->whereMonth('sales.sale_date', now()->month)
             ->sum('sale_items.total');
 
         $partSales = Sale::completed()
-            ->when($warehouseId, fn($q) => $q->where('sales.warehouse_id', $warehouseId))
+            ->when($hasFilter, fn($q) => $q->whereIn('sales.warehouse_id', $warehouseIds))
             ->join('sale_items', 'sales.id', '=', 'sale_items.sale_id')
             ->where('sale_items.item_type', 'spare_part')
             ->whereYear('sales.sale_date', now()->year)->whereMonth('sales.sale_date', now()->month)
             ->sum('sale_items.total');
 
-        // ── Recent sales ─────────────────────────────
+        // Recent sales
         $recentSales = Sale::with('customer', 'user')
             ->where('status', 'completed')
-            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
+            ->when($hasFilter, fn($q) => $q->whereIn('warehouse_id', $warehouseIds))
             ->latest()->limit(8)->get();
 
-        // ── Low stock items ───────────────────────────
-        if ($warehouseId) {
+        // Low stock items
+        if ($hasFilter) {
             $lowStockParts = SparePart::with('category', 'unit')
-                ->whereHas('warehouses', fn($q) => $q->where('warehouse_id', $warehouseId)
+                ->whereHas('warehouses', fn($q) => $q->whereIn('warehouse_id', $warehouseIds)
                     ->whereColumn('warehouse_spare_part_stock.current_stock', '<=', 'warehouse_spare_part_stock.reorder_level'))
                 ->active()->orderBy('current_stock')->limit(5)->get();
 
             $lowStockVehicles = collect(DB::table('warehouse_vehicle_stock as wv')
                 ->join('vehicle_models as vm', 'wv.vehicle_model_id', '=', 'vm.id')
                 ->join('vehicle_types as vt', 'vm.vehicle_type_id', '=', 'vt.id')
-                ->where('wv.warehouse_id', $warehouseId)
+                ->whereIn('wv.warehouse_id', $warehouseIds)
                 ->whereColumn('wv.current_stock', '<=', 'wv.reorder_level')
-                ->orderBy('wv.current_stock')
-                ->limit(5)
+                ->orderBy('wv.current_stock')->limit(5)
                 ->select('wv.*', 'vm.brand', 'vm.model_name', 'vm.model_code', 'vt.name as type_name')
                 ->get());
         } else {
@@ -148,13 +154,13 @@ class DashboardController extends Controller
                 ->whereColumn('current_stock', '<=', 'reorder_level')->orderBy('current_stock')->limit(5)->get();
         }
 
-        // ── Recent purchases ──────────────────────────
+        // Recent purchases
         $recentPurchases = Purchase::with('supplier')
-            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
+            ->when($hasFilter, fn($q) => $q->whereIn('warehouse_id', $warehouseIds))
             ->latest()->limit(5)->get();
 
         return view('dashboard.index', compact(
-            'stats', 'warehouses', 'warehouse', 'warehouseId',
+            'stats', 'warehouses', 'warehouseIds', 'hasFilter', 'filterLabels',
             'chartLabels', 'chartData',
             'vehicleSales', 'partSales',
             'recentSales', 'lowStockParts', 'lowStockVehicles',
