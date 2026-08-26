@@ -23,8 +23,8 @@
             <h1 class="wb-title">Welcome back, {{ auth()->user()->name }} 👋</h1>
             <p class="wb-sub">
                 Here's what's happening at <strong>Abush Spare Part</strong> today.
-                @if($hasFilter)
-                    &mdash; <span class="badge bg-light text-dark"><i class="fa fa-warehouse me-1"></i>{{ $filterLabels }}</span>
+                @if(!empty($hasFilter) && $hasFilter)
+                    &mdash; <span class="badge bg-light text-dark"><i class="fa fa-warehouse me-1"></i>{{ $filterLabels ?? '' }}</span>
                 @endif
             </p>
             <div class="wb-actions">
@@ -466,7 +466,7 @@
 @endsection
 
 {{-- ── Warehouse FAB (Floating Action Button) ────────────── --}}
-@if($warehouses->count() > 0)
+@if(isset($warehouses) && $warehouses->count() > 0)
 <div id="whFab">
 
     {{-- Backdrop --}}
@@ -495,16 +495,16 @@
                     style="display:none">
                 @foreach($warehouses as $wh)
                     <option value="{{ $wh->id }}"
-                        {{ in_array($wh->id, $warehouseIds) ? 'selected' : '' }}>
+                        {{ in_array($wh->id, $warehouseIds ?? []) ? 'selected' : '' }}>
                         {{ $wh->name }}{{ $wh->is_default ? ' (Default)' : '' }}
                     </option>
                 @endforeach
             </select>
 
-            @if($hasFilter)
+            @if(!empty($hasFilter))
             <div class="whfab-active-badge">
                 <i class="fa fa-circle-check me-1"></i>
-                Filtered: {{ $filterLabels }}
+                Filtered: {{ $filterLabels ?? '' }}
             </div>
             @endif
 
@@ -512,7 +512,7 @@
                 <button type="submit" class="btn btn-primary flex-grow-1" id="whFabApply">
                     <i class="fa fa-filter me-1"></i>Apply Filter
                 </button>
-                @if($hasFilter)
+                @if(!empty($hasFilter))
                 <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary">
                     <i class="fa fa-xmark me-1"></i>Clear
                 </a>
@@ -524,8 +524,8 @@
     {{-- FAB button --}}
     <button type="button" id="whFabBtn" title="Filter by Warehouse">
         <i class="fa fa-warehouse" id="whFabIcon"></i>
-        @if($hasFilter)
-        <span id="whFabBadge">{{ count($warehouseIds) }}</span>
+        @if(!empty($hasFilter))
+        <span id="whFabBadge">{{ count($warehouseIds ?? []) }}</span>
         @endif
     </button>
 
