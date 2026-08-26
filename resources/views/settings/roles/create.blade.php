@@ -33,19 +33,10 @@
     </div>
 </div>
 
-<div class="mb-3"><div class="divider-label">Permissions</div></div>
-<div class="row g-2">
-    @foreach($permissions as $key => $label)
-    <div class="col-6 col-md-4">
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="permissions[]"
-                   value="{{ $key }}" id="perm_{{ $loop->index }}"
-                   {{ in_array($key, old('permissions', [])) ? 'checked' : '' }}>
-            <label class="form-check-label small" for="perm_{{ $loop->index }}">{{ $label }}</label>
-        </div>
-    </div>
-    @endforeach
-</div>
+@include('partials.permissions-panel', [
+    'permissions' => $permissions,
+    'selected'    => old('permissions', []),
+])
 
 <div class="d-flex gap-2 mt-4">
     <button type="submit" class="btn btn-primary px-4"><i class="fa fa-save me-1"></i>Save Role</button>

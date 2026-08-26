@@ -22,21 +22,27 @@
             </p>
             <h1 class="wb-title">Welcome back, {{ auth()->user()->name }} 👋</h1>
             <p class="wb-sub">
-                Here's what's happening at <strong>Abush Spare Part</strong> today.
+                Here's what's happening at <strong>{{ $company->company_name ?? 'Abush Spare Part' }}</strong> today.
                 @if(!empty($hasFilter) && $hasFilter)
                     &mdash; <span class="badge bg-light text-dark"><i class="fa fa-warehouse me-1"></i>{{ $filterLabels ?? '' }}</span>
                 @endif
             </p>
             <div class="wb-actions">
+                @if(auth()->user()->hasPermission('sales.create'))
                 <a href="{{ route('sales.create') }}" class="wb-btn wb-btn-white">
                     <i class="fa fa-plus"></i> New Sale
                 </a>
+                @endif
+                @if(auth()->user()->hasPermission('purchases.create'))
                 <a href="{{ route('purchases.create') }}" class="wb-btn wb-btn-outline">
                     <i class="fa fa-file-invoice"></i> New Purchase
                 </a>
+                @endif
+                @if(auth()->user()->hasPermission('reports.profit'))
                 <a href="{{ route('reports.profit') }}" class="wb-btn wb-btn-outline">
                     <i class="fa fa-chart-line"></i> View Profit
                 </a>
+                @endif
             </div>
         </div>
         <div class="col-12 col-md-4 text-md-end d-none d-md-block">
@@ -50,6 +56,7 @@
 {{-- Stat Cards Row --}}
 <div class="row g-3 mb-4">
 
+    @if(auth()->user()->hasPermission('sales.view') || auth()->user()->hasPermission('sales.create'))
     {{-- Today's Sales --}}
     <div class="col-6 col-md-4 col-xl-4">
         <div class="stat-card brand">
@@ -81,7 +88,9 @@
             <i class="fa-solid fa-chart-line watermark"></i>
         </div>
     </div>
+    @endif
 
+    @if(auth()->user()->hasPermission('reports.profit'))
     {{-- Month Profit --}}
     <div class="col-6 col-md-4 col-xl-4">
         <div class="stat-card purple">
@@ -97,7 +106,9 @@
             <i class="fa-solid fa-sack-dollar watermark"></i>
         </div>
     </div>
+    @endif
 
+    @if(auth()->user()->hasPermission('purchases.view') || auth()->user()->hasPermission('purchases.create'))
     {{-- Purchases --}}
     <div class="col-6 col-md-4 col-xl-4">
         <div class="stat-card warning">
@@ -113,7 +124,9 @@
             <i class="fa-solid fa-truck watermark"></i>
         </div>
     </div>
+    @endif
 
+    @if(auth()->user()->hasPermission('inventory.current-stock.view') || auth()->user()->hasPermission('reports.stock'))
     {{-- Stock Value --}}
     <div class="col-6 col-md-4 col-xl-4">
         <div class="stat-card info">
@@ -129,7 +142,9 @@
             <i class="fa-solid fa-warehouse watermark"></i>
         </div>
     </div>
+    @endif
 
+    @if(auth()->user()->hasPermission('reports.low-stock'))
     {{-- Low Stock --}}
     <div class="col-6 col-md-4 col-xl-4">
         <div class="stat-card danger">
@@ -142,40 +157,50 @@
             <i class="fa-solid fa-triangle-exclamation watermark"></i>
         </div>
     </div>
+    @endif
 
 </div>
 
 {{-- -- Count Strip ----------------------------------- --}}
 <div class="count-strip mb-4">
     <div class="row g-0">
+        @if(auth()->user()->hasPermission('catalog.vehicle-models.view'))
         <div class="col-3">
             <div class="count-item">
                 <div class="count-num">{{ $stats['total_vehicles'] }}</div>
                 <div class="count-lbl"><i class="fa fa-motorcycle me-1 d-none d-sm-inline"></i>Vehicles</div>
             </div>
         </div>
+        @endif
+        @if(auth()->user()->hasPermission('catalog.spare-parts.view'))
         <div class="col-3">
             <div class="count-item">
                 <div class="count-num">{{ $stats['total_spare_parts'] }}</div>
                 <div class="count-lbl"><i class="fa fa-gears me-1 d-none d-sm-inline"></i>Spare Parts</div>
             </div>
         </div>
+        @endif
+        @if(auth()->user()->hasPermission('sales.customers.view'))
         <div class="col-3">
             <div class="count-item">
                 <div class="count-num">{{ $stats['total_customers'] }}</div>
                 <div class="count-lbl"><i class="fa fa-users me-1 d-none d-sm-inline"></i>Customers</div>
             </div>
         </div>
+        @endif
+        @if(auth()->user()->hasPermission('purchases.suppliers.view'))
         <div class="col-3">
             <div class="count-item">
                 <div class="count-num">{{ $stats['total_suppliers'] }}</div>
                 <div class="count-lbl"><i class="fa fa-truck me-1 d-none d-sm-inline"></i>Suppliers</div>
             </div>
         </div>
+        @endif
     </div>
 </div>
 
 {{-- -- Charts Row ------------------------------------ --}}
+@if(auth()->user()->hasPermission('sales.view') || auth()->user()->hasPermission('sales.create') || auth()->user()->hasPermission('reports.sales'))
 <div class="row g-3 mb-4">
 
     {{-- Sales Trend --}}
@@ -188,7 +213,9 @@
                     </div>
                     <span>Sales - Last 7 Days</span>
                 </div>
+                @if(auth()->user()->hasPermission('reports.sales'))
                 <a href="{{ route('reports.sales') }}" class="btn btn-sm btn-outline-primary">Full Report</a>
+                @endif
             </div>
             <div class="card-body">
                 <div class="chart-container">
@@ -223,7 +250,6 @@
                         <span class="text-muted">Spare Parts</span>
                     </div>
                 </div>
-                {{-- totals below donut --}}
                 <div class="row w-100 mt-3 g-2 text-center">
                     <div class="col-6">
                         <div class="p-2 rounded-3" style="background:var(--brand-light)">
@@ -243,10 +269,12 @@
     </div>
 
 </div>
+@endif
 
 {{-- -- Recent Sales + Low Stock ---------------------- --}}
 <div class="row g-3 mb-4">
 
+    @if(auth()->user()->hasPermission('sales.view') || auth()->user()->hasPermission('sales.create'))
     {{-- Recent Sales --}}
     <div class="col-12 col-xl-7">
         <div class="card">
@@ -302,7 +330,9 @@
             </div>
         </div>
     </div>
+    @endif
 
+    @if(auth()->user()->hasPermission('reports.low-stock') || auth()->user()->hasPermission('inventory.current-stock.view'))
     {{-- Low Stock Alerts --}}
     <div class="col-12 col-xl-5">
         <div class="card">
@@ -318,10 +348,11 @@
                         </span>
                     @endif
                 </div>
+                @if(auth()->user()->hasPermission('reports.low-stock'))
                 <a href="{{ route('reports.low-stock') }}" class="btn btn-sm btn-outline-warning">View All</a>
+                @endif
             </div>
             <div class="card-body p-0">
-
                 @if($lowStockVehicles->count() > 0)
                 <div class="px-4 py-2 border-bottom">
                     <div class="divider-label mb-2 mt-1">Vehicles</div>
@@ -329,11 +360,9 @@
                     <div class="d-flex justify-content-between align-items-center py-2 border-bottom border-light">
                         <div>
                             @if(is_object($vs) && isset($vs->vehicleModel))
-                                {{-- Eloquent VehicleStock model (global view) --}}
                                 <div class="fw-medium small">{{ $vs->vehicleModel->full_name }}</div>
                                 <div class="text-muted" style="font-size:.73rem">{{ $vs->vehicleModel->vehicleType->name }}</div>
                             @else
-                                {{-- Raw DB result (per-warehouse view) --}}
                                 <div class="fw-medium small">{{ $vs->brand }} {{ $vs->model_name }}{{ $vs->model_code ? ' ('.$vs->model_code.')' : '' }}</div>
                                 <div class="text-muted" style="font-size:.73rem">{{ $vs->type_name }}</div>
                             @endif
@@ -345,7 +374,6 @@
                     @endforeach
                 </div>
                 @endif
-
                 @if($lowStockParts->count() > 0)
                 <div class="px-4 py-2">
                     <div class="divider-label mb-2 mt-1">Spare Parts</div>
@@ -362,7 +390,6 @@
                     @endforeach
                 </div>
                 @endif
-
                 @if($lowStockParts->count() === 0 && $lowStockVehicles->count() === 0)
                 <div class="text-center py-4 text-muted">
                     <i class="fa fa-check-circle fa-2x mb-2 d-block text-success opacity-75"></i>
@@ -372,10 +399,27 @@
             </div>
         </div>
     </div>
+    @endif
 
 </div>
 
 {{-- -- Quick Actions --------------------------------- --}}
+@php
+$quickActions = [];
+if(auth()->user()->hasPermission('sales.create'))
+    $quickActions[] = ['route'=>'sales.create','bg'=>'var(--brand-light)','border'=>'#c4b5fd','grad'=>'var(--brand-gradient)','icon'=>'fa-plus','label'=>'New Sale','color'=>'var(--brand-1)'];
+if(auth()->user()->hasPermission('purchases.create'))
+    $quickActions[] = ['route'=>'purchases.create','bg'=>'#d1fae5','border'=>'#6ee7b7','grad'=>'linear-gradient(135deg,#059669,#34d399)','icon'=>'fa-file-invoice','label'=>'New Purchase','color'=>'#059669'];
+if(auth()->user()->hasPermission('inventory.stock-in.create'))
+    $quickActions[] = ['route'=>'inventory.stock-in.create','bg'=>'#fef3c7','border'=>'#fde68a','grad'=>'linear-gradient(135deg,#d97706,#fbbf24)','icon'=>'fa-boxes-stacked','label'=>'Stock Entry','color'=>'#d97706'];
+if(auth()->user()->hasPermission('inventory.adjustments.create'))
+    $quickActions[] = ['route'=>'inventory.adjustments.create','bg'=>'#dbeafe','border'=>'#93c5fd','grad'=>'linear-gradient(135deg,#0284c7,#38bdf8)','icon'=>'fa-sliders','label'=>'Adjust Stock','color'=>'#0284c7'];
+if(auth()->user()->hasPermission('catalog.spare-parts.create'))
+    $quickActions[] = ['route'=>'catalog.spare-parts.create','bg'=>'#f3e8ff','border'=>'#d8b4fe','grad'=>'linear-gradient(135deg,#7c3aed,#c084fc)','icon'=>'fa-gears','label'=>'Add Part','color'=>'#7c3aed'];
+if(auth()->user()->hasPermission('reports.profit'))
+    $quickActions[] = ['route'=>'reports.profit','bg'=>'#fee2e2','border'=>'#fca5a5','grad'=>'linear-gradient(135deg,#dc2626,#f87171)','icon'=>'fa-sack-dollar','label'=>'Profit Report','color'=>'#dc2626'];
+@endphp
+@if(count($quickActions) > 0)
 <div class="card mb-2">
     <div class="card-header">
         <div class="d-flex align-items-center gap-2">
@@ -387,81 +431,24 @@
     </div>
     <div class="card-body">
         <div class="row g-2">
+            @foreach($quickActions as $action)
             <div class="col-6 col-md-4 col-lg-2">
-                <a href="{{ route('sales.create') }}"
+                <a href="{{ route($action['route']) }}"
                    class="d-flex flex-column align-items-center justify-content-center gap-2 p-3 rounded-3 text-decoration-none text-center h-100"
-                   style="background:var(--brand-light);border:1.5px solid #c4b5fd;transition:all .2s"
-                   onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(91,79,207,.2)'"
+                   style="background:{{ $action['bg'] }};border:1.5px solid {{ $action['border'] }};transition:all .2s"
+                   onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.12)'"
                    onmouseout="this.style.transform='';this.style.boxShadow=''">
-                    <div style="width:42px;height:42px;background:var(--brand-gradient);border-radius:11px;display:flex;align-items:center;justify-content:center">
-                        <i class="fa fa-plus text-white fs-5"></i>
+                    <div style="width:42px;height:42px;background:{{ $action['grad'] }};border-radius:11px;display:flex;align-items:center;justify-content:center">
+                        <i class="fa-solid {{ $action['icon'] }} text-white fs-5"></i>
                     </div>
-                    <span class="small fw-semibold" style="color:var(--brand-1)">New Sale</span>
+                    <span class="small fw-semibold" style="color:{{ $action['color'] }}">{{ $action['label'] }}</span>
                 </a>
             </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="{{ route('purchases.create') }}"
-                   class="d-flex flex-column align-items-center justify-content-center gap-2 p-3 rounded-3 text-decoration-none text-center h-100"
-                   style="background:#d1fae5;border:1.5px solid #6ee7b7;transition:all .2s"
-                   onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(5,150,105,.2)'"
-                   onmouseout="this.style.transform='';this.style.boxShadow=''">
-                    <div style="width:42px;height:42px;background:linear-gradient(135deg,#059669,#34d399);border-radius:11px;display:flex;align-items:center;justify-content:center">
-                        <i class="fa fa-file-invoice text-white fs-5"></i>
-                    </div>
-                    <span class="small fw-semibold text-success">New Purchase</span>
-                </a>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="{{ route('inventory.stock-in.create') }}"
-                   class="d-flex flex-column align-items-center justify-content-center gap-2 p-3 rounded-3 text-decoration-none text-center h-100"
-                   style="background:#fef3c7;border:1.5px solid #fde68a;transition:all .2s"
-                   onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(217,119,6,.2)'"
-                   onmouseout="this.style.transform='';this.style.boxShadow=''">
-                    <div style="width:42px;height:42px;background:linear-gradient(135deg,#d97706,#fbbf24);border-radius:11px;display:flex;align-items:center;justify-content:center">
-                        <i class="fa-solid fa-boxes-stacked text-white fs-5"></i>
-                    </div>
-                    <span class="small fw-semibold text-warning">Stock Entry</span>
-                </a>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="{{ route('inventory.adjustments.create') }}"
-                   class="d-flex flex-column align-items-center justify-content-center gap-2 p-3 rounded-3 text-decoration-none text-center h-100"
-                   style="background:#dbeafe;border:1.5px solid #93c5fd;transition:all .2s"
-                   onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(2,132,199,.2)'"
-                   onmouseout="this.style.transform='';this.style.boxShadow=''">
-                    <div style="width:42px;height:42px;background:linear-gradient(135deg,#0284c7,#38bdf8);border-radius:11px;display:flex;align-items:center;justify-content:center">
-                        <i class="fa fa-sliders text-white fs-5"></i>
-                    </div>
-                    <span class="small fw-semibold text-info">Adjust Stock</span>
-                </a>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="{{ route('catalog.spare-parts.create') }}"
-                   class="d-flex flex-column align-items-center justify-content-center gap-2 p-3 rounded-3 text-decoration-none text-center h-100"
-                   style="background:#f3e8ff;border:1.5px solid #d8b4fe;transition:all .2s"
-                   onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(124,58,237,.2)'"
-                   onmouseout="this.style.transform='';this.style.boxShadow=''">
-                    <div style="width:42px;height:42px;background:linear-gradient(135deg,#7c3aed,#c084fc);border-radius:11px;display:flex;align-items:center;justify-content:center">
-                        <i class="fa fa-gears text-white fs-5"></i>
-                    </div>
-                    <span class="small fw-semibold" style="color:#7c3aed">Add Part</span>
-                </a>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <a href="{{ route('reports.profit') }}"
-                   class="d-flex flex-column align-items-center justify-content-center gap-2 p-3 rounded-3 text-decoration-none text-center h-100"
-                   style="background:#fee2e2;border:1.5px solid #fca5a5;transition:all .2s"
-                   onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(220,38,38,.15)'"
-                   onmouseout="this.style.transform='';this.style.boxShadow=''">
-                    <div style="width:42px;height:42px;background:linear-gradient(135deg,#dc2626,#f87171);border-radius:11px;display:flex;align-items:center;justify-content:center">
-                        <i class="fa fa-sack-dollar text-white fs-5"></i>
-                    </div>
-                    <span class="small fw-semibold text-danger">Profit Report</span>
-                </a>
-            </div>
+            @endforeach
         </div>
     </div>
 </div>
+@endif
 
 @endsection
 
