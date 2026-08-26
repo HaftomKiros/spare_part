@@ -11,9 +11,6 @@
     <link rel="stylesheet" href="{{ asset('vendor/tom-select/tom-select.bootstrap5.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 
-    {{-- Anti-FOUC: hide body until all stylesheets are parsed --}}
-    <style id="fouc-guard">body { visibility: hidden; }</style>
-
     <style>
     /* == PROFESSIONAL SIDEBAR ====================================== */
 
@@ -75,6 +72,7 @@
         display: flex; align-items: center; justify-content: center;
         color: #fff; font-size: 1.15rem;
         flex-shrink: 0;
+        overflow: hidden;
         box-shadow: 0 4px 16px rgba(91,79,207,.5);
         transition: box-shadow .3s;
     }
@@ -398,19 +396,11 @@
     }
     </style>
     @stack('styles')
-
-    {{-- Reveal page once all <head> stylesheets have loaded --}}
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var guard = document.getElementById('fouc-guard');
-            if (guard) { guard.remove(); }
-        });
-    </script>
 </head>
 <body>
 
 {{-- == PAGE LOADER ============================================== --}}
-<div id="pageLoader" style="display:none">
+<div id="pageLoader" style="display:flex">
     <div class="loader-inner">
         <div class="loader-spinner"></div>
         <div class="loader-text">Loading...</div>
@@ -431,7 +421,7 @@
             @if(!empty($company->company_logo))
                 <img src="{{ asset('storage/' . $company->company_logo) }}"
                      alt="{{ $company->company_name }}"
-                     style="width:100%;height:100%;object-fit:contain;border-radius:inherit">
+                     style="width:100%;height:100%;object-fit:cover">
             @else
                 <i class="fa-solid fa-motorcycle"></i>
             @endif
@@ -1021,15 +1011,18 @@
 <script src="{{ asset('vendor/chartjs/chart.umd.min.js') }}"></script>
 <script src="{{ asset('vendor/tom-select/tom-select.complete.min.js') }}"></script>
 <script>
-// Page loader - only show when navigating AWAY, never on initial load
+// Page loader — visible on initial load (covers FOUC), hidden on DOMContentLoaded.
+// Also shown when navigating away to a new page.
 (function () {
     var loader = document.getElementById('pageLoader');
     if (!loader) return;
 
-    // Always hide immediately on page load/refresh
-    loader.style.display = 'none';
+    // Hide once the DOM is ready (page content is painted, no flash)
+    document.addEventListener('DOMContentLoaded', function () {
+        loader.style.display = 'none';
+    });
 
-    // Show only when user clicks a link (navigating away)
+    // Show only when user clicks a navigation link
     document.addEventListener('click', function (e) {
         var link = e.target.closest('a[href]');
         if (!link) return;
@@ -1038,14 +1031,12 @@
             link.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey ||
             link.dataset.deleteUrl || link.dataset.bsToggle) return;
         loader.style.display = 'flex';
-        loader.classList.remove('hide');
     });
 
     // Show when submitting a form (page navigation)
     document.addEventListener('submit', function (e) {
         if (e.target.dataset.ajax) return;
         loader.style.display = 'flex';
-        loader.classList.remove('hide');
     });
 
     // Safety: hide after 8 seconds in case something gets stuck

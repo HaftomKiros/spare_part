@@ -28,41 +28,53 @@ class ProfileController extends Controller
     {
         $user = auth()->user();
 
-        $data = $request->validate([
-            'name'  => 'required|string|max:150',
-            'email' => 'required|email|unique:users,email,' . $user->id,
-            'phone' => 'nullable|string|max:20',
-        ]);
+        // ── 1. Validate ALL fields up-front before touching the filesystem ──
+        $rules = [
+            'name'   => 'required|string|max:150',
+            'email'  => 'required|email|unique:users,email,' . $user->id,
+            'phone'  => 'nullable|string|max:20',
+            'avatar' => 'nullable|image|max:2048',
+        ];
 
-        // Avatar upload — saved to users.avatar, stored under storage/app/public/avatars
+        if ($request->filled('password')) {
+            $rules['current_password'] = ['required', 'string', function ($attr, $value, $fail) use ($user) {
+                if (! Hash::check($value, $user->password)) {
+                    $fail('The current password is incorrect.');
+                }
+            }];
+            $rules['password'] = ['required', 'string', Password::min(8), 'confirmed'];
+        }
+
+        $validated = $request->validate($rules);
+
+        // ── 2. Build the data array from validated fields only ──
+        $data = [
+            'name'  => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+        ];
+
+        if ($request->filled('password')) {
+            $data['password'] = Hash::make($validated['password']);
+        }
+
+        // ── 3. All validation passed — now safe to touch the filesystem ──
         if ($request->hasFile('avatar')) {
-            $request->validate(['avatar' => 'image|max:2048']);
+            // Store new file first so we never lose both files on a disk error
+            $newPath = $request->file('avatar')->store('avatars', 'public');
 
-            // Delete old avatar if it exists
-            if ($user->avatar) {
+            // Delete old avatar only after the new one is safely stored
+            if ($user->avatar && $user->avatar !== $newPath) {
                 Storage::disk('public')->delete($user->avatar);
             }
 
-            $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
+            $data['avatar'] = $newPath;
         }
 
-        // Password change is optional but requires the current password first
-        if ($request->filled('password')) {
-            $request->validate([
-                'current_password' => ['required', 'string', function ($attr, $value, $fail) use ($user) {
-                    if (! Hash::check($value, $user->password)) {
-                        $fail('The current password is incorrect.');
-                    }
-                }],
-                'password' => ['required', 'string', Password::min(8), 'confirmed'],
-            ]);
-
-            $data['password'] = Hash::make($request->password);
-        }
-
+        // ── 4. Persist and refresh session ──
         $user->update($data);
 
-        // Re-login so the session reflects the new avatar / name
+        // Re-login so the session reflects the new avatar / name immediately
         auth()->setUser($user->fresh());
 
         return back()->with('success', 'Profile updated successfully.');
