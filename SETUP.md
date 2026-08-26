@@ -177,9 +177,7 @@ If NO SSH access (most shared hosts):
 - Generate key locally: `php artisan key:generate --show`
 - Copy the output and paste it into `.env` as `APP_KEY=`
 - Skip caching commands (app works without them, just slightly slower)
-- For storage:link — create a symlink manually:
-  - In File Manager, create folder `public_html/storage`
-  - Point it to `Stock/storage/app/public`
+- For `storage:link` — upload the file `storage_link.php` (see below) to `public_html/`, visit it once in your browser, then **delete it immediately**
 
 ---
 
