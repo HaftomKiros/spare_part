@@ -19,7 +19,11 @@ class StockAdjustmentController extends Controller
 
     public function index(Request $request)
     {
-        $query = StockAdjustment::with('user', 'warehouse')->withCount('items');
+        $user          = auth()->user();
+        $accessibleIds = $user->accessibleWarehouseIds();
+
+        $query = StockAdjustment::with('user', 'warehouse')->withCount('items')
+            ->whereIn('warehouse_id', $accessibleIds);
 
         if ($request->search) {
             $query->where('adjustment_number', 'like', "%{$request->search}%")
@@ -41,11 +45,11 @@ class StockAdjustmentController extends Controller
 
     public function create()
     {
-        $vehicleTypes = VehicleType::active()->with('activeVehicleModels.stock')->get();
-        $categories   = PartCategory::active()->with('spareParts.unit')->orderBy('name')->get();
-        $number       = StockAdjustment::generateNumber();
-        $warehouses   = \App\Models\Warehouse::active()->get();
-        $defaultWarehouse = \App\Models\Warehouse::getDefault();
+        $vehicleTypes     = VehicleType::active()->with('activeVehicleModels.stock')->get();
+        $categories       = PartCategory::active()->with('spareParts.unit')->orderBy('name')->get();
+        $number           = StockAdjustment::generateNumber();
+        $warehouses       = auth()->user()->accessibleWarehouses()->get();
+        $defaultWarehouse = $warehouses->firstWhere('is_default', true) ?? $warehouses->first();
         return view('inventory.adjustments.create', compact('vehicleTypes', 'categories', 'number', 'warehouses', 'defaultWarehouse'));
     }
 

@@ -20,7 +20,11 @@ class SaleController extends Controller
 
     public function index(Request $request)
     {
-        $query = Sale::with('customer', 'user');
+        $user          = auth()->user();
+        $accessibleIds = $user->accessibleWarehouseIds();
+
+        $query = Sale::with('customer', 'user')
+            ->whereIn('warehouse_id', $accessibleIds);
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {
@@ -53,8 +57,8 @@ class SaleController extends Controller
     public function create()
     {
         $customers        = Customer::active()->orderBy('name')->get();
-        $warehouses       = \App\Models\Warehouse::active()->get();
-        $defaultWarehouse = \App\Models\Warehouse::getDefault();
+        $warehouses       = auth()->user()->accessibleWarehouses()->get();
+        $defaultWarehouse = $warehouses->firstWhere('is_default', true) ?? $warehouses->first();
         $invoice          = Sale::generateInvoiceNumber();
 
         return view('sales.sales.create', compact(
@@ -197,6 +201,11 @@ class SaleController extends Controller
         $warehouseId = (int) $request->warehouse_id;
 
         if (!$warehouseId) {
+            return response()->json(['vehicles' => [], 'categories' => []]);
+        }
+
+        // Enforce: user can only query warehouses they have access to
+        if (! in_array($warehouseId, auth()->user()->accessibleWarehouseIds())) {
             return response()->json(['vehicles' => [], 'categories' => []]);
         }
 

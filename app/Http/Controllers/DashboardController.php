@@ -17,20 +17,29 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        $today      = now()->toDateString();
-        $warehouses = Warehouse::active()->orderBy('name')->get();
+        $today = now()->toDateString();
+        $user  = auth()->user();
 
-        // Support multiple warehouse IDs: ?warehouse_ids[]=1&warehouse_ids[]=2
+        // Scope available warehouses to what this user can access
+        $accessibleIds = $user->accessibleWarehouseIds();
+        $warehouses    = $user->accessibleWarehouses()->orderBy('name')->get();
+
+        // Support multiple warehouse IDs via ?warehouse_ids[]=1&warehouse_ids[]=2
+        // but clamp selection to only warehouses the user can access
         $warehouseIds = collect($request->input('warehouse_ids', []))
             ->map(fn($id) => (int) $id)
             ->filter()
+            ->intersect($accessibleIds)   // ← enforce scope
             ->values()
             ->toArray();
 
-        $hasFilter    = count($warehouseIds) > 0;
-        $filterLabels = $hasFilter
-            ? $warehouses->whereIn('id', $warehouseIds)->pluck('name')->implode(', ')
-            : null;
+        // If no explicit filter chosen, default to the user's accessible warehouses
+        if (empty($warehouseIds)) {
+            $warehouseIds = $accessibleIds;
+        }
+
+        $hasFilter    = true; // always filtered now
+        $filterLabels = $warehouses->whereIn('id', $warehouseIds)->pluck('name')->implode(', ');
 
         // Helper: apply warehouse filter to a query builder
         $wf = function ($q) use ($hasFilter, $warehouseIds) {

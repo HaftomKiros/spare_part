@@ -20,7 +20,11 @@ class PurchaseController extends Controller
 
     public function index(Request $request)
     {
-        $query = Purchase::with('supplier', 'user');
+        $user          = auth()->user();
+        $accessibleIds = $user->accessibleWarehouseIds();
+
+        $query = Purchase::with('supplier', 'user')
+            ->whereIn('warehouse_id', $accessibleIds);
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {
@@ -54,12 +58,12 @@ class PurchaseController extends Controller
 
     public function create()
     {
-        $suppliers    = Supplier::active()->orderBy('name')->get();
-        $vehicleTypes = VehicleType::active()->with('activeVehicleModels.stock')->get();
-        $categories   = PartCategory::active()->with('spareParts.unit')->orderBy('name')->get();
-        $number       = Purchase::generateNumber();
-        $warehouses   = \App\Models\Warehouse::active()->get();
-        $defaultWarehouse = \App\Models\Warehouse::getDefault();
+        $suppliers        = Supplier::active()->orderBy('name')->get();
+        $vehicleTypes     = VehicleType::active()->with('activeVehicleModels.stock')->get();
+        $categories       = PartCategory::active()->with('spareParts.unit')->orderBy('name')->get();
+        $number           = Purchase::generateNumber();
+        $warehouses       = auth()->user()->accessibleWarehouses()->get();
+        $defaultWarehouse = $warehouses->firstWhere('is_default', true) ?? $warehouses->first();
 
         // Pre-encode JSON for JS (avoids PHP 8.5 parse issues with @json + arrow functions)
         $vehicleTypesJson = json_encode($vehicleTypes->map(function ($vt) {

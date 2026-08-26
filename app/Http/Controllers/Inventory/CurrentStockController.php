@@ -15,9 +15,21 @@ class CurrentStockController extends Controller
 {
     public function index(Request $request)
     {
-        $tab         = $request->get('tab', 'parts');
+        $tab           = $request->get('tab', 'parts');
+        $user          = auth()->user();
+        $accessibleIds = $user->accessibleWarehouseIds();
+        $warehouses    = $user->accessibleWarehouses()->get();
+
+        // Clamp requested warehouse to user's accessible set
         $warehouseId = $request->warehouse_id ? (int) $request->warehouse_id : null;
-        $warehouses  = Warehouse::active()->get();
+        if ($warehouseId && ! in_array($warehouseId, $accessibleIds)) {
+            $warehouseId = null;
+        }
+
+        // Default to first accessible warehouse when user has a specific assignment
+        if (! $warehouseId && ! $user->isAdmin() && count($accessibleIds) === 1) {
+            $warehouseId = $accessibleIds[0];
+        }
 
         if ($warehouseId) {
             // ── Per-warehouse spare parts stock ──────────

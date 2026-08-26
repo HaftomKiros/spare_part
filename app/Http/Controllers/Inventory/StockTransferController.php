@@ -13,7 +13,9 @@ class StockTransferController extends Controller
 {
     public function index(Request $request)
     {
-        // Recent transfer movements (adjustment_out + adjustment_in pairs logged as 'transfer')
+        $user          = auth()->user();
+        $accessibleIds = $user->accessibleWarehouseIds();
+
         $query = DB::table('stock_movements as sm')
             ->join('warehouses as w', 'sm.warehouse_id', '=', 'w.id')
             ->join('users as u', 'sm.user_id', '=', 'u.id')
@@ -21,9 +23,10 @@ class StockTransferController extends Controller
             ->leftJoin('vehicle_models as vm', 'sm.vehicle_model_id', '=', 'vm.id')
             ->whereIn('sm.movement_type', ['adjustment_in', 'adjustment_out'])
             ->whereNotNull('sm.notes')
-            ->where('sm.notes', 'like', '%transfer%');
+            ->where('sm.notes', 'like', '%transfer%')
+            ->whereIn('sm.warehouse_id', $accessibleIds); // scope
 
-        if ($request->warehouse_id) {
+        if ($request->warehouse_id && in_array((int)$request->warehouse_id, $accessibleIds)) {
             $query->where('sm.warehouse_id', $request->warehouse_id);
         }
         if ($request->date_from) {
@@ -41,14 +44,14 @@ class StockTransferController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $warehouses = Warehouse::active()->get();
+        $warehouses = auth()->user()->accessibleWarehouses()->get();
 
         return view('inventory.transfers.index', compact('movements', 'warehouses'));
     }
 
     public function create()
     {
-        $warehouses = Warehouse::active()->get();
+        $warehouses = auth()->user()->accessibleWarehouses()->get();
         $parts      = SparePart::active()->with('unit')->orderBy('name')->get();
         $vehicles   = VehicleModel::active()->with('vehicleType')->orderBy('brand')->get();
 

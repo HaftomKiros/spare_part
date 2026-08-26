@@ -18,6 +18,11 @@ class Warehouse extends Model
     ];
 
     // ── Relationships ─────────────────────────────
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(\App\Models\User::class, 'user_warehouse')->withTimestamps();
+    }
+
     public function sales(): HasMany
     {
         return $this->hasMany(Sale::class);

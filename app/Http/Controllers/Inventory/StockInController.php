@@ -18,8 +18,12 @@ class StockInController extends Controller
 
     public function index(Request $request)
     {
+        $user          = auth()->user();
+        $accessibleIds = $user->accessibleWarehouseIds();
+
         $query = StockMovement::with('user', 'vehicleModel.vehicleType', 'sparePart.category', 'warehouse')
-            ->whereIn('movement_type', ['opening', 'purchase', 'return_in', 'adjustment_in']);
+            ->whereIn('movement_type', ['opening', 'purchase', 'return_in', 'adjustment_in'])
+            ->whereIn('warehouse_id', $accessibleIds); // always scope
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {
@@ -37,21 +41,21 @@ class StockInController extends Controller
         if ($request->date_to) {
             $query->whereDate('created_at', '<=', $request->date_to);
         }
-        if ($request->warehouse_id) {
+        if ($request->warehouse_id && in_array((int)$request->warehouse_id, $accessibleIds)) {
             $query->where('warehouse_id', $request->warehouse_id);
         }
 
-        $warehouses = \App\Models\Warehouse::active()->get();
+        $warehouses = auth()->user()->accessibleWarehouses()->get();
         $movements = $query->latest()->paginate(20)->withQueryString();
         return view('inventory.stock-in.index', compact('movements', 'warehouses'));
     }
 
     public function create()
     {
-        $vehicleTypes = VehicleType::active()->with('activeVehicleModels.stock')->get();
-        $categories   = PartCategory::active()->with('spareParts.unit')->orderBy('name')->get();
-        $warehouses   = \App\Models\Warehouse::active()->get();
-        $defaultWarehouse = \App\Models\Warehouse::getDefault();
+        $vehicleTypes     = VehicleType::active()->with('activeVehicleModels.stock')->get();
+        $categories       = PartCategory::active()->with('spareParts.unit')->orderBy('name')->get();
+        $warehouses       = auth()->user()->accessibleWarehouses()->get();
+        $defaultWarehouse = $warehouses->firstWhere('is_default', true) ?? $warehouses->first();
         return view('inventory.stock-in.create', compact('vehicleTypes', 'categories', 'warehouses', 'defaultWarehouse'));
     }
 

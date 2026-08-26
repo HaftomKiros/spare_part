@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -40,6 +41,11 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class);
     }
 
+    public function warehouses(): BelongsToMany
+    {
+        return $this->belongsToMany(Warehouse::class, 'user_warehouse')->withTimestamps();
+    }
+
     public function sales(): HasMany
     {
         return $this->hasMany(Sale::class);
@@ -67,6 +73,45 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role?->name === 'admin';
+    }
+
+    /**
+     * Returns the warehouse IDs this user can access.
+     * Admins see ALL warehouses. Regular users see only their assigned warehouses.
+     * If a regular user has no assignments, they fall back to all warehouses.
+     */
+    public function accessibleWarehouseIds(): array
+    {
+        if ($this->isAdmin()) {
+            return \App\Models\Warehouse::active()->pluck('id')->toArray();
+        }
+
+        $ids = $this->warehouses()->pluck('warehouses.id')->toArray();
+
+        // Fallback: if no warehouses assigned, show all (avoids locking user out)
+        if (empty($ids)) {
+            return \App\Models\Warehouse::active()->pluck('id')->toArray();
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Returns an Eloquent query scoped to the user's accessible warehouses.
+     */
+    public function accessibleWarehouses()
+    {
+        if ($this->isAdmin()) {
+            return \App\Models\Warehouse::active();
+        }
+
+        $ids = $this->warehouses()->pluck('warehouses.id')->toArray();
+
+        if (empty($ids)) {
+            return \App\Models\Warehouse::active();
+        }
+
+        return \App\Models\Warehouse::active()->whereIn('id', $ids);
     }
 
     public function hasPermission(string $permission): bool

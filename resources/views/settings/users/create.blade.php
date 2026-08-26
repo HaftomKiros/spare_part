@@ -53,6 +53,22 @@
             <option value="inactive" {{ old('status')==='inactive'?'selected':'' }}>Inactive</option>
         </select>
     </div>
+    <div class="col-12">
+        <label class="form-label">
+            <i class="fa fa-warehouse me-1 text-muted"></i>Assigned Warehouses
+            <span class="text-muted small ms-1">(leave empty = access all warehouses)</span>
+        </label>
+        <select name="warehouse_ids[]" class="form-select ts-select" multiple placeholder="Select warehouses...">
+            @foreach($warehouses as $w)
+                <option value="{{ $w->id }}"
+                    {{ in_array($w->id, old('warehouse_ids', [])) ? 'selected' : '' }}>
+                    {{ $w->name }}{{ $w->city ? ' — '.$w->city : '' }}
+                </option>
+            @endforeach
+        </select>
+        @error('warehouse_ids')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+        <div class="form-text">Assign one or more warehouses. Admin users always see all warehouses regardless.</div>
+    </div>
 </div>
 <div class="d-flex gap-2 mt-4">
     <button type="submit" class="btn btn-primary px-4"><i class="fa fa-save me-1"></i>Save User</button>

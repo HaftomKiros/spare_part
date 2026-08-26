@@ -21,16 +21,21 @@ class ReportController extends Controller
         $dateFrom    = $request->date_from ?? now()->startOfMonth()->format('Y-m-d');
         $dateTo      = $request->date_to   ?? now()->format('Y-m-d');
         $warehouseId = $request->warehouse_id ? (int) $request->warehouse_id : null;
-        $warehouses  = Warehouse::active()->get();
+        $warehouses  = auth()->user()->accessibleWarehouses()->get();
+        $accessibleIds = auth()->user()->accessibleWarehouseIds();
+        // Clamp requested warehouse to user's accessible set
+        if ($warehouseId && ! in_array($warehouseId, $accessibleIds)) { $warehouseId = null; }
 
         $query = Sale::completed()->with('customer', 'user')
             ->whereBetween('sale_date', [$dateFrom, $dateTo])
+            ->whereIn('warehouse_id', $accessibleIds)
             ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId));
 
         $sales = $query->latest('sale_date')->paginate(25)->withQueryString();
 
         $summary = Sale::completed()
             ->whereBetween('sale_date', [$dateFrom, $dateTo])
+            ->whereIn('warehouse_id', $accessibleIds)
             ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
             ->selectRaw('
                 COUNT(*) as total_invoices,
@@ -43,6 +48,7 @@ class ReportController extends Controller
 
         $daily = Sale::completed()
             ->whereBetween('sale_date', [$dateFrom, $dateTo])
+            ->whereIn('warehouse_id', $accessibleIds)
             ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
             ->selectRaw('DATE(sale_date) as date, SUM(total) as total, COUNT(*) as count')
             ->groupBy('date')->orderBy('date')->get();
@@ -56,7 +62,10 @@ class ReportController extends Controller
         $dateFrom    = $request->date_from ?? now()->startOfMonth()->format('Y-m-d');
         $dateTo      = $request->date_to   ?? now()->format('Y-m-d');
         $warehouseId = $request->warehouse_id ? (int) $request->warehouse_id : null;
-        $warehouses  = Warehouse::active()->get();
+        $warehouses  = auth()->user()->accessibleWarehouses()->get();
+        $accessibleIds = auth()->user()->accessibleWarehouseIds();
+        // Clamp requested warehouse to user's accessible set
+        if ($warehouseId && ! in_array($warehouseId, $accessibleIds)) { $warehouseId = null; }
 
         $vehicles = DB::table('sale_items as si')
             ->join('sales as s', 'si.sale_id', '=', 's.id')
@@ -94,7 +103,10 @@ class ReportController extends Controller
         $dateFrom    = $request->date_from ?? now()->startOfMonth()->format('Y-m-d');
         $dateTo      = $request->date_to   ?? now()->format('Y-m-d');
         $warehouseId = $request->warehouse_id ? (int) $request->warehouse_id : null;
-        $warehouses  = Warehouse::active()->get();
+        $warehouses  = auth()->user()->accessibleWarehouses()->get();
+        $accessibleIds = auth()->user()->accessibleWarehouseIds();
+        // Clamp requested warehouse to user's accessible set
+        if ($warehouseId && ! in_array($warehouseId, $accessibleIds)) { $warehouseId = null; }
 
         $parts = DB::table('sale_items as si')
             ->join('sales as s', 'si.sale_id', '=', 's.id')
@@ -132,7 +144,10 @@ class ReportController extends Controller
     public function stock(Request $request)
     {
         $warehouseId = $request->warehouse_id ? (int) $request->warehouse_id : null;
-        $warehouses  = Warehouse::active()->get();
+        $warehouses  = auth()->user()->accessibleWarehouses()->get();
+        $accessibleIds = auth()->user()->accessibleWarehouseIds();
+        // Clamp requested warehouse to user's accessible set
+        if ($warehouseId && ! in_array($warehouseId, $accessibleIds)) { $warehouseId = null; }
 
         if ($warehouseId) {
             // Per-warehouse stock from pivot tables
@@ -204,7 +219,10 @@ class ReportController extends Controller
     public function lowStock(Request $request)
     {
         $warehouseId = $request->warehouse_id ? (int) $request->warehouse_id : null;
-        $warehouses  = Warehouse::active()->get();
+        $warehouses  = auth()->user()->accessibleWarehouses()->get();
+        $accessibleIds = auth()->user()->accessibleWarehouseIds();
+        // Clamp requested warehouse to user's accessible set
+        if ($warehouseId && ! in_array($warehouseId, $accessibleIds)) { $warehouseId = null; }
 
         if ($warehouseId) {
             $lowParts = DB::table('warehouse_spare_part_stock as ws')
@@ -263,14 +281,19 @@ class ReportController extends Controller
         $dateFrom    = $request->date_from ?? now()->startOfMonth()->format('Y-m-d');
         $dateTo      = $request->date_to   ?? now()->format('Y-m-d');
         $warehouseId = $request->warehouse_id ? (int) $request->warehouse_id : null;
-        $warehouses  = Warehouse::active()->get();
+        $warehouses  = auth()->user()->accessibleWarehouses()->get();
+        $accessibleIds = auth()->user()->accessibleWarehouseIds();
+        // Clamp requested warehouse to user's accessible set
+        if ($warehouseId && ! in_array($warehouseId, $accessibleIds)) { $warehouseId = null; }
 
         $purchases = Purchase::with('supplier', 'user')
             ->whereBetween('purchase_date', [$dateFrom, $dateTo])
+            ->whereIn('warehouse_id', $accessibleIds)
             ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
             ->latest('purchase_date')->paginate(25)->withQueryString();
 
         $summary = Purchase::whereBetween('purchase_date', [$dateFrom, $dateTo])
+            ->whereIn('warehouse_id', $accessibleIds)
             ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
             ->selectRaw('
                 COUNT(*) as total_orders,
@@ -280,6 +303,7 @@ class ReportController extends Controller
             ')->first();
 
         $bySupplier = Purchase::whereBetween('purchase_date', [$dateFrom, $dateTo])
+            ->whereIn('purchases.warehouse_id', $accessibleIds)
             ->when($warehouseId, fn($q) => $q->where('purchases.warehouse_id', $warehouseId))
             ->join('suppliers', 'purchases.supplier_id', '=', 'suppliers.id')
             ->selectRaw('suppliers.name, COUNT(*) as orders, SUM(purchases.total) as total')
@@ -295,7 +319,10 @@ class ReportController extends Controller
         $year        = $request->year  ?? now()->year;
         $month       = $request->month ?? null;
         $warehouseId = $request->warehouse_id ? (int) $request->warehouse_id : null;
-        $warehouses  = Warehouse::active()->get();
+        $warehouses  = auth()->user()->accessibleWarehouses()->get();
+        $accessibleIds = auth()->user()->accessibleWarehouseIds();
+        // Clamp requested warehouse to user's accessible set
+        if ($warehouseId && ! in_array($warehouseId, $accessibleIds)) { $warehouseId = null; }
 
         $monthly = DB::table('sales as s')
             ->join('sale_items as si', 's.id', '=', 'si.sale_id')
