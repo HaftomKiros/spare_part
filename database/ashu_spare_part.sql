@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.4.10, for Linux (x86_64)
 --
--- Host: localhost    Database: ashu_spare_part
+-- Host: 127.0.0.1    Database: ashu_spare_part
 -- ------------------------------------------------------
 -- Server version	8.4.10-0ubuntu0.26.04.1
 
@@ -45,7 +45,7 @@ CREATE TABLE `company_settings` (
 
 LOCK TABLES `company_settings` WRITE;
 /*!40000 ALTER TABLE `company_settings` DISABLE KEYS */;
-INSERT INTO `company_settings` VALUES (1,'Ashu Spare Part','Addis Ababa, Ethiopia','+251-911-000000','info@ashusparepart.et','logos/gCXCLgO70xESaghnlvL9kJ3gKUy0jV1qdSVVEREa.png','ETB','Br',NULL,NULL,'2026-08-23 23:21:11','2026-08-24 05:14:58');
+INSERT INTO `company_settings` VALUES (1,'Ashu Spare Part','Addis Ababa, Ethiopia','+251-911-000000','info@ashusparepart.et','logos/qyFyrYLvONZHMAgQrPXmW0PntFoyFUM8B2uiFK95.png','ETB','Br',NULL,NULL,'2026-08-23 23:21:11','2026-08-26 09:52:14');
 /*!40000 ALTER TABLE `company_settings` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -86,6 +86,31 @@ INSERT INTO `customers` VALUES (1,'CUST-001','Walk-in Customer','+000-000-0000',
 UNLOCK TABLES;
 
 --
+-- Table structure for table `migrations`
+--
+
+DROP TABLE IF EXISTS `migrations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `migrations` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `batch` int NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `migrations`
+--
+
+LOCK TABLES `migrations` WRITE;
+/*!40000 ALTER TABLE `migrations` DISABLE KEYS */;
+INSERT INTO `migrations` VALUES (1,'2024_01_01_000016_create_user_warehouse_table',1),(2,'2024_01_01_000017_add_access_level_to_users_table',2);
+/*!40000 ALTER TABLE `migrations` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `part_categories`
 --
 
@@ -115,7 +140,7 @@ CREATE TABLE `part_categories` (
 
 LOCK TABLES `part_categories` WRITE;
 /*!40000 ALTER TABLE `part_categories` DISABLE KEYS */;
-INSERT INTO `part_categories` VALUES (1,NULL,'Engine Parts','engine-parts-1',NULL,'fa-cogs','active','2026-08-23 23:21:12','2026-08-24 21:16:26'),(2,NULL,'Electrical Parts','electrical-parts',NULL,'fa-bolt','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(3,NULL,'Body Parts','body-parts',NULL,'fa-car','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(4,NULL,'Brake System','brake-system',NULL,'fa-stop-circle','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(5,NULL,'Transmission','transmission',NULL,'fa-gears','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(6,NULL,'Suspension','suspension',NULL,'fa-arrows-v','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(7,NULL,'Fuel System','fuel-system',NULL,'fa-tint','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(8,NULL,'Cooling System','cooling-system',NULL,'fa-thermometer','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(9,NULL,'Lubricants & Oils','lubricants-oils',NULL,'fa-oil-can','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(10,NULL,'Accessories','accessories',NULL,'fa-star','active','2026-08-23 23:21:12','2026-08-23 23:21:12');
+INSERT INTO `part_categories` VALUES (1,NULL,'Engine Parts','engine-parts-1',NULL,'fa-cogs','active','2026-08-23 23:21:12','2026-08-25 17:19:20'),(2,NULL,'Electrical Parts','electrical-parts',NULL,'fa-bolt','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(3,NULL,'Body Parts','body-parts',NULL,'fa-car','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(4,NULL,'Brake System','brake-system',NULL,'fa-stop-circle','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(5,NULL,'Transmission','transmission',NULL,'fa-gears','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(6,NULL,'Suspension','suspension',NULL,'fa-arrows-v','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(7,NULL,'Fuel System','fuel-system',NULL,'fa-tint','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(8,NULL,'Cooling System','cooling-system',NULL,'fa-thermometer','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(9,NULL,'Lubricants & Oils','lubricants-oils',NULL,'fa-oil-can','active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(10,NULL,'Accessories','accessories',NULL,'fa-star','active','2026-08-23 23:21:12','2026-08-23 23:21:12');
 /*!40000 ALTER TABLE `part_categories` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -145,7 +170,7 @@ CREATE TABLE `purchase_items` (
   CONSTRAINT `purchase_items_purchase_id_foreign` FOREIGN KEY (`purchase_id`) REFERENCES `purchases` (`id`) ON DELETE CASCADE,
   CONSTRAINT `purchase_items_spare_part_id_foreign` FOREIGN KEY (`spare_part_id`) REFERENCES `spare_parts` (`id`) ON DELETE SET NULL,
   CONSTRAINT `purchase_items_vehicle_model_id_foreign` FOREIGN KEY (`vehicle_model_id`) REFERENCES `vehicle_models` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -154,7 +179,7 @@ CREATE TABLE `purchase_items` (
 
 LOCK TABLES `purchase_items` WRITE;
 /*!40000 ALTER TABLE `purchase_items` DISABLE KEYS */;
-INSERT INTO `purchase_items` VALUES (3,3,'spare_part',NULL,9,1,120.00,0.00,120.00,'2026-08-24 21:44:32','2026-08-24 21:44:32'),(4,4,'spare_part',NULL,11,1,300.00,0.00,300.00,'2026-08-25 01:52:49','2026-08-25 01:52:49');
+INSERT INTO `purchase_items` VALUES (3,3,'spare_part',NULL,9,1,120.00,0.00,120.00,'2026-08-24 21:44:32','2026-08-24 21:44:32'),(4,4,'spare_part',NULL,11,1,300.00,0.00,300.00,'2026-08-25 01:52:49','2026-08-25 01:52:49'),(5,5,'spare_part',NULL,1,1,250.00,0.00,250.00,'2026-08-25 18:05:11','2026-08-25 18:05:11');
 /*!40000 ALTER TABLE `purchase_items` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -190,7 +215,7 @@ CREATE TABLE `purchases` (
   KEY `purchases_user_id_foreign` (`user_id`),
   CONSTRAINT `purchases_supplier_id_foreign` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`),
   CONSTRAINT `purchases_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -199,7 +224,7 @@ CREATE TABLE `purchases` (
 
 LOCK TABLES `purchases` WRITE;
 /*!40000 ALTER TABLE `purchases` DISABLE KEYS */;
-INSERT INTO `purchases` VALUES (3,'PO-2026-0001',2,1,'2026-08-25',NULL,120.00,0.00,0.00,120.00,0.00,120.00,'unpaid','received',NULL,'2026-08-24 21:44:32','2026-08-24 21:44:32',3),(4,'PO-2026-0002',3,1,'2026-08-25',NULL,300.00,0.00,0.00,300.00,300.00,0.00,'paid','received',NULL,'2026-08-25 01:52:49','2026-08-25 01:52:49',1);
+INSERT INTO `purchases` VALUES (3,'PO-2026-0001',2,1,'2026-08-25',NULL,120.00,0.00,0.00,120.00,0.00,120.00,'unpaid','received',NULL,'2026-08-24 21:44:32','2026-08-24 21:44:32',3),(4,'PO-2026-0002',3,1,'2026-08-25',NULL,300.00,0.00,0.00,300.00,300.00,0.00,'paid','received',NULL,'2026-08-25 01:52:49','2026-08-25 01:52:49',1),(5,'PO-2026-0003',1,1,'2026-08-25',NULL,250.00,0.00,0.00,250.00,250.00,0.00,'paid','received',NULL,'2026-08-25 18:05:11','2026-08-25 18:05:11',1);
 /*!40000 ALTER TABLE `purchases` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -229,7 +254,7 @@ CREATE TABLE `roles` (
 
 LOCK TABLES `roles` WRITE;
 /*!40000 ALTER TABLE `roles` DISABLE KEYS */;
-INSERT INTO `roles` VALUES (1,'admin','Administrator','Full system access','[\"all\"]','2026-08-23 23:21:11','2026-08-23 23:21:11'),(2,'manager','Manager','Manage inventory and reports','[\"catalog\", \"inventory\", \"reports\", \"sales\", \"purchases\"]','2026-08-23 23:21:11','2026-08-23 23:21:11'),(3,'cashier','Cashier','Process sales only','[\"sales.create\", \"sales.view\"]','2026-08-23 23:21:11','2026-08-23 23:21:11'),(4,'storekeeper','Storekeeper','Manage stock and inventory','[\"inventory\", \"catalog.view\"]','2026-08-23 23:21:11','2026-08-23 23:21:11');
+INSERT INTO `roles` VALUES (1,'admin','Administrator','Full system access','[\"all\"]','2026-08-23 23:21:11','2026-08-23 23:21:11'),(2,'manager','Manager','Manage inventory and reports','[\"catalog\", \"inventory\", \"reports\", \"sales\", \"purchases\"]','2026-08-23 23:21:11','2026-08-23 23:21:11'),(3,'cashier','Cashier','Process sales only','[\"sales.create\", \"sales.view\"]','2026-08-23 23:21:11','2026-08-23 23:21:11'),(4,'storekeeper','Storekeeper','Manage stock and inventory','[\"catalog.vehicle-types.view\", \"catalog.vehicle-types.create\", \"catalog.vehicle-types.delete\", \"catalog.vehicle-models.view\", \"catalog.vehicle-models.edit\", \"catalog.vehicle-models.delete\", \"catalog.part-categories.view\", \"catalog.part-categories.create\", \"catalog.part-categories.edit\", \"catalog.spare-parts.view\", \"catalog.spare-parts.create\", \"catalog.spare-parts.delete\", \"catalog.units.view\", \"catalog.units.create\", \"catalog.units.edit\", \"catalog.units.delete\"]','2026-08-23 23:21:11','2026-08-26 13:04:14');
 /*!40000 ALTER TABLE `roles` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -293,7 +318,7 @@ CREATE TABLE `sale_return_items` (
   PRIMARY KEY (`id`),
   KEY `sale_return_items_sale_return_id_foreign` (`sale_return_id`),
   CONSTRAINT `sale_return_items_sale_return_id_foreign` FOREIGN KEY (`sale_return_id`) REFERENCES `sale_returns` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -302,6 +327,7 @@ CREATE TABLE `sale_return_items` (
 
 LOCK TABLES `sale_return_items` WRITE;
 /*!40000 ALTER TABLE `sale_return_items` DISABLE KEYS */;
+INSERT INTO `sale_return_items` VALUES (1,1,'vehicle',6,NULL,1,105000.00,105000.00,'2026-08-25 17:39:37','2026-08-25 17:39:37');
 /*!40000 ALTER TABLE `sale_return_items` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -333,7 +359,7 @@ CREATE TABLE `sale_returns` (
   CONSTRAINT `sale_returns_customer_id_foreign` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE SET NULL,
   CONSTRAINT `sale_returns_sale_id_foreign` FOREIGN KEY (`sale_id`) REFERENCES `sales` (`id`),
   CONSTRAINT `sale_returns_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -342,6 +368,7 @@ CREATE TABLE `sale_returns` (
 
 LOCK TABLES `sale_returns` WRITE;
 /*!40000 ALTER TABLE `sale_returns` DISABLE KEYS */;
+INSERT INTO `sale_returns` VALUES (1,'RET-2026-0001',3,NULL,1,'2026-08-25',105000.00,'refund','hfh','approved','2026-08-25 17:39:37','2026-08-25 17:39:37');
 /*!40000 ALTER TABLE `sale_returns` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -458,7 +485,7 @@ CREATE TABLE `spare_parts` (
 
 LOCK TABLES `spare_parts` WRITE;
 /*!40000 ALTER TABLE `spare_parts` DISABLE KEYS */;
-INSERT INTO `spare_parts` VALUES (1,1,1,'SP-0001',NULL,'Piston Ring Set (Boxer)',NULL,250.00,400.00,10,23,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-25 00:33:50'),(2,1,1,'SP-0002',NULL,'Engine Oil Filter (Universal)',NULL,80.00,130.00,20,45,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(3,1,2,'SP-0003',NULL,'Gasket Set (Boxer)',NULL,320.00,520.00,8,12,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(4,2,1,'SP-0004',NULL,'Spark Plug (NGK)',NULL,45.00,80.00,30,60,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-25 02:09:50'),(5,2,1,'SP-0005',NULL,'Battery 12V',NULL,650.00,1000.00,5,10,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(6,3,1,'SP-0006',NULL,'Front Mudguard (Boxer)',NULL,180.00,300.00,5,12,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-24 22:10:22'),(7,4,7,'SP-0007',NULL,'Brake Shoe (Rear)',NULL,95.00,160.00,15,30,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(8,4,7,'SP-0008',NULL,'Brake Pad (Front Disc)',NULL,150.00,250.00,10,20,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(9,9,4,'SP-0009',NULL,'Engine Oil 4T (1L)',NULL,120.00,200.00,50,101,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-24 21:44:32'),(10,5,1,'SP-0010',NULL,'Chain Sprocket Set',NULL,280.00,480.00,8,15,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(11,3,6,'SP-0011','7878','haftom','kjkj',250.00,600.00,5,1,'sjsk',NULL,'active','2026-08-25 01:50:05','2026-08-25 01:52:49');
+INSERT INTO `spare_parts` VALUES (1,1,1,'SP-0001',NULL,'Piston Ring Set (Boxer)',NULL,250.00,400.00,10,24,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-25 18:05:11'),(2,1,1,'SP-0002',NULL,'Engine Oil Filter (Universal)',NULL,80.00,130.00,20,45,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(3,1,2,'SP-0003',NULL,'Gasket Set (Boxer)',NULL,320.00,520.00,8,12,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(4,2,1,'SP-0004',NULL,'Spark Plug (NGK)',NULL,45.00,80.00,30,60,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-25 02:09:50'),(5,2,1,'SP-0005',NULL,'Battery 12V',NULL,650.00,1000.00,5,10,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(6,3,1,'SP-0006',NULL,'Front Mudguard (Boxer)',NULL,180.00,300.00,5,12,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-24 22:10:22'),(7,4,7,'SP-0007',NULL,'Brake Shoe (Rear)',NULL,95.00,160.00,15,30,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(8,4,7,'SP-0008',NULL,'Brake Pad (Front Disc)',NULL,150.00,250.00,10,20,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(9,9,4,'SP-0009',NULL,'Engine Oil 4T (1L)',NULL,120.00,200.00,50,101,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-24 21:44:32'),(10,5,1,'SP-0010',NULL,'Chain Sprocket Set',NULL,280.00,480.00,8,15,NULL,NULL,'active','2026-08-23 23:21:12','2026-08-23 23:21:12'),(11,3,6,'SP-0011','7878','haftom','kjkj',250.00,600.00,5,1,'sjsk',NULL,'active','2026-08-25 01:50:05','2026-08-25 01:52:49');
 /*!40000 ALTER TABLE `spare_parts` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -559,7 +586,7 @@ CREATE TABLE `stock_movements` (
   PRIMARY KEY (`id`),
   KEY `stock_movements_user_id_foreign` (`user_id`),
   CONSTRAINT `stock_movements_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -568,7 +595,7 @@ CREATE TABLE `stock_movements` (
 
 LOCK TABLES `stock_movements` WRITE;
 /*!40000 ALTER TABLE `stock_movements` DISABLE KEYS */;
-INSERT INTO `stock_movements` VALUES (1,'spare_part',NULL,6,'adjustment_in',1,8,9,25.00,NULL,NULL,1,'sdsd','2026-08-24 17:34:01','2026-08-24 17:34:01',NULL),(2,'vehicle',1,NULL,'sale',1,5,4,35000.00,'App\\Models\\Sale',1,1,'Sale #INV-2026-0001','2026-08-24 17:35:33','2026-08-24 17:35:33',NULL),(3,'spare_part',NULL,1,'sale',1,25,24,400.00,'App\\Models\\Sale',1,1,'Sale #INV-2026-0001','2026-08-24 17:35:33','2026-08-24 17:35:33',NULL),(4,'spare_part',NULL,6,'adjustment_in',1,0,1,0.00,NULL,NULL,1,NULL,'2026-08-24 21:42:58','2026-08-24 21:42:58',NULL),(5,'spare_part',NULL,9,'purchase',1,0,1,120.00,'App\\Models\\Purchase',3,1,'Purchase #PO-2026-0001','2026-08-24 21:44:32','2026-08-24 21:44:32',NULL),(6,'vehicle',6,NULL,'sale',1,0,0,105000.00,'App\\Models\\Sale',2,1,'Sale #INV-2026-0002','2026-08-24 21:50:16','2026-08-24 21:50:16',NULL),(7,'spare_part',NULL,6,'adjustment_in',1,1,2,0.00,NULL,NULL,1,NULL,'2026-08-24 22:05:22','2026-08-24 22:05:22',NULL),(8,'vehicle',6,NULL,'sale',1,0,0,105000.00,'App\\Models\\Sale',3,1,'Sale #INV-2026-0003','2026-08-24 22:09:11','2026-08-24 22:09:11',NULL),(9,'spare_part',NULL,6,'adjustment_in',1,2,3,0.00,NULL,NULL,1,NULL,'2026-08-24 22:10:22','2026-08-24 22:10:22',NULL),(10,'spare_part',NULL,4,'adjustment_in',1,0,1,0.00,NULL,NULL,1,NULL,'2026-08-24 22:22:48','2026-08-24 22:22:48',NULL),(11,'vehicle',5,NULL,'adjustment_in',1,0,1,0.00,NULL,NULL,1,NULL,'2026-08-24 22:53:41','2026-08-24 22:53:41',3),(12,'vehicle',3,NULL,'adjustment_in',2,0,2,0.00,'App\\Models\\StockAdjustment',2,1,'fdfdfdf','2026-08-24 23:09:54','2026-08-24 23:09:54',2),(13,'spare_part',NULL,4,'adjustment_out',1,1,0,0.00,NULL,NULL,1,'Stock transfer — jhj','2026-08-24 23:30:11','2026-08-24 23:30:11',1),(14,'spare_part',NULL,4,'adjustment_in',1,0,1,0.00,NULL,NULL,1,'Stock transfer — jhj','2026-08-24 23:30:11','2026-08-24 23:30:11',2),(15,'spare_part',NULL,1,'sale',1,0,0,400.00,'App\\Models\\Sale',4,1,'Sale #INV-2026-0004','2026-08-25 00:33:50','2026-08-25 00:33:50',2),(16,'spare_part',NULL,11,'purchase',1,0,1,300.00,'App\\Models\\Purchase',4,1,'Purchase #PO-2026-0002','2026-08-25 01:52:49','2026-08-25 01:52:49',1),(17,'vehicle',5,NULL,'sale',11,1,0,95000.00,'App\\Models\\Sale',5,1,'Sale #INV-2026-0005','2026-08-25 02:05:18','2026-08-25 02:05:18',3),(18,'spare_part',NULL,4,'sale',1,1,0,80.00,'App\\Models\\Sale',6,1,'Sale #INV-2026-0006','2026-08-25 02:09:50','2026-08-25 02:09:50',2);
+INSERT INTO `stock_movements` VALUES (1,'spare_part',NULL,6,'adjustment_in',1,8,9,25.00,NULL,NULL,1,'sdsd','2026-08-24 17:34:01','2026-08-24 17:34:01',NULL),(2,'vehicle',1,NULL,'sale',1,5,4,35000.00,'App\\Models\\Sale',1,1,'Sale #INV-2026-0001','2026-08-24 17:35:33','2026-08-24 17:35:33',NULL),(3,'spare_part',NULL,1,'sale',1,25,24,400.00,'App\\Models\\Sale',1,1,'Sale #INV-2026-0001','2026-08-24 17:35:33','2026-08-24 17:35:33',NULL),(4,'spare_part',NULL,6,'adjustment_in',1,0,1,0.00,NULL,NULL,1,NULL,'2026-08-24 21:42:58','2026-08-24 21:42:58',NULL),(5,'spare_part',NULL,9,'purchase',1,0,1,120.00,'App\\Models\\Purchase',3,1,'Purchase #PO-2026-0001','2026-08-24 21:44:32','2026-08-24 21:44:32',NULL),(6,'vehicle',6,NULL,'sale',1,0,0,105000.00,'App\\Models\\Sale',2,1,'Sale #INV-2026-0002','2026-08-24 21:50:16','2026-08-24 21:50:16',NULL),(7,'spare_part',NULL,6,'adjustment_in',1,1,2,0.00,NULL,NULL,1,NULL,'2026-08-24 22:05:22','2026-08-24 22:05:22',NULL),(8,'vehicle',6,NULL,'sale',1,0,0,105000.00,'App\\Models\\Sale',3,1,'Sale #INV-2026-0003','2026-08-24 22:09:11','2026-08-24 22:09:11',NULL),(9,'spare_part',NULL,6,'adjustment_in',1,2,3,0.00,NULL,NULL,1,NULL,'2026-08-24 22:10:22','2026-08-24 22:10:22',NULL),(10,'spare_part',NULL,4,'adjustment_in',1,0,1,0.00,NULL,NULL,1,NULL,'2026-08-24 22:22:48','2026-08-24 22:22:48',NULL),(11,'vehicle',5,NULL,'adjustment_in',1,0,1,0.00,NULL,NULL,1,NULL,'2026-08-24 22:53:41','2026-08-24 22:53:41',3),(12,'vehicle',3,NULL,'adjustment_in',2,0,2,0.00,'App\\Models\\StockAdjustment',2,1,'fdfdfdf','2026-08-24 23:09:54','2026-08-24 23:09:54',2),(13,'spare_part',NULL,4,'adjustment_out',1,1,0,0.00,NULL,NULL,1,'Stock transfer — jhj','2026-08-24 23:30:11','2026-08-24 23:30:11',1),(14,'spare_part',NULL,4,'adjustment_in',1,0,1,0.00,NULL,NULL,1,'Stock transfer — jhj','2026-08-24 23:30:11','2026-08-24 23:30:11',2),(15,'spare_part',NULL,1,'sale',1,0,0,400.00,'App\\Models\\Sale',4,1,'Sale #INV-2026-0004','2026-08-25 00:33:50','2026-08-25 00:33:50',2),(16,'spare_part',NULL,11,'purchase',1,0,1,300.00,'App\\Models\\Purchase',4,1,'Purchase #PO-2026-0002','2026-08-25 01:52:49','2026-08-25 01:52:49',1),(17,'vehicle',5,NULL,'sale',11,1,0,95000.00,'App\\Models\\Sale',5,1,'Sale #INV-2026-0005','2026-08-25 02:05:18','2026-08-25 02:05:18',3),(18,'spare_part',NULL,4,'sale',1,1,0,80.00,'App\\Models\\Sale',6,1,'Sale #INV-2026-0006','2026-08-25 02:09:50','2026-08-25 02:09:50',2),(19,'vehicle',6,NULL,'return_in',1,0,1,105000.00,'App\\Models\\SaleReturn',1,1,'Return #RET-2026-0001','2026-08-25 17:39:37','2026-08-25 17:39:37',1),(20,'spare_part',NULL,1,'purchase',1,0,1,250.00,'App\\Models\\Purchase',5,1,'Purchase #PO-2026-0003','2026-08-25 18:05:11','2026-08-25 18:05:11',1);
 /*!40000 ALTER TABLE `stock_movements` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -638,6 +665,37 @@ INSERT INTO `units` VALUES (1,'Piece','Pcs','Individual unit','2026-08-23 23:21:
 UNLOCK TABLES;
 
 --
+-- Table structure for table `user_warehouse`
+--
+
+DROP TABLE IF EXISTS `user_warehouse`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_warehouse` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `warehouse_id` bigint unsigned NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_warehouse_user_id_warehouse_id_unique` (`user_id`,`warehouse_id`),
+  KEY `user_warehouse_warehouse_id_foreign` (`warehouse_id`),
+  CONSTRAINT `user_warehouse_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `user_warehouse_warehouse_id_foreign` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouses` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `user_warehouse`
+--
+
+LOCK TABLES `user_warehouse` WRITE;
+/*!40000 ALTER TABLE `user_warehouse` DISABLE KEYS */;
+INSERT INTO `user_warehouse` VALUES (1,2,2,'2026-08-26 11:10:47','2026-08-26 11:10:47'),(3,3,4,'2026-08-26 11:25:46','2026-08-26 11:25:46'),(4,1,4,'2026-08-26 12:48:05','2026-08-26 12:48:05');
+/*!40000 ALTER TABLE `user_warehouse` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `users`
 --
 
@@ -653,6 +711,7 @@ CREATE TABLE `users` (
   `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `avatar` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `status` enum('active','inactive') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+  `access_level` enum('regular','manager','super_admin') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'regular',
   `remember_token` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -660,7 +719,7 @@ CREATE TABLE `users` (
   UNIQUE KEY `users_email_unique` (`email`),
   KEY `users_role_id_foreign` (`role_id`),
   CONSTRAINT `users_role_id_foreign` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -669,7 +728,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,1,'System Admin','admin@ashusparepart.et','+251-911-000000','$2y$12$uVePDWvDwHulgiOcSYOLce7l8jsh4oMeayVR1dGeyzBiNbEUxbsyy',NULL,'active','RRIqQp2Qkq1wRbhyu2ekwuT4gYiqoBz3pyiJkY7gQ7bn2VizBxoTD2COCkj9','2026-08-23 23:21:12','2026-08-23 23:22:00');
+INSERT INTO `users` VALUES (1,1,'System Admin','admin@ashusparepart.et','+251-911-000000','$2y$12$DPH8Zvb3ScvzEi5TnZ1nP.NP5gfUidsPmjyI5R9bYO0Cdy3zLAdOK','avatars/f88e9EGGyG7G4KAWjVVYbPgK8TYnLcGd1lYilesc.png','active','regular','9mlAVRCjtyEueCmUMaeZZAjyYjgVB6H2pgPU421UBWSYrL5AsORNMzb1xsqf','2026-08-23 23:21:12','2026-08-26 12:48:51'),(2,4,'haftom kiros','haftomk2004@gmail.com','0942245789','$2y$12$pcJvZFFRP6GqeWQOMAqMfuSKP8cMN7EPIi80lSUGKeV04L/OKorVe',NULL,'active','regular',NULL,'2026-08-26 11:10:43','2026-08-26 11:10:43'),(3,4,'adigrat','adigrat@gmail.com','09656565','$2y$12$QgBE.l3phZfK/eFSIDyPm.81gqPTlwF3hCs/3aSR1.BUQK.wvXGnq',NULL,'active','regular',NULL,'2026-08-26 11:22:02','2026-08-26 11:25:45');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -737,7 +796,7 @@ CREATE TABLE `vehicle_stocks` (
 
 LOCK TABLES `vehicle_stocks` WRITE;
 /*!40000 ALTER TABLE `vehicle_stocks` DISABLE KEYS */;
-INSERT INTO `vehicle_stocks` VALUES (1,1,4,2,'2026-08-23 23:21:12','2026-08-24 17:35:33'),(2,2,3,2,'2026-08-23 23:21:12','2026-08-23 23:21:12'),(3,3,6,2,'2026-08-23 23:21:12','2026-08-24 23:09:54'),(4,4,6,2,'2026-08-23 23:21:12','2026-08-23 23:21:12'),(5,5,0,3,'2026-08-23 23:21:12','2026-08-25 02:05:18'),(6,6,3,3,'2026-08-23 23:21:12','2026-08-24 22:09:11'),(7,7,4,3,'2026-08-23 23:21:12','2026-08-23 23:21:12');
+INSERT INTO `vehicle_stocks` VALUES (1,1,4,2,'2026-08-23 23:21:12','2026-08-24 17:35:33'),(2,2,3,2,'2026-08-23 23:21:12','2026-08-23 23:21:12'),(3,3,6,2,'2026-08-23 23:21:12','2026-08-24 23:09:54'),(4,4,6,2,'2026-08-23 23:21:12','2026-08-23 23:21:12'),(5,5,0,3,'2026-08-23 23:21:12','2026-08-25 02:05:18'),(6,6,4,3,'2026-08-23 23:21:12','2026-08-25 17:39:37'),(7,7,4,3,'2026-08-23 23:21:12','2026-08-23 23:21:12');
 /*!40000 ALTER TABLE `vehicle_stocks` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -793,7 +852,7 @@ CREATE TABLE `warehouse_spare_part_stock` (
   KEY `wh_part_sp_fk` (`spare_part_id`),
   CONSTRAINT `wh_part_sp_fk` FOREIGN KEY (`spare_part_id`) REFERENCES `spare_parts` (`id`) ON DELETE CASCADE,
   CONSTRAINT `wh_part_wh_fk` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouses` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -802,7 +861,7 @@ CREATE TABLE `warehouse_spare_part_stock` (
 
 LOCK TABLES `warehouse_spare_part_stock` WRITE;
 /*!40000 ALTER TABLE `warehouse_spare_part_stock` DISABLE KEYS */;
-INSERT INTO `warehouse_spare_part_stock` VALUES (1,1,6,3,5,'2026-08-24 21:42:58','2026-08-24 22:10:22'),(2,3,9,1,5,'2026-08-24 21:44:32','2026-08-24 21:44:32'),(3,1,4,0,5,'2026-08-24 22:22:48','2026-08-24 22:22:48'),(4,2,4,0,5,'2026-08-24 23:30:11','2026-08-25 02:09:50'),(5,2,1,0,5,'2026-08-25 00:33:50','2026-08-25 00:33:50'),(6,1,11,1,5,'2026-08-25 01:52:49','2026-08-25 01:52:49');
+INSERT INTO `warehouse_spare_part_stock` VALUES (1,1,6,3,5,'2026-08-24 21:42:58','2026-08-24 22:10:22'),(2,3,9,1,5,'2026-08-24 21:44:32','2026-08-24 21:44:32'),(3,1,4,0,5,'2026-08-24 22:22:48','2026-08-24 22:22:48'),(4,2,4,0,5,'2026-08-24 23:30:11','2026-08-25 02:09:50'),(5,2,1,0,5,'2026-08-25 00:33:50','2026-08-25 00:33:50'),(6,1,11,1,5,'2026-08-25 01:52:49','2026-08-25 01:52:49'),(7,1,1,1,5,'2026-08-25 18:05:11','2026-08-25 18:05:11');
 /*!40000 ALTER TABLE `warehouse_spare_part_stock` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -835,7 +894,7 @@ CREATE TABLE `warehouse_vehicle_stock` (
 
 LOCK TABLES `warehouse_vehicle_stock` WRITE;
 /*!40000 ALTER TABLE `warehouse_vehicle_stock` DISABLE KEYS */;
-INSERT INTO `warehouse_vehicle_stock` VALUES (1,3,6,0,2,'2026-08-24 21:50:16','2026-08-24 21:50:16'),(2,1,6,0,2,'2026-08-24 22:09:11','2026-08-24 22:09:11'),(3,3,5,0,2,'2026-08-24 22:53:41','2026-08-25 02:05:18'),(4,2,3,2,2,'2026-08-24 23:09:54','2026-08-24 23:09:54');
+INSERT INTO `warehouse_vehicle_stock` VALUES (1,3,6,0,2,'2026-08-24 21:50:16','2026-08-24 21:50:16'),(2,1,6,1,2,'2026-08-24 22:09:11','2026-08-25 17:39:37'),(3,3,5,0,2,'2026-08-24 22:53:41','2026-08-25 02:05:18'),(4,2,3,2,2,'2026-08-24 23:09:54','2026-08-24 23:09:54');
 /*!40000 ALTER TABLE `warehouse_vehicle_stock` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -861,7 +920,7 @@ CREATE TABLE `warehouses` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `warehouses_code_unique` (`code`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -870,7 +929,7 @@ CREATE TABLE `warehouses` (
 
 LOCK TABLES `warehouses` WRITE;
 /*!40000 ALTER TABLE `warehouses` DISABLE KEYS */;
-INSERT INTO `warehouses` VALUES (1,'STK-001','Main Store - Addis Ababa','Addis Ababa','Addis Ababa, Ethiopia','+251-111-000001','System Admin','active',NULL,1,'2026-08-24 21:39:22','2026-08-24 21:39:22'),(2,'STK-002','Mekelle Branch','Mekelle','Mekelle, Tigray','+251-344-000001','Branch Manager','active',NULL,0,'2026-08-24 21:39:22','2026-08-24 21:39:22'),(3,'STK-003','Kenya','Kenya',NULL,NULL,NULL,'active',NULL,0,'2026-08-24 21:43:50','2026-08-24 21:43:50');
+INSERT INTO `warehouses` VALUES (1,'STK-001','Main Store - Addis Ababa','Addis Ababa','Addis Ababa, Ethiopia','+251-111-000001','System Admin','active',NULL,1,'2026-08-24 21:39:22','2026-08-24 21:39:22'),(2,'STK-002','Mekelle Branch','Mekelle','Mekelle, Tigray','+251-344-000001','Branch Manager','active',NULL,0,'2026-08-24 21:39:22','2026-08-24 21:39:22'),(3,'STK-003','Kenya','Kenya',NULL,NULL,NULL,'active',NULL,0,'2026-08-24 21:43:50','2026-08-24 21:43:50'),(4,'STK-004','Adigrat','Adigrat','Ethiopia,Tigray,Adigrat','0956565656','hello','active','dddd',0,'2026-08-26 11:21:16','2026-08-26 11:21:16');
 /*!40000 ALTER TABLE `warehouses` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -887,4 +946,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-08-25 11:02:29
+-- Dump completed on 2026-08-26 20:19:58
