@@ -42,9 +42,11 @@
 <!-- Summary Cards -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon bg-primary-soft"><i class="fa fa-chart-line"></i></div><div class="stat-body"><div class="stat-value">Br {{ number_format($totalRevenue,0) }}</div><div class="stat-label">Total Revenue</div></div></div></div>
-    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon bg-warning-soft"><i class="fa fa-boxes-stacked"></i></div><div class="stat-body"><div class="stat-value">Br {{ number_format($totalCost,0) }}</div><div class="stat-label">Total Cost</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon bg-warning-soft"><i class="fa fa-boxes-stacked"></i></div><div class="stat-body"><div class="stat-value">Br {{ number_format($totalCost,0) }}</div><div class="stat-label">Total COGS</div></div></div></div>
     <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon bg-{{ $totalProfit >= 0 ? 'success' : 'danger' }}-soft"><i class="fa fa-sack-dollar"></i></div><div class="stat-body"><div class="stat-value {{ $totalProfit >= 0 ? 'text-success' : 'text-danger' }}">Br {{ number_format($totalProfit,0) }}</div><div class="stat-label">Gross Profit</div></div></div></div>
-    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon bg-purple-soft"><i class="fa fa-percent"></i></div><div class="stat-body"><div class="stat-value {{ $avgMargin >= 0 ? 'text-success' : 'text-danger' }}">{{ $avgMargin }}%</div><div class="stat-label">Profit Margin</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon bg-danger-soft"><i class="fa fa-money-bill-wave"></i></div><div class="stat-body"><div class="stat-value text-danger">Br {{ number_format($totalExpenses,0) }}</div><div class="stat-label">Total Expenses</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon bg-{{ $netProfit >= 0 ? 'success' : 'danger' }}-soft"><i class="fa fa-coins"></i></div><div class="stat-body"><div class="stat-value {{ $netProfit >= 0 ? 'text-success' : 'text-danger' }} fw-bold">Br {{ number_format($netProfit,0) }}</div><div class="stat-label">Net Profit</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon bg-purple-soft"><i class="fa fa-percent"></i></div><div class="stat-body"><div class="stat-value {{ $avgMargin >= 0 ? 'text-success' : 'text-danger' }}">{{ $avgMargin }}%</div><div class="stat-label">Gross Margin</div></div></div></div>
 </div>
 
 <!-- Monthly Chart -->
@@ -90,6 +92,16 @@
             <td class="text-muted">Br {{ number_format($totalCost,2) }}</td>
             <td class="{{ $totalProfit >= 0 ? 'text-success' : 'text-danger' }}">Br {{ number_format($totalProfit,2) }}</td>
             <td class="{{ $avgMargin >= 0 ? 'text-success' : 'text-danger' }}">{{ $avgMargin }}%</td>
+        </tr>
+        <tr class="table-danger">
+            <td colspan="3" class="text-muted">Total Expenses</td>
+            <td class="text-danger">— Br {{ number_format($totalExpenses,2) }}</td>
+            <td></td>
+        </tr>
+        <tr class="table-{{ $netProfit >= 0 ? 'success' : 'danger' }}">
+            <td colspan="3" class="fw-bold">Net Profit</td>
+            <td class="{{ $netProfit >= 0 ? 'text-success' : 'text-danger' }} fw-bold fs-6">Br {{ number_format($netProfit,2) }}</td>
+            <td></td>
         </tr>
     </tfoot>
     @endif

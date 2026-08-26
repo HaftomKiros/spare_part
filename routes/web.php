@@ -29,6 +29,10 @@ use App\Http\Controllers\Purchases\PurchaseController;
 // ── Reports
 use App\Http\Controllers\Reports\ReportController;
 
+// ── Expenses
+use App\Http\Controllers\Expenses\ExpenseController;
+use App\Http\Controllers\Expenses\ExpenseCategoryController;
+
 // ── Settings
 use App\Http\Controllers\Settings\CompanyController;
 use App\Http\Controllers\Settings\ProfileController;
@@ -198,6 +202,24 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{purchase}/receive',[PurchaseController::class, 'receive'])->name('receive')->middleware('perm:purchases.create');
     });
 
+    // ── EXPENSES ─────────────────────────────────────────────────────────
+    Route::prefix('expenses')->name('expenses.')->group(function () {
+        Route::get('/',                          [ExpenseController::class, 'index'])  ->name('index')  ->middleware('perm:expenses.view');
+        Route::get('/create',                    [ExpenseController::class, 'create']) ->name('create') ->middleware('perm:expenses.create');
+        Route::post('/',                         [ExpenseController::class, 'store'])  ->name('store')  ->middleware('perm:expenses.create');
+        Route::get('/{expense}',                 [ExpenseController::class, 'show'])   ->name('show')   ->middleware('perm:expenses.view');
+        Route::get('/{expense}/edit',            [ExpenseController::class, 'edit'])   ->name('edit')   ->middleware('perm:expenses.edit');
+        Route::put('/{expense}',                 [ExpenseController::class, 'update']) ->name('update') ->middleware('perm:expenses.edit');
+        Route::delete('/{expense}',              [ExpenseController::class, 'destroy'])->name('destroy')->middleware('perm:expenses.delete');
+    });
+
+    Route::prefix('expense-categories')->name('expense-categories.')->group(function () {
+        Route::get('/',                                   [ExpenseCategoryController::class, 'index'])  ->name('index')  ->middleware('perm:expenses.view');
+        Route::post('/',                                  [ExpenseCategoryController::class, 'store'])  ->name('store')  ->middleware('perm:expenses.create');
+        Route::put('/{expenseCategory}',                  [ExpenseCategoryController::class, 'update']) ->name('update') ->middleware('perm:expenses.edit');
+        Route::delete('/{expenseCategory}',               [ExpenseCategoryController::class, 'destroy'])->name('destroy')->middleware('perm:expenses.delete');
+    });
+
     // ── REPORTS ──────────────────────────────────────────────────────────
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('sales',       [ReportController::class, 'sales'])     ->name('sales')      ->middleware('perm:reports.sales');
@@ -207,6 +229,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('low-stock',   [ReportController::class, 'lowStock'])  ->name('low-stock')  ->middleware('perm:reports.low-stock');
         Route::get('purchases',   [ReportController::class, 'purchases']) ->name('purchases')  ->middleware('perm:reports.purchases');
         Route::get('profit',      [ReportController::class, 'profit'])    ->name('profit')     ->middleware('perm:reports.profit');
+        Route::get('expenses',    [ReportController::class, 'expenses'])  ->name('expenses')   ->middleware('perm:reports.expenses');
     });
 
     // ── SETTINGS ─────────────────────────────────────────────────────────

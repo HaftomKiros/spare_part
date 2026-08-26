@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
+use App\Models\Expense;
+use App\Models\ExpenseCategory;
 use App\Models\Purchase;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -377,6 +379,19 @@ class ReportController extends Controller
         $totalProfit  = $monthly->sum('profit');
         $avgMargin    = $totalRevenue > 0 ? round(($totalProfit / $totalRevenue) * 100, 1) : 0;
 
+        // Total expenses for the period (warehouse-scoped)
+        $expensesQuery = DB::table('expenses')
+            ->whereYear('expense_date', $year)
+            ->where(function ($q) use ($accessibleIds) {
+                $q->whereIn('warehouse_id', $accessibleIds)->orWhereNull('warehouse_id');
+            })
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('user_id', $user->id))
+            ->when($month, fn($q) => $q->whereMonth('expense_date', $month))
+            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId));
+
+        $totalExpenses = $expensesQuery->sum('amount');
+        $netProfit     = $totalProfit - $totalExpenses;
+
         $topParts = DB::table('sale_items as si')
             ->join('sales as s', 'si.sale_id', '=', 's.id')
             ->join('spare_parts as sp', 'si.spare_part_id', '=', 'sp.id')
@@ -408,7 +423,67 @@ class ReportController extends Controller
         return view('reports.profit', compact(
             'monthly', 'totalRevenue', 'totalCost', 'totalProfit', 'avgMargin',
             'topParts', 'topVehicles', 'year', 'month', 'years',
-            'warehouses', 'warehouseId'
+            'warehouses', 'warehouseId',
+            'totalExpenses', 'netProfit'
+        ));
+    }
+
+    /* ── Expenses Report ──────────────────────────── */
+    public function expenses(Request $request)
+    {
+        $dateFrom      = $request->date_from ?? now()->startOfMonth()->format('Y-m-d');
+        $dateTo        = $request->date_to   ?? now()->format('Y-m-d');
+        $warehouseId   = $request->warehouse_id ? (int) $request->warehouse_id : null;
+        $categoryId    = $request->category_id  ? (int) $request->category_id  : null;
+        $user          = auth()->user();
+        $warehouses    = $user->accessibleWarehouses()->get();
+        $accessibleIds = $user->accessibleWarehouseIds();
+        $categories    = ExpenseCategory::active()->orderBy('name')->get();
+
+        if ($warehouseId && ! in_array($warehouseId, $accessibleIds)) { $warehouseId = null; }
+
+        $query = DB::table('expenses as e')
+            ->join('expense_categories as ec', 'e.expense_category_id', '=', 'ec.id')
+            ->join('users as u', 'e.user_id', '=', 'u.id')
+            ->leftJoin('warehouses as w', 'e.warehouse_id', '=', 'w.id')
+            ->whereBetween('e.expense_date', [$dateFrom, $dateTo])
+            ->where(function ($q) use ($accessibleIds) {
+                $q->whereIn('e.warehouse_id', $accessibleIds)->orWhereNull('e.warehouse_id');
+            })
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('e.user_id', $user->id))
+            ->when($warehouseId, fn($q) => $q->where('e.warehouse_id', $warehouseId))
+            ->when($categoryId,  fn($q) => $q->where('e.expense_category_id', $categoryId))
+            ->select(
+                'e.id', 'e.expense_number', 'e.title', 'e.amount',
+                'e.expense_date', 'e.payment_method', 'e.reference_number',
+                'ec.name as category_name',
+                'u.name as user_name',
+                'w.name as warehouse_name'
+            )
+            ->orderByDesc('e.expense_date');
+
+        $expenses = $query->paginate(25)->withQueryString();
+
+        // Summary by category
+        $byCategory = DB::table('expenses as e')
+            ->join('expense_categories as ec', 'e.expense_category_id', '=', 'ec.id')
+            ->whereBetween('e.expense_date', [$dateFrom, $dateTo])
+            ->where(function ($q) use ($accessibleIds) {
+                $q->whereIn('e.warehouse_id', $accessibleIds)->orWhereNull('e.warehouse_id');
+            })
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('e.user_id', $user->id))
+            ->when($warehouseId, fn($q) => $q->where('e.warehouse_id', $warehouseId))
+            ->selectRaw('ec.name as category, COUNT(*) as count, SUM(e.amount) as total')
+            ->groupBy('ec.id', 'ec.name')
+            ->orderByDesc('total')
+            ->get();
+
+        $totalAmount = $byCategory->sum('total');
+
+        return view('reports.expenses', compact(
+            'expenses', 'byCategory', 'totalAmount',
+            'dateFrom', 'dateTo', 'warehouses', 'warehouseId',
+            'categories', 'categoryId'
         ));
     }
 }

@@ -84,6 +84,13 @@ class RoleController extends Controller
         'purchases.suppliers.edit'          => 'Purchases — Suppliers: Edit',
         'purchases.suppliers.delete'        => 'Purchases — Suppliers: Delete',
 
+        // ── EXPENSES ──────────────────────────────────────────────────────
+        'expenses.view'                     => 'Expenses — History: View',
+        'expenses.create'                   => 'Expenses — New Expense: Create',
+        'expenses.edit'                     => 'Expenses — Expense: Edit',
+        'expenses.delete'                   => 'Expenses — Expense: Delete',
+        'reports.expenses'                  => 'Reports — Expenses Report',
+
         // ── REPORTS ───────────────────────────────────────
         'reports.sales'                     => 'Reports — Sales Report',
         'reports.vehicles'                  => 'Reports — Vehicles Report',

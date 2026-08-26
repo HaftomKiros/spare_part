@@ -86,6 +86,74 @@ INSERT INTO `customers` VALUES (1,'CUST-001','Walk-in Customer','+000-000-0000',
 UNLOCK TABLES;
 
 --
+-- Table structure for table `expense_categories`
+--
+
+DROP TABLE IF EXISTS `expense_categories`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `expense_categories` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `expense_categories`
+--
+
+LOCK TABLES `expense_categories` WRITE;
+/*!40000 ALTER TABLE `expense_categories` DISABLE KEYS */;
+/*!40000 ALTER TABLE `expense_categories` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `expenses`
+--
+
+DROP TABLE IF EXISTS `expenses`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `expenses` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `expense_number` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `expense_category_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned NOT NULL,
+  `warehouse_id` bigint unsigned DEFAULT NULL,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `amount` decimal(12,2) NOT NULL,
+  `expense_date` date NOT NULL,
+  `payment_method` enum('cash','bank_transfer','cheque') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'cash',
+  `reference_number` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `expenses_expense_number_unique` (`expense_number`),
+  KEY `expenses_expense_category_id_foreign` (`expense_category_id`),
+  KEY `expenses_user_id_foreign` (`user_id`),
+  KEY `expenses_warehouse_id_foreign` (`warehouse_id`),
+  CONSTRAINT `expenses_expense_category_id_foreign` FOREIGN KEY (`expense_category_id`) REFERENCES `expense_categories` (`id`),
+  CONSTRAINT `expenses_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+  CONSTRAINT `expenses_warehouse_id_foreign` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouses` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `expenses`
+--
+
+LOCK TABLES `expenses` WRITE;
+/*!40000 ALTER TABLE `expenses` DISABLE KEYS */;
+/*!40000 ALTER TABLE `expenses` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `migrations`
 --
 
@@ -97,7 +165,7 @@ CREATE TABLE `migrations` (
   `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -106,7 +174,7 @@ CREATE TABLE `migrations` (
 
 LOCK TABLES `migrations` WRITE;
 /*!40000 ALTER TABLE `migrations` DISABLE KEYS */;
-INSERT INTO `migrations` VALUES (1,'2024_01_01_000016_create_user_warehouse_table',1),(2,'2024_01_01_000017_add_access_level_to_users_table',2);
+INSERT INTO `migrations` VALUES (1,'2024_01_01_000016_create_user_warehouse_table',1),(2,'2024_01_01_000017_add_access_level_to_users_table',2),(3,'2024_01_01_000018_create_expenses_table',3);
 /*!40000 ALTER TABLE `migrations` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -254,7 +322,7 @@ CREATE TABLE `roles` (
 
 LOCK TABLES `roles` WRITE;
 /*!40000 ALTER TABLE `roles` DISABLE KEYS */;
-INSERT INTO `roles` VALUES (1,'admin','Administrator','Full system access','[\"all\"]','2026-08-23 23:21:11','2026-08-23 23:21:11'),(2,'manager','Manager','Manage inventory and reports','[\"catalog\", \"inventory\", \"reports\", \"sales\", \"purchases\"]','2026-08-23 23:21:11','2026-08-23 23:21:11'),(3,'cashier','Cashier','Process sales only','[\"sales.create\", \"sales.view\"]','2026-08-23 23:21:11','2026-08-23 23:21:11'),(4,'storekeeper','Storekeeper','Manage stock and inventory','[\"catalog.vehicle-types.view\", \"catalog.vehicle-types.create\", \"catalog.vehicle-types.delete\", \"catalog.vehicle-models.view\", \"catalog.vehicle-models.edit\", \"catalog.vehicle-models.delete\", \"catalog.part-categories.view\", \"catalog.part-categories.create\", \"catalog.part-categories.edit\", \"catalog.spare-parts.view\", \"catalog.spare-parts.create\", \"catalog.spare-parts.delete\", \"catalog.units.view\", \"catalog.units.create\", \"catalog.units.edit\", \"catalog.units.delete\"]','2026-08-23 23:21:11','2026-08-26 13:04:14');
+INSERT INTO `roles` VALUES (1,'admin','Administrator','Full system access','[\"all\"]','2026-08-23 23:21:11','2026-08-26 20:09:58'),(2,'manager','Manager','Manage inventory and reports','[\"catalog\", \"inventory\", \"reports\", \"sales\", \"purchases\"]','2026-08-23 23:21:11','2026-08-23 23:21:11'),(3,'cashier','Cashier','Process sales only','[\"catalog.vehicle-types.view\", \"catalog.vehicle-types.create\", \"catalog.vehicle-types.edit\", \"catalog.vehicle-types.delete\", \"catalog.vehicle-models.view\", \"catalog.vehicle-models.create\", \"catalog.vehicle-models.edit\", \"catalog.vehicle-models.delete\", \"catalog.part-categories.view\", \"catalog.part-categories.create\", \"catalog.part-categories.edit\", \"catalog.part-categories.delete\", \"catalog.spare-parts.view\", \"catalog.spare-parts.create\", \"catalog.spare-parts.edit\", \"catalog.spare-parts.delete\", \"catalog.units.view\", \"catalog.units.create\", \"catalog.units.edit\", \"catalog.units.delete\", \"sales.view\", \"sales.create\", \"sales.returns.view\", \"sales.returns.create\", \"sales.customers.view\", \"sales.customers.create\", \"sales.customers.edit\", \"sales.customers.delete\", \"purchases.view\", \"purchases.create\", \"purchases.delete\", \"purchases.suppliers.view\", \"purchases.suppliers.create\", \"purchases.suppliers.edit\", \"purchases.suppliers.delete\", \"reports.sales\", \"reports.vehicles\", \"reports.spare-parts\", \"reports.stock\", \"reports.low-stock\", \"reports.purchases\", \"reports.profit\", \"settings.company\", \"settings.users.view\", \"settings.users.create\", \"settings.users.edit\", \"settings.users.delete\", \"settings.roles.view\", \"settings.roles.create\", \"settings.roles.edit\", \"settings.roles.delete\", \"settings.warehouses.view\", \"settings.warehouses.create\", \"settings.warehouses.edit\", \"settings.warehouses.delete\"]','2026-08-23 23:21:11','2026-08-26 20:13:27'),(4,'storekeeper','Storekeeper','Manage stock and inventory','[\"catalog.vehicle-types.view\", \"catalog.vehicle-types.create\", \"catalog.vehicle-types.delete\", \"catalog.vehicle-models.view\", \"catalog.vehicle-models.edit\", \"catalog.vehicle-models.delete\", \"catalog.part-categories.view\", \"catalog.part-categories.create\", \"catalog.part-categories.edit\", \"catalog.spare-parts.view\", \"catalog.spare-parts.create\", \"catalog.spare-parts.delete\", \"catalog.units.view\", \"catalog.units.create\", \"catalog.units.edit\", \"catalog.units.delete\", \"inventory.current-stock.view\", \"inventory.stock-in.view\", \"inventory.stock-in.create\", \"inventory.adjustments.view\", \"inventory.adjustments.create\", \"inventory.transfers.view\", \"inventory.transfers.create\", \"inventory.history.view\", \"sales.view\", \"sales.create\", \"sales.delete\", \"sales.returns.view\", \"sales.returns.create\", \"sales.customers.view\", \"sales.customers.create\", \"sales.customers.edit\", \"sales.customers.delete\", \"purchases.view\", \"purchases.create\", \"purchases.delete\", \"purchases.suppliers.view\", \"purchases.suppliers.create\", \"purchases.suppliers.edit\", \"purchases.suppliers.delete\", \"reports.sales\", \"reports.vehicles\", \"reports.spare-parts\", \"reports.stock\", \"reports.low-stock\", \"reports.purchases\", \"reports.profit\"]','2026-08-23 23:21:11','2026-08-26 20:17:59');
 /*!40000 ALTER TABLE `roles` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -728,7 +796,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,1,'System Admin','admin@ashusparepart.et','+251-911-000000','$2y$12$DPH8Zvb3ScvzEi5TnZ1nP.NP5gfUidsPmjyI5R9bYO0Cdy3zLAdOK','avatars/f88e9EGGyG7G4KAWjVVYbPgK8TYnLcGd1lYilesc.png','active','regular','9mlAVRCjtyEueCmUMaeZZAjyYjgVB6H2pgPU421UBWSYrL5AsORNMzb1xsqf','2026-08-23 23:21:12','2026-08-26 12:48:51'),(2,4,'haftom kiros','haftomk2004@gmail.com','0942245789','$2y$12$pcJvZFFRP6GqeWQOMAqMfuSKP8cMN7EPIi80lSUGKeV04L/OKorVe',NULL,'active','regular',NULL,'2026-08-26 11:10:43','2026-08-26 11:10:43'),(3,4,'adigrat','adigrat@gmail.com','09656565','$2y$12$QgBE.l3phZfK/eFSIDyPm.81gqPTlwF3hCs/3aSR1.BUQK.wvXGnq',NULL,'active','regular',NULL,'2026-08-26 11:22:02','2026-08-26 11:25:45');
+INSERT INTO `users` VALUES (1,1,'System Admin','admin@ashusparepart.et','+251-911-000000','$2y$12$DPH8Zvb3ScvzEi5TnZ1nP.NP5gfUidsPmjyI5R9bYO0Cdy3zLAdOK','avatars/f88e9EGGyG7G4KAWjVVYbPgK8TYnLcGd1lYilesc.png','active','regular','I8LmSMEMKA28NPQ3KGawiQ5pnMM0fNYU69nR11S7WekM5cYgNMCdQVlyHc3R','2026-08-23 23:21:12','2026-08-26 12:48:51'),(2,4,'haftom kiros','haftomk2004@gmail.com','0942245789','$2y$12$pcJvZFFRP6GqeWQOMAqMfuSKP8cMN7EPIi80lSUGKeV04L/OKorVe','avatars/IpJ1LpStURlTUR6BGdX5LFWOVyKoinHaFgHRxw0k.png','active','regular',NULL,'2026-08-26 11:10:43','2026-08-26 20:36:17'),(3,4,'adigrat','adigrat@gmail.com','09656565','$2y$12$QgBE.l3phZfK/eFSIDyPm.81gqPTlwF3hCs/3aSR1.BUQK.wvXGnq',NULL,'active','regular',NULL,'2026-08-26 11:22:02','2026-08-26 11:25:45');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -932,10 +1000,6 @@ LOCK TABLES `warehouses` WRITE;
 INSERT INTO `warehouses` VALUES (1,'STK-001','Main Store - Addis Ababa','Addis Ababa','Addis Ababa, Ethiopia','+251-111-000001','System Admin','active',NULL,1,'2026-08-24 21:39:22','2026-08-24 21:39:22'),(2,'STK-002','Mekelle Branch','Mekelle','Mekelle, Tigray','+251-344-000001','Branch Manager','active',NULL,0,'2026-08-24 21:39:22','2026-08-24 21:39:22'),(3,'STK-003','Kenya','Kenya',NULL,NULL,NULL,'active',NULL,0,'2026-08-24 21:43:50','2026-08-24 21:43:50'),(4,'STK-004','Adigrat','Adigrat','Ethiopia,Tigray,Adigrat','0956565656','hello','active','dddd',0,'2026-08-26 11:21:16','2026-08-26 11:21:16');
 /*!40000 ALTER TABLE `warehouses` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Dumping routines for database 'ashu_spare_part'
---
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -946,4 +1010,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-08-26 20:19:58
+-- Dump completed on 2026-08-27  0:13:56

@@ -676,6 +676,46 @@
         <div class="sb-divider"></div>
         @endif
 
+        {{-- ── EXPENSES ───────────────────────────────────────────── --}}
+        @php
+            $canCreateExpense  = auth()->user()->hasPermission('expenses.create');
+            $canViewExpenses   = auth()->user()->hasPermission('expenses.view');
+            $showExpenses      = $canCreateExpense || $canViewExpenses;
+        @endphp
+        @if($showExpenses)
+        <div class="sb-group" id="grp-expenses">
+            <div class="sb-group-header" onclick="toggleGroup('grp-expenses')">
+                <span class="sb-group-title">Expenses</span>
+                <i class="fa fa-chevron-down sb-group-arrow"></i>
+            </div>
+            <div class="sb-group-items">
+                @if($canCreateExpense)
+                <a href="{{ route('expenses.create') }}"
+                   class="sb-item sb-cta {{ request()->routeIs('expenses.create') ? 'active' : '' }}"
+                   data-tooltip="New Expense">
+                    <span class="sb-icon" style="color:#ef4444"><i class="fa-solid fa-plus-circle"></i></span>
+                    <span class="sb-label">New Expense</span>
+                </a>
+                @endif
+                @if($canViewExpenses)
+                <a href="{{ route('expenses.index') }}"
+                   class="sb-item {{ request()->routeIs('expenses.index') || request()->routeIs('expenses.show*') ? 'active' : '' }}"
+                   data-tooltip="Expense History">
+                    <span class="sb-icon"><i class="fa-solid fa-money-bill-wave"></i></span>
+                    <span class="sb-label">Expense History</span>
+                </a>
+                <a href="{{ route('expense-categories.index') }}"
+                   class="sb-item {{ request()->routeIs('expense-categories*') ? 'active' : '' }}"
+                   data-tooltip="Expense Categories">
+                    <span class="sb-icon"><i class="fa-solid fa-tags"></i></span>
+                    <span class="sb-label">Categories</span>
+                </a>
+                @endif
+            </div>
+        </div>
+        <div class="sb-divider"></div>
+        @endif
+
         {{-- ── REPORTS ─────────────────────────────────────────────── --}}
         @php
             $canSeeReportSales      = auth()->user()->hasPermission('reports.sales');
@@ -685,9 +725,11 @@
             $canSeeReportLowStock   = auth()->user()->hasPermission('reports.low-stock');
             $canSeeReportPurchases  = auth()->user()->hasPermission('reports.purchases');
             $canSeeReportProfit     = auth()->user()->hasPermission('reports.profit');
+            $canSeeReportExpenses   = auth()->user()->hasPermission('reports.expenses');
             $showReports            = $canSeeReportSales || $canSeeReportVehicles || $canSeeReportParts
                                    || $canSeeReportStock || $canSeeReportLowStock
-                                   || $canSeeReportPurchases || $canSeeReportProfit;
+                                   || $canSeeReportPurchases || $canSeeReportProfit
+                                   || $canSeeReportExpenses;
         @endphp
         @if($showReports)
         <div class="sb-group" id="grp-reports">
@@ -753,6 +795,14 @@
                    data-tooltip="Profit Report">
                     <span class="sb-icon" style="color:#34d399"><i class="fa-solid fa-coins"></i></span>
                     <span class="sb-label">Profit</span>
+                </a>
+                @endif
+                @if($canSeeReportExpenses)
+                <a href="{{ route('reports.expenses') }}"
+                   class="sb-item {{ request()->routeIs('reports.expenses') ? 'active' : '' }}"
+                   data-tooltip="Expenses Report">
+                    <span class="sb-icon" style="color:#ef4444"><i class="fa-solid fa-money-bill-wave"></i></span>
+                    <span class="sb-label">Expenses</span>
                 </a>
                 @endif
             </div>
