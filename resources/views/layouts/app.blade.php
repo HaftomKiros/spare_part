@@ -398,7 +398,7 @@
 <body>
 
 {{-- == PAGE LOADER ============================================== --}}
-<div id="pageLoader">
+<div id="pageLoader" style="display:none">
     <div class="loader-inner">
         <div class="loader-spinner"></div>
         <div class="loader-text">Loading...</div>
@@ -842,41 +842,37 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script>
-// Page loader - hide when page is ready
+// Page loader - only show when navigating AWAY, never on initial load
 (function () {
     var loader = document.getElementById('pageLoader');
-    // Hide loader when page fully loaded
-    window.addEventListener('load', function () {
-        if (loader) {
-            loader.classList.add('hide');
-            setTimeout(function () { loader.style.display = 'none'; }, 350);
-        }
-    });
-    // Show loader when navigating away
+    if (!loader) return;
+
+    // Always hide immediately on page load/refresh
+    loader.style.display = 'none';
+
+    // Show only when user clicks a link (navigating away)
     document.addEventListener('click', function (e) {
         var link = e.target.closest('a[href]');
         if (!link) return;
         var href = link.getAttribute('href');
-        // Skip: external, anchor, javascript, new tab
         if (!href || href.startsWith('#') || href.startsWith('javascript') ||
-            link.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey) return;
-        // Skip: data-delete-url buttons (modal triggers)
-        if (link.dataset.deleteUrl || link.dataset.bsToggle) return;
-        if (loader) {
-            loader.style.display = 'flex';
-            loader.classList.remove('hide');
-        }
+            link.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey ||
+            link.dataset.deleteUrl || link.dataset.bsToggle) return;
+        loader.style.display = 'flex';
+        loader.classList.remove('hide');
     });
-    // Show loader on form submit (page navigation)
+
+    // Show when submitting a form (page navigation)
     document.addEventListener('submit', function (e) {
-        var form = e.target;
-        // Skip AJAX forms
-        if (form.dataset.ajax) return;
-        if (loader) {
-            loader.style.display = 'flex';
-            loader.classList.remove('hide');
-        }
+        if (e.target.dataset.ajax) return;
+        loader.style.display = 'flex';
+        loader.classList.remove('hide');
     });
+
+    // Safety: hide after 8 seconds in case something gets stuck
+    setTimeout(function () {
+        loader.style.display = 'none';
+    }, 8000);
 })();
 </script>
 <script src="{{ asset('js/app.js') }}"></script>
