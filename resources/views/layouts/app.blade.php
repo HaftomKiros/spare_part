@@ -510,6 +510,63 @@
     </div>
     <div class="ldr-label">Loading</div>
 </div>
+{{-- Loader JS runs immediately after the div — before any content paints --}}
+<script>
+(function () {
+    var loader = document.getElementById('pageLoader');
+    if (!loader) return;
+
+    // Track whether the user triggered a navigation away from this page.
+    // When true, this page's window.load must NOT hide the loader
+    // (the loader belongs to the incoming page, not this one).
+    var navigating = false;
+
+    function hideLoader() {
+        loader.classList.add('hide');
+        // Remove from layout after fade completes
+        setTimeout(function () { loader.style.display = 'none'; }, 400);
+    }
+
+    function showLoader() {
+        navigating = true;
+        // Restart progress bar animation from zero
+        var bar = loader.querySelector('.ldr-bar');
+        if (bar) { bar.style.animation = 'none'; bar.offsetWidth; bar.style.animation = ''; }
+        loader.style.display = 'flex';
+        loader.classList.remove('hide');
+    }
+
+    // Hide when everything on this page is fully loaded (CSS, JS, images)
+    window.addEventListener('load', function () {
+        if (!navigating) hideLoader();
+    });
+
+    // Handle bfcache restores (back/forward navigation from browser cache)
+    window.addEventListener('pageshow', function (e) {
+        if (e.persisted) { navigating = false; hideLoader(); }
+    });
+
+    // Safety valve — hide after 12 s no matter what
+    setTimeout(function () { navigating = false; hideLoader(); }, 12000);
+
+    // Show when user clicks a real navigation link
+    document.addEventListener('click', function (e) {
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+        var href = link.getAttribute('href');
+        if (!href || href === '#' || href.startsWith('javascript') ||
+            link.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey ||
+            link.dataset.deleteUrl || link.dataset.bsToggle) return;
+        showLoader();
+    });
+
+    // Show when a full-page form is submitted
+    document.addEventListener('submit', function (e) {
+        if (e.target.dataset.ajax) return;
+        showLoader();
+    });
+})();
+</script>
 
 {{-- == SIDEBAR ================================================== --}}
 <nav class="sidebar" id="sidebar">
@@ -1114,72 +1171,6 @@
 <script src="{{ asset('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ asset('vendor/chartjs/chart.umd.min.js') }}"></script>
 <script src="{{ asset('vendor/tom-select/tom-select.complete.min.js') }}"></script>
-<script>
-// Page loader — one clean show/hide cycle per page, no double-flash.
-(function () {
-    var loader = document.getElementById('pageLoader');
-    if (!loader) return;
-
-    var navigating = false; // true while we're waiting for the next page to load
-
-    function hideLoader() {
-        loader.classList.add('hide');
-        setTimeout(function () { loader.style.display = 'none'; }, 380);
-    }
-
-    function showLoader() {
-        navigating = true;
-        var bar = loader.querySelector('.ldr-bar');
-        if (bar) {
-            bar.style.animation = 'none';
-            bar.offsetWidth; // force reflow to restart animation
-            bar.style.animation = '';
-        }
-        loader.style.display = 'flex';
-        loader.classList.remove('hide');
-    }
-
-    // On initial page load / arriving at a new page:
-    // - window 'load'     → fires after all resources (CSS, JS, images) are ready
-    // - window 'pageshow' → also fires when page is restored from bfcache (persisted=true)
-    // In both cases: hide the loader ONLY if we are NOT mid-navigation
-    // (i.e. this event belongs to THIS page arriving, not us leaving it)
-    window.addEventListener('load', function () {
-        if (!navigating) hideLoader();
-    });
-
-    window.addEventListener('pageshow', function (e) {
-        // bfcache restore — the page was served from cache; loader may still be visible
-        if (e.persisted) {
-            navigating = false;
-            hideLoader();
-        }
-    });
-
-    // Safety: hide after 10 s in case load never fires
-    setTimeout(function () {
-        navigating = false;
-        hideLoader();
-    }, 10000);
-
-    // Show loader when navigating away via a link
-    document.addEventListener('click', function (e) {
-        var link = e.target.closest('a[href]');
-        if (!link) return;
-        var href = link.getAttribute('href');
-        if (!href || href.startsWith('#') || href.startsWith('javascript') ||
-            link.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey ||
-            link.dataset.deleteUrl || link.dataset.bsToggle) return;
-        showLoader();
-    });
-
-    // Show loader when submitting a form (full-page navigation)
-    document.addEventListener('submit', function (e) {
-        if (e.target.dataset.ajax) return;
-        showLoader();
-    });
-})();
-</script>
 <script src="{{ asset('js/app.js') }}"></script>
 
 <script>
