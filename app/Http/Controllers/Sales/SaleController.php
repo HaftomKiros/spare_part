@@ -26,6 +26,11 @@ class SaleController extends Controller
         $query = Sale::with('customer', 'user')
             ->whereIn('warehouse_id', $accessibleIds);
 
+        // Non-admins only see their own sales
+        if (! $user->isAdmin()) {
+            $query->where('user_id', $user->id);
+        }
+
         if ($request->search) {
             $query->where(function ($q) use ($request) {
                 $q->where('invoice_number', 'like', "%{$request->search}%")
@@ -47,7 +52,12 @@ class SaleController extends Controller
 
         $sales = $query->latest()->paginate(20)->withQueryString();
 
-        $totals = Sale::where('status', 'completed')
+        $totalsQuery = Sale::where('status', 'completed')
+            ->whereIn('warehouse_id', $accessibleIds);
+        if (! $user->isAdmin()) {
+            $totalsQuery->where('user_id', $user->id);
+        }
+        $totals = $totalsQuery
             ->selectRaw('SUM(total) as grand_total, SUM(paid_amount) as grand_paid, SUM(balance) as grand_balance')
             ->first();
 

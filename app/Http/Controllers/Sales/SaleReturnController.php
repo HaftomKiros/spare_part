@@ -16,7 +16,17 @@ class SaleReturnController extends Controller
 
     public function index(Request $request)
     {
-        $query = SaleReturn::with('sale', 'customer', 'user');
+        $user          = auth()->user();
+        $accessibleIds = $user->accessibleWarehouseIds();
+
+        // sale_returns has no warehouse_id — scope via the related sale's warehouse
+        $query = SaleReturn::with('sale', 'customer', 'user')
+            ->whereHas('sale', fn($q) => $q->whereIn('warehouse_id', $accessibleIds));
+
+        // Non-admins only see returns they processed themselves
+        if (! $user->isAdmin()) {
+            $query->where('user_id', $user->id);
+        }
 
         if ($request->search) {
             $query->where('return_number', 'like', "%{$request->search}%")
@@ -39,9 +49,18 @@ class SaleReturnController extends Controller
 
     public function create(Request $request)
     {
+        $user          = auth()->user();
+        $accessibleIds = $user->accessibleWarehouseIds();
+
         $saleId = $request->get('sale_id');
         $sale   = $saleId ? Sale::with('items.vehicleModel', 'items.sparePart.unit', 'customer')->findOrFail($saleId) : null;
-        $sales  = Sale::completed()->with('customer')->latest()->limit(50)->get();
+
+        $salesQuery = Sale::completed()->with('customer')
+            ->whereIn('warehouse_id', $accessibleIds);
+        if (! $user->isAdmin()) {
+            $salesQuery->where('user_id', $user->id);
+        }
+        $sales  = $salesQuery->latest()->limit(50)->get();
         $number = SaleReturn::generateNumber();
 
         return view('sales.returns.create', compact('sale', 'sales', 'number'));
