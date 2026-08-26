@@ -32,7 +32,7 @@ class StockTransferController extends Controller
             });
 
         // Non-admins: only see transfers they initiated
-        if (! $user->isAdmin()) {
+        if (! $user->seesAllUsers()) {
             $query->where('sm.user_id', $user->id);
         }
 

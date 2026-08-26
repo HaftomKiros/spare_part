@@ -29,7 +29,7 @@ class ReportController extends Controller
         // Sales reports: warehouse + user_id for non-admins
         $scope = fn($q) => $q
             ->whereIn('warehouse_id', $accessibleIds)
-            ->when(! $user->isAdmin(), fn($q2) => $q2->where('user_id', $user->id))
+            ->when(! $user->seesAllUsers(), fn($q2) => $q2->where('user_id', $user->id))
             ->when($warehouseId, fn($q2) => $q2->where('warehouse_id', $warehouseId));
 
         $query   = Sale::completed()->with('customer', 'user')->whereBetween('sale_date', [$dateFrom, $dateTo]);
@@ -74,7 +74,7 @@ class ReportController extends Controller
             ->where('s.status', 'completed')
             ->whereBetween('s.sale_date', [$dateFrom, $dateTo])
             ->whereIn('s.warehouse_id', $accessibleIds)
-            ->when(! $user->isAdmin(), fn($q) => $q->where('s.user_id', $user->id))
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('s.user_id', $user->id))
             ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
             ->selectRaw('
                 vm.id, vm.brand, vm.model_name, vm.model_code, vm.selling_price, vm.buying_price,
@@ -118,7 +118,7 @@ class ReportController extends Controller
             ->where('s.status', 'completed')
             ->whereBetween('s.sale_date', [$dateFrom, $dateTo])
             ->whereIn('s.warehouse_id', $accessibleIds)
-            ->when(! $user->isAdmin(), fn($q) => $q->where('s.user_id', $user->id))
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('s.user_id', $user->id))
             ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
             ->selectRaw('
                 sp.id, sp.name, sp.part_number, sp.selling_price, sp.buying_price,
@@ -302,13 +302,13 @@ class ReportController extends Controller
         $purchases = Purchase::with('supplier', 'user')
             ->whereBetween('purchase_date', [$dateFrom, $dateTo])
             ->whereIn('warehouse_id', $accessibleIds)
-            ->when(! $user->isAdmin(), fn($q) => $q->where('user_id', $user->id))
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('user_id', $user->id))
             ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
             ->latest('purchase_date')->paginate(25)->withQueryString();
 
         $summary = Purchase::whereBetween('purchase_date', [$dateFrom, $dateTo])
             ->whereIn('warehouse_id', $accessibleIds)
-            ->when(! $user->isAdmin(), fn($q) => $q->where('user_id', $user->id))
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('user_id', $user->id))
             ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
             ->selectRaw('
                 COUNT(*) as total_orders,
@@ -319,7 +319,7 @@ class ReportController extends Controller
 
         $bySupplier = Purchase::whereBetween('purchase_date', [$dateFrom, $dateTo])
             ->whereIn('purchases.warehouse_id', $accessibleIds)
-            ->when(! $user->isAdmin(), fn($q) => $q->where('purchases.user_id', $user->id))
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('purchases.user_id', $user->id))
             ->when($warehouseId, fn($q) => $q->where('purchases.warehouse_id', $warehouseId))
             ->join('suppliers', 'purchases.supplier_id', '=', 'suppliers.id')
             ->selectRaw('suppliers.name, COUNT(*) as orders, SUM(purchases.total) as total')
@@ -345,7 +345,7 @@ class ReportController extends Controller
             ->where('s.status', 'completed')
             ->whereYear('s.sale_date', $year)
             ->whereIn('s.warehouse_id', $accessibleIds)
-            ->when(! $user->isAdmin(), fn($q) => $q->where('s.user_id', $user->id))
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('s.user_id', $user->id))
             ->when($month, fn($q) => $q->whereMonth('s.sale_date', $month))
             ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
             ->selectRaw('
@@ -383,7 +383,7 @@ class ReportController extends Controller
             ->where('s.status', 'completed')->where('si.item_type', 'spare_part')
             ->whereYear('s.sale_date', $year)
             ->whereIn('s.warehouse_id', $accessibleIds)
-            ->when(! $user->isAdmin(), fn($q) => $q->where('s.user_id', $user->id))
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('s.user_id', $user->id))
             ->when($month, fn($q) => $q->whereMonth('s.sale_date', $month))
             ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
             ->selectRaw('sp.name, sp.part_number, SUM(si.quantity) as qty, SUM(si.total) as revenue, SUM(si.quantity * sp.buying_price) as cost, SUM(si.total - (si.quantity * sp.buying_price)) as profit')
@@ -396,7 +396,7 @@ class ReportController extends Controller
             ->where('s.status', 'completed')->where('si.item_type', 'vehicle')
             ->whereYear('s.sale_date', $year)
             ->whereIn('s.warehouse_id', $accessibleIds)
-            ->when(! $user->isAdmin(), fn($q) => $q->where('s.user_id', $user->id))
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('s.user_id', $user->id))
             ->when($month, fn($q) => $q->whereMonth('s.sale_date', $month))
             ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
             ->selectRaw('vm.brand, vm.model_name, SUM(si.quantity) as qty, SUM(si.total) as revenue, SUM(si.quantity * vm.buying_price) as cost, SUM(si.total - (si.quantity * vm.buying_price)) as profit')

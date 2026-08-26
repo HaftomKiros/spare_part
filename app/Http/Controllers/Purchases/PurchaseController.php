@@ -27,7 +27,7 @@ class PurchaseController extends Controller
             ->whereIn('warehouse_id', $accessibleIds);
 
         // Non-admins only see their own purchases within their warehouses
-        if (! $user->isAdmin()) {
+        if (! $user->seesAllUsers()) {
             $query->where('user_id', $user->id);
         }
 
@@ -53,7 +53,7 @@ class PurchaseController extends Controller
         $purchases = $query->latest()->paginate(20)->withQueryString();
 
         $totalsQuery = Purchase::whereIn('warehouse_id', $accessibleIds);
-        if (! $user->isAdmin()) {
+        if (! $user->seesAllUsers()) {
             $totalsQuery->where('user_id', $user->id);
         }
         $totals = $totalsQuery->selectRaw('

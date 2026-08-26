@@ -20,6 +20,7 @@ class User extends Authenticatable
         'password',
         'avatar',
         'status',
+        'access_level',
     ];
 
     protected $hidden = [
@@ -70,15 +71,37 @@ class User extends Authenticatable
     // Helpers
     // ──────────────────────────────────────────
 
+    /**
+     * Super Admin — access_level = 'super_admin'
+     * Sees ALL warehouses, ALL transactions. No filters applied.
+     */
     public function isAdmin(): bool
     {
-        return $this->role?->name === 'admin';
+        return $this->access_level === 'super_admin';
+    }
+
+    /**
+     * Manager — access_level = 'manager' or 'super_admin'
+     * Sees all transactions in assigned warehouses (no user_id filter),
+     * but only assigned warehouses (not all).
+     */
+    public function isManager(): bool
+    {
+        return in_array($this->access_level, ['manager', 'super_admin']);
+    }
+
+    /**
+     * Returns true when the user_id filter should NOT be applied.
+     * Managers and Super Admins bypass the user_id restriction.
+     */
+    public function seesAllUsers(): bool
+    {
+        return $this->isManager(); // covers both manager and super_admin
     }
 
     /**
      * Returns the warehouse IDs this user can access.
-     * Admins see ALL warehouses. Regular users see only their assigned warehouses.
-     * If a regular user has no assignments, they fall back to all warehouses.
+     * Super Admin sees ALL warehouses. Others see only assigned warehouses.
      */
     public function accessibleWarehouseIds(): array
     {

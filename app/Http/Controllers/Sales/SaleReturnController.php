@@ -24,7 +24,7 @@ class SaleReturnController extends Controller
             ->whereHas('sale', fn($q) => $q->whereIn('warehouse_id', $accessibleIds));
 
         // Non-admins only see returns they processed themselves
-        if (! $user->isAdmin()) {
+        if (! $user->seesAllUsers()) {
             $query->where('user_id', $user->id);
         }
 
@@ -57,7 +57,7 @@ class SaleReturnController extends Controller
 
         $salesQuery = Sale::completed()->with('customer')
             ->whereIn('warehouse_id', $accessibleIds);
-        if (! $user->isAdmin()) {
+        if (! $user->seesAllUsers()) {
             $salesQuery->where('user_id', $user->id);
         }
         $sales  = $salesQuery->latest()->limit(50)->get();

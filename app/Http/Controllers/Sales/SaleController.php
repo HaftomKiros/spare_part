@@ -27,7 +27,7 @@ class SaleController extends Controller
             ->whereIn('warehouse_id', $accessibleIds);
 
         // Scope to current user's own sales within their warehouses
-        if (! $user->isAdmin()) {
+        if (! $user->seesAllUsers()) {
             $query->where('user_id', $user->id);
         }
 
@@ -54,7 +54,7 @@ class SaleController extends Controller
 
         $totalsQuery = Sale::where('status', 'completed')
             ->whereIn('warehouse_id', $accessibleIds);
-        if (! $user->isAdmin()) {
+        if (! $user->seesAllUsers()) {
             $totalsQuery->where('user_id', $user->id);
         }
         $totals = $totalsQuery

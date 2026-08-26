@@ -109,7 +109,8 @@ class RoleController extends Controller
         'settings.warehouses.delete'        => 'Settings — Warehouses: Delete',
 
         // ── ADMIN ─────────────────────────────────────────
-        'all'                               => 'Full Access (Admin)',
+        'warehouse.full_access'             => 'Full Warehouse Access (Manager — sees all users in assigned warehouses)',
+        'all'                               => 'Full Access (Super Admin — all warehouses, no restrictions)',
     ];
 
     public function index()
