@@ -410,47 +410,63 @@
         justify-content: center;
         gap: 0;
         transition: opacity 0.35s ease;
+        /* Own compositing layer — nothing outside can cause it to shake */
+        will-change: opacity;
+        isolation: isolate;
     }
     #pageLoader.hide {
         opacity: 0;
         pointer-events: none;
     }
 
-    /* Top progress bar */
+    /* Top progress bar — uses transform:scaleX (GPU) NOT width (layout) */
     #pageLoader .ldr-bar {
         position: absolute;
         top: 0; left: 0;
         height: 3px;
-        width: 0%;
+        width: 100%;                              /* full width, always */
+        transform-origin: left center;
+        transform: scaleX(0);                     /* start collapsed */
         background: linear-gradient(90deg, #5b4fcf, #a78bfa, #7c6fe0);
-        box-shadow: 0 0 12px rgba(124, 111, 224, 0.8);
+        box-shadow: 0 0 10px rgba(124,111,224,.7);
         animation: ldrBarGrow 8s cubic-bezier(.1,0,.2,1) forwards;
         border-radius: 0 2px 2px 0;
+        will-change: transform;
     }
     @keyframes ldrBarGrow {
-        0%   { width: 0%; }
-        60%  { width: 75%; }
-        90%  { width: 90%; }
-        100% { width: 92%; }
+        0%   { transform: scaleX(0); }
+        60%  { transform: scaleX(.75); }
+        90%  { transform: scaleX(.90); }
+        100% { transform: scaleX(.92); }
     }
 
-    /* Logo mark / icon */
+    /* Logo mark — pulse uses opacity ring only, NO scale (no layout shift) */
     #pageLoader .ldr-icon {
         width: 72px; height: 72px;
         background: linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%);
         border-radius: 20px;
         display: flex; align-items: center; justify-content: center;
         font-size: 1.9rem; color: #fff;
-        box-shadow: 0 0 0 0 rgba(124,111,224,.6);
-        animation: ldrPulse 1.8s ease-in-out infinite;
+        position: relative;
         margin-bottom: 28px;
+        will-change: transform;
     }
-    @keyframes ldrPulse {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(124,111,224,.55); transform: scale(1); }
-        50%       { box-shadow: 0 0 0 14px rgba(124,111,224,0); transform: scale(1.04); }
+    /* Glow ring as a pseudo-element — animates opacity only (GPU) */
+    #pageLoader .ldr-icon::after {
+        content: '';
+        position: absolute;
+        inset: -6px;
+        border-radius: 26px;
+        border: 2px solid rgba(124,111,224,.55);
+        animation: ldrRing 1.8s ease-in-out infinite;
+        will-change: opacity, transform;
+    }
+    @keyframes ldrRing {
+        0%, 100% { opacity: .6; transform: scale(1); }
+        50%       { opacity: 0; transform: scale(1.18); }
     }
 
-    /* Three dot track */
+    /* Three dots — translate Y only (GPU, no layout) */
     #pageLoader .ldr-dots {
         display: flex; gap: 8px; margin-bottom: 20px;
     }
@@ -459,12 +475,13 @@
         border-radius: 50%;
         background: #5b4fcf;
         animation: ldrDot 1.2s ease-in-out infinite;
+        will-change: transform, opacity;
     }
-    #pageLoader .ldr-dots span:nth-child(2) { animation-delay: .2s; background: #7c6fe0; }
-    #pageLoader .ldr-dots span:nth-child(3) { animation-delay: .4s; background: #a78bfa; }
+    #pageLoader .ldr-dots span:nth-child(2) { animation-delay: .15s; background: #7c6fe0; }
+    #pageLoader .ldr-dots span:nth-child(3) { animation-delay: .30s; background: #a78bfa; }
     @keyframes ldrDot {
-        0%, 80%, 100% { transform: scale(.7); opacity: .4; }
-        40%           { transform: scale(1.1); opacity: 1; }
+        0%, 80%, 100% { transform: translateY(0);    opacity: .35; }
+        40%           { transform: translateY(-6px); opacity: 1;   }
     }
 
     /* Label */
