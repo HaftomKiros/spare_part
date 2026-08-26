@@ -221,6 +221,7 @@
 </div>
 </div>
 
+@endsection
 @push('scripts')
 <script>
 // Auto-open transfer modal from button
@@ -246,4 +247,3 @@ document.getElementById('transferType')?.addEventListener('change', function() {
 });
 </script>
 @endpush
-@endsection

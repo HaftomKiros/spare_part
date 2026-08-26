@@ -159,6 +159,7 @@
 </div>
 </form>
 
+@endsection
 @push('scripts')
 <script>
 function updateMargin() {
@@ -173,4 +174,3 @@ document.getElementById('sellPrice')?.addEventListener('input', updateMargin);
 updateMargin();
 </script>
 @endpush
-@endsection

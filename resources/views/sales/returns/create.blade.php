@@ -114,6 +114,7 @@
 </div>
 </form>
 
+@endsection
 @push('scripts')
 <script>
 // Enable/disable ALL inputs in the row based on checkbox
@@ -153,4 +154,3 @@ document.getElementById('saleSelect')?.addEventListener('change', function () {
 });
 </script>
 @endpush
-@endsection

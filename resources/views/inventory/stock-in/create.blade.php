@@ -139,6 +139,7 @@
 </div>
 </div>
 
+@endsection
 @push('scripts')
 <script>
 const vehicleRadio = document.getElementById('typeVehicle');
@@ -232,4 +233,3 @@ document.addEventListener('DOMContentLoaded', function () {
 toggleSections(); // initial
 </script>
 @endpush
-@endsection

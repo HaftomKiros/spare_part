@@ -165,6 +165,7 @@
 </div>
 </form>
 
+@endsection
 @push('scripts')
 <script>
 // Live avatar preview before upload
@@ -178,4 +179,3 @@ document.getElementById('avatarInput').addEventListener('change', function () {
 });
 </script>
 @endpush
-@endsection

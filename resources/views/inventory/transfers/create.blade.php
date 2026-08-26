@@ -177,6 +177,8 @@
 </div>
 </div>
 
+@endsection
+
 @push('scripts')
 <script>
 const stockUrl          = '{{ route("inventory.transfers.warehouse-stock") }}';
@@ -336,4 +338,3 @@ document.addEventListener('DOMContentLoaded', function () {
 toggleType(); // init
 </script>
 @endpush
-@endsection

@@ -53,6 +53,7 @@
 </div>
 </div>
 </div>
+@endsection
 @push('scripts')
 <script>
 document.getElementById('iconInput')?.addEventListener('input', function() {
@@ -60,4 +61,3 @@ document.getElementById('iconInput')?.addEventListener('input', function() {
 });
 </script>
 @endpush
-@endsection

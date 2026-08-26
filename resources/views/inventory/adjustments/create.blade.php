@@ -164,6 +164,7 @@
 </div>
 </form>
 
+@endsection
 @push('scripts')
 <script>
 const warehouseStockUrl = '{{ route("inventory.stock-in.warehouse-stock") }}';
@@ -261,4 +262,3 @@ if (whSelect) {
 }
 </script>
 @endpush
-@endsection
