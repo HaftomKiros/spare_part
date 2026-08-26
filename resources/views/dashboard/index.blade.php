@@ -490,8 +490,8 @@
         <form method="GET" action="{{ route('dashboard') }}" id="whFabForm" class="whfab-form">
             {{-- Apply button ABOVE the select so it's always visible --}}
             <div class="whfab-actions">
-                <button type="submit" class="btn btn-primary flex-grow-1" id="whFabApply">
-                    <i class="fa fa-filter me-1"></i>Apply Filter
+                <button type="submit" class="btn btn-primary btn-sm" id="whFabApply">
+                    <i class="fa fa-filter me-1"></i>Apply
                 </button>
                 @if(!empty($hasFilter))
                 <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary">
