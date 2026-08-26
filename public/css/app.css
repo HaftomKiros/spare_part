@@ -611,6 +611,14 @@ body.sidebar-mobile-open .sidebar-overlay { display: block; }
     bottom: 28px;
     right: 28px;
     z-index: 1040;
+    /* Hidden until JS initialises Tom Select */
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity .3s ease;
+}
+#whFab.ready {
+    visibility: visible;
+    opacity: 1;
 }
 
 /* FAB main button */

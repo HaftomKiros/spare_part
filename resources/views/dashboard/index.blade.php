@@ -467,19 +467,19 @@
 
 {{-- ── Warehouse FAB (Floating Action Button) ────────────── --}}
 @if(isset($warehouses) && $warehouses->count() > 0)
-<div id="whFab">
+<div id="whFab" style="display:none">
 
     {{-- Backdrop --}}
-    <div id="whFabBackdrop" style="display:none"></div>
+    <div id="whFabBackdrop"></div>
 
     {{-- Panel --}}
-    <div id="whFabPanel" style="display:none">
+    <div id="whFabPanel">
         <div class="whfab-panel-header">
             <div class="d-flex align-items-center gap-2">
                 <div class="whfab-icon-sm"><i class="fa fa-warehouse"></i></div>
                 <div>
-                    <div class="fw-bold" style="font-size:.9rem">Filter by Warehouse</div>
-                    <div class="text-muted" style="font-size:.72rem">Select one or more warehouses</div>
+                    <div class="fw-bold" style="font-size:.9rem;color:#fff">Filter by Warehouse</div>
+                    <div style="font-size:.72rem;color:rgba(255,255,255,.75)">Select one or more warehouses</div>
                 </div>
             </div>
             <button type="button" id="whFabClose" class="whfab-close-btn">
@@ -488,11 +488,11 @@
         </div>
 
         <form method="GET" action="{{ route('dashboard') }}" id="whFabForm" class="whfab-form">
+            {{-- Do NOT set display:none here — Tom Select needs the select visible to init --}}
             <select name="warehouse_ids[]"
                     id="whFabSelect"
                     multiple
-                    placeholder="Search warehouses..."
-                    style="display:none">
+                    placeholder="Search warehouses...">
                 @foreach($warehouses as $wh)
                     <option value="{{ $wh->id }}"
                         {{ in_array($wh->id, $warehouseIds ?? []) ? 'selected' : '' }}>
@@ -633,6 +633,7 @@ if (mixCtx) {
 <script>
 // -- Warehouse FAB ------------------------------------
 (function () {
+    var fab      = document.getElementById('whFab');
     var btn      = document.getElementById('whFabBtn');
     var panel    = document.getElementById('whFabPanel');
     var backdrop = document.getElementById('whFabBackdrop');
@@ -643,6 +644,9 @@ if (mixCtx) {
     var fabIcon  = document.getElementById('whFabIcon');
 
     if (!btn || !panel || !selEl) return;
+
+    // Show the FAB wrapper (was hidden to avoid flash before CSS loads)
+    fab.style.display = 'block';
 
     // Init Tom Select
     var ts = new TomSelect(selEl, {
@@ -664,6 +668,9 @@ if (mixCtx) {
             }
         }
     });
+
+    // Show FAB button only after Tom Select is ready
+    fab.classList.add('ready');
 
     function openPanel() {
         panel.classList.add('open');
