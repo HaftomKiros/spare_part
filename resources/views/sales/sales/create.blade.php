@@ -256,6 +256,12 @@
 (function () {
     'use strict';
 
+    // Guard: if any init error occurs, at least prevent form from submitting without AJAX
+    document.addEventListener('DOMContentLoaded', function() {
+        var form = document.getElementById('saleForm');
+        if (form) form.addEventListener('submit', function(e) { e.preventDefault(); }, true);
+    });
+
     const WAREHOUSE_ITEMS_URL  = '{{ route("sales.ajax.warehouse-items") }}';
     const PURCHASE_BATCHES_URL = '{{ route("sales.ajax.purchase-batches") }}';
     const DEFAULT_WAREHOUSE    = '{{ $defaultWarehouse?->id }}';
@@ -871,9 +877,12 @@
     }
 
     document.getElementById('saleForm').addEventListener('submit', function (e) {
+        // Prevent default FIRST — before any logic that could throw
         e.preventDefault();
+        e.stopImmediatePropagation();
+
         const lines = validateAndBuildLines();
-        if (!lines) return; // validation error shown
+        if (!lines) return;
         showSaleConfirm(lines, submitSaleAjax);
     });
 

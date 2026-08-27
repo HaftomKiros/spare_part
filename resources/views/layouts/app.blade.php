@@ -541,6 +541,17 @@
         if (!navigating) hideLoader();
     });
 
+    // Fallback: also hide on DOMContentLoaded in case load never fires
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!navigating) {
+            // Give a short grace period for images/fonts then hide
+            setTimeout(function() { if (!navigating) hideLoader(); }, 300);
+        }
+    });
+
+    // Safety timeout — never leave loader stuck more than 5 seconds
+    setTimeout(function() { if (!navigating) hideLoader(); }, 5000);
+
     // Handle bfcache restores (back/forward navigation from browser cache)
     window.addEventListener('pageshow', function (e) {
         if (e.persisted) { navigating = false; hideLoader(); }
