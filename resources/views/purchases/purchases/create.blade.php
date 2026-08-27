@@ -50,11 +50,11 @@
     </div>
     @if($warehouses->count() > 1)
     <div class="col-md-4">
-        <label class="form-label">Warehouse / Stock Location <span class="text-danger">*</span></label>
+        <label class="form-label">Warehouse <span class="text-danger">*</span></label>
         <select name="warehouse_id" class="form-select ts-select" required>
             @foreach($warehouses as $wh)
                 <option value="{{ $wh->id }}" {{ $defaultWarehouse?->id == $wh->id ? 'selected' : '' }}>
-                    {{ $wh->name }} ({{ $wh->city ?? $wh->code }})
+                    {{ $wh->name }}{{ $wh->city ? ' ('.$wh->city.')' : '' }}
                 </option>
             @endforeach
         </select>
@@ -78,21 +78,8 @@
         <i class="fa fa-plus me-1"></i>Add Item
     </button>
 </div>
-<div class="table-responsive">
-<table class="table mb-0">
-    <thead>
-        <tr>
-            <th style="width:120px">Type</th>
-            <th>Item</th>
-            <th style="width:120px">Cost (Br)</th>
-            <th style="width:80px">Qty</th>
-            <th style="width:100px">Disc (Br)</th>
-            <th style="width:100px">Total (Br)</th>
-            <th style="width:40px"></th>
-        </tr>
-    </thead>
-    <tbody id="itemsContainer"></tbody>
-</table>
+<div class="card-body p-2" id="itemsContainer">
+    {{-- Cards injected by JS --}}
 </div>
 </div>
 
@@ -160,10 +147,37 @@
 </div>{{-- /row --}}
 </form>
 
+<style>
+.item-card {
+    background: #f8f9ff;
+    border: 1px solid #e2e6f0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    position: relative;
+}
+.item-card:last-child { margin-bottom: 0; }
+.item-card .item-num {
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--brand-1);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 10px;
+}
+.item-card .btn-remove-card {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    padding: 2px 8px;
+    font-size: .78rem;
+}
+</style>
+
 @endsection
 @push('scripts')
 <script>
-(function() {
+(function () {
     'use strict';
 
     const VEHICLES   = {!! $vehicleTypesJson !!};
@@ -183,23 +197,30 @@
     const taxInput      = document.getElementById('taxInput');
     const paidInput     = document.getElementById('paidInput');
 
+    // ── Build item options ─────────────────────────────────────────
     function buildOptionsHtml(type) {
-        let html = '<option value="">- Select item -</option>';
+        let html = '<option value="">— Select item —</option>';
         if (type === 'vehicle') {
+            if (!VEHICLES.length) return html + '<option disabled>No vehicles available</option>';
             VEHICLES.forEach(vt => {
                 if (!vt.models.length) return;
-                html += `<optgroup label="${vt.name}">`;
+                html += '<optgroup label="' + esc(vt.name) + '">';
                 vt.models.forEach(m => {
-                    html += `<option value="${m.id}" data-price="${m.price}">${m.name}</option>`;
+                    html += '<option value="' + m.id + '" data-price="' + m.price + '">'
+                         +  esc(m.name) + ' — Stock: ' + m.stock
+                         + '</option>';
                 });
                 html += '</optgroup>';
             });
-        } else if (type === 'spare_part') {
+        } else {
+            if (!CATEGORIES.length) return html + '<option disabled>No spare parts available</option>';
             CATEGORIES.forEach(cat => {
                 if (!cat.parts.length) return;
-                html += `<optgroup label="${cat.name}">`;
+                html += '<optgroup label="' + esc(cat.name) + '">';
                 cat.parts.forEach(p => {
-                    html += `<option value="${p.id}" data-price="${p.price}">${p.name}</option>`;
+                    html += '<option value="' + p.id + '" data-price="' + p.price + '">'
+                         +  esc(p.name) + ' — Stock: ' + p.stock + (p.unit ? ' ' + p.unit : '')
+                         + '</option>';
                 });
                 html += '</optgroup>';
             });
@@ -207,110 +228,136 @@
         return html;
     }
 
-    function createRow() {
+    // ── Create one item card ───────────────────────────────────────
+    function createCard() {
         const idx = rowCount++;
-        const tr  = document.createElement('tr');
-        tr.className = 'item-row';
+        const div = document.createElement('div');
+        div.className     = 'item-card';
+        div.dataset.index = idx;
 
-        tr.innerHTML = `
-            <td>
-                <input type="hidden" name="items[${idx}][item_type]"  class="inp-type"    value="">
-                <input type="hidden" name="items[${idx}][item_id]"    class="inp-item-id" value="">
-                <input type="hidden" name="items[${idx}][total]"      class="inp-total"   value="0">
-                <select class="form-select form-select-sm sel-type">
-                    <option value="">Select...</option>
-                    <option value="spare_part">Spare Part</option>
-                    <option value="vehicle">Vehicle</option>
-                </select>
-            </td>
-            <td>
-                <select class="form-select form-select-sm sel-item" disabled>
-                    <option value="">- Choose type first -</option>
-                </select>
-            </td>
-            <td>
-                <input type="number" name="items[${idx}][unit_price]"
-                       class="form-control form-control-sm inp-price"
-                       value="0.00" min="0" step="0.01">
-            </td>
-            <td>
-                <input type="number" name="items[${idx}][quantity]"
-                       class="form-control form-control-sm inp-qty"
-                       value="1" min="1">
-            </td>
-            <td>
-                <input type="number" name="items[${idx}][discount]"
-                       class="form-control form-control-sm inp-disc"
-                       value="0.00" min="0" step="0.01">
-            </td>
-            <td class="fw-semibold lbl-total">0.00</td>
-            <td>
-                <button type="button" class="btn btn-sm btn-outline-danger btn-remove" style="padding:3px 8px">
-                    <i class="fa fa-times"></i>
-                </button>
-            </td>
-        `;
+        div.innerHTML =
+            // Hidden inputs
+            '<input type="hidden" name="items[' + idx + '][item_type]" class="inp-type"    value="">' +
+            '<input type="hidden" name="items[' + idx + '][item_id]"   class="inp-item-id" value="">' +
+            '<input type="hidden" name="items[' + idx + '][total]"     class="inp-total"   value="0">' +
 
-        bindRow(tr);
-        return tr;
+            // Row number + remove button
+            '<div class="item-num">Item #' + (idx + 1) + '</div>' +
+            '<button type="button" class="btn btn-sm btn-outline-danger btn-remove-card" title="Remove">' +
+                '<i class="fa fa-times"></i>' +
+            '</button>' +
+
+            // Row 1: Type + Item (full width)
+            '<div class="row g-2 mb-2">' +
+                '<div class="col-sm-3 col-md-2">' +
+                    '<label class="form-label small mb-1">Type</label>' +
+                    '<select class="form-select form-select-sm sel-type">' +
+                        '<option value="">Select…</option>' +
+                        '<option value="spare_part">Spare Part</option>' +
+                        '<option value="vehicle">Vehicle</option>' +
+                    '</select>' +
+                '</div>' +
+                '<div class="col-sm-9 col-md-10">' +
+                    '<label class="form-label small mb-1">Item</label>' +
+                    '<select class="form-select form-select-sm sel-item" disabled>' +
+                        '<option value="">— Choose type first —</option>' +
+                    '</select>' +
+                '</div>' +
+            '</div>' +
+
+            // Row 2: Cost + Qty + Disc + Total
+            '<div class="row g-2 align-items-end">' +
+                '<div class="col-6 col-sm-3">' +
+                    '<label class="form-label small mb-1">Cost (Br)</label>' +
+                    '<input type="number" name="items[' + idx + '][unit_price]"' +
+                           ' class="form-control form-control-sm inp-price" value="0.00" min="0" step="0.01">' +
+                '</div>' +
+                '<div class="col-6 col-sm-2">' +
+                    '<label class="form-label small mb-1">Qty</label>' +
+                    '<input type="number" name="items[' + idx + '][quantity]"' +
+                           ' class="form-control form-control-sm inp-qty" value="1" min="1">' +
+                '</div>' +
+                '<div class="col-6 col-sm-3">' +
+                    '<label class="form-label small mb-1">Discount (Br)</label>' +
+                    '<input type="number" name="items[' + idx + '][discount]"' +
+                           ' class="form-control form-control-sm inp-disc" value="0.00" min="0" step="0.01">' +
+                '</div>' +
+                '<div class="col-6 col-sm-4">' +
+                    '<label class="form-label small mb-1">Line Total</label>' +
+                    '<div class="form-control form-control-sm bg-light fw-semibold lbl-total" style="color:var(--brand-1)">Br 0.00</div>' +
+                '</div>' +
+            '</div>';
+
+        bindCard(div);
+        return div;
     }
 
-    function bindRow(tr) {
-        const selType   = tr.querySelector('.sel-type');
-        const selItem   = tr.querySelector('.sel-item');
-        const inpType   = tr.querySelector('.inp-type');
-        const inpItemId = tr.querySelector('.inp-item-id');
-        const inpPrice  = tr.querySelector('.inp-price');
-        const inpQty    = tr.querySelector('.inp-qty');
-        const inpDisc   = tr.querySelector('.inp-disc');
-        const inpTotal  = tr.querySelector('.inp-total');
-        const lblTotal  = tr.querySelector('.lbl-total');
-        const btnRemove = tr.querySelector('.btn-remove');
+    // ── Bind events ────────────────────────────────────────────────
+    function bindCard(card) {
+        const selType   = card.querySelector('.sel-type');
+        const selItem   = card.querySelector('.sel-item');
+        const inpType   = card.querySelector('.inp-type');
+        const inpItemId = card.querySelector('.inp-item-id');
+        const inpPrice  = card.querySelector('.inp-price');
+        const inpQty    = card.querySelector('.inp-qty');
+        const inpDisc   = card.querySelector('.inp-disc');
+        const inpTotal  = card.querySelector('.inp-total');
+        const lblTotal  = card.querySelector('.lbl-total');
+        const btnRemove = card.querySelector('.btn-remove-card');
 
         function updateRowTotal() {
             const qty   = Math.max(0, parseFloat(inpQty.value)   || 0);
             const price = Math.max(0, parseFloat(inpPrice.value) || 0);
             const disc  = Math.max(0, parseFloat(inpDisc.value)  || 0);
             const total = Math.max(0, (qty * price) - disc);
-            lblTotal.textContent = total.toFixed(2);
+            lblTotal.textContent = 'Br ' + total.toFixed(2);
             inpTotal.value       = total.toFixed(2);
             recalcTotals();
         }
 
-        selType.addEventListener('change', function() {
+        selType.addEventListener('change', function () {
             const type    = this.value;
-            inpType.value = type;
+            inpType.value   = type;
             inpItemId.value = '';
             inpPrice.value  = '0.00';
             if (type) {
                 selItem.innerHTML = buildOptionsHtml(type);
                 selItem.disabled  = false;
             } else {
-                selItem.innerHTML = '<option value="">- Choose type first -</option>';
+                selItem.innerHTML = '<option value="">— Choose type first —</option>';
                 selItem.disabled  = true;
             }
             updateRowTotal();
         });
 
-        selItem.addEventListener('change', function() {
+        selItem.addEventListener('change', function () {
             inpItemId.value = this.value;
             const opt = this.options[this.selectedIndex];
-            inpPrice.value  = this.value ? parseFloat(opt.dataset.price || 0).toFixed(2) : '0.00';
+            inpPrice.value = this.value ? parseFloat(opt.dataset.price || 0).toFixed(2) : '0.00';
             updateRowTotal();
         });
 
-        inpPrice.addEventListener('input', updateRowTotal);
-        inpQty.addEventListener('input',   updateRowTotal);
-        inpDisc.addEventListener('input',  updateRowTotal);
+        [inpPrice, inpQty, inpDisc].forEach(el => el.addEventListener('input', updateRowTotal));
 
-        btnRemove.addEventListener('click', function() {
-            if (container.querySelectorAll('.item-row').length > 1) {
-                tr.remove();
+        btnRemove.addEventListener('click', function () {
+            if (container.querySelectorAll('.item-card').length > 1) {
+                card.remove();
+                renumberCards();
                 recalcTotals();
+            } else {
+                alert('At least one item is required.');
             }
         });
     }
 
+    // ── Renumber after removal ─────────────────────────────────────
+    function renumberCards() {
+        container.querySelectorAll('.item-card .item-num').forEach((el, i) => {
+            el.textContent = 'Item #' + (i + 1);
+        });
+    }
+
+    // ── Grand total recalc ─────────────────────────────────────────
     function recalcTotals() {
         let subtotal = 0;
         container.querySelectorAll('.inp-total').forEach(el => {
@@ -323,38 +370,46 @@
         const paid     = Math.max(0, parseFloat(paidInput.value) || 0);
         const balance  = Math.max(0, total - paid);
 
-        subtotalEl.textContent  = subtotal.toFixed(2);
-        totalEl.textContent     = total.toFixed(2);
-        balanceEl.textContent   = balance.toFixed(2);
-        subtotalInput.value     = subtotal.toFixed(2);
-        taxAmtInput.value       = taxAmt.toFixed(2);
-        totalInput.value        = total.toFixed(2);
-        balanceInput.value      = balance.toFixed(2);
+        subtotalEl.textContent = subtotal.toFixed(2);
+        totalEl.textContent    = total.toFixed(2);
+        balanceEl.textContent  = balance.toFixed(2);
+        subtotalInput.value    = subtotal.toFixed(2);
+        taxAmtInput.value      = taxAmt.toFixed(2);
+        totalInput.value       = total.toFixed(2);
+        balanceInput.value     = balance.toFixed(2);
     }
 
-    document.getElementById('purchaseForm').addEventListener('submit', function(e) {
-        let valid = true;
-        container.querySelectorAll('.item-row').forEach(row => {
-            const type = row.querySelector('.inp-type').value;
-            const id   = row.querySelector('.inp-item-id').value;
+    // ── Submit validation ──────────────────────────────────────────
+    document.getElementById('purchaseForm').addEventListener('submit', function (e) {
+        let valid  = true;
+        let errors = [];
+
+        container.querySelectorAll('.item-card').forEach(card => {
+            const type = card.querySelector('.inp-type').value;
+            const id   = card.querySelector('.inp-item-id').value;
             if (!type || !id) {
                 valid = false;
-                row.querySelector('.sel-type').style.borderColor = '#dc2626';
-                row.querySelector('.sel-item').style.borderColor = '#dc2626';
+                card.querySelector('.sel-type').style.borderColor = '#dc2626';
+                card.querySelector('.sel-item').style.borderColor = '#dc2626';
+                errors.push('Please select a type and item for every row.');
             }
         });
-        if (!valid) {
-            e.preventDefault();
-            alert('Please select a type and item for every row.');
-        }
+
+        if (!valid) { e.preventDefault(); alert(errors[0]); }
     });
 
-    document.getElementById('addItemBtn').addEventListener('click', function() {
-        container.appendChild(createRow());
+    // ── Helpers ───────────────────────────────────────────────────
+    function esc(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── Wire up buttons ────────────────────────────────────────────
+    document.getElementById('addItemBtn').addEventListener('click', function () {
+        container.appendChild(createCard());
         recalcTotals();
     });
 
-    document.getElementById('payFullBtn').addEventListener('click', function() {
+    document.getElementById('payFullBtn').addEventListener('click', function () {
         paidInput.value = totalInput.value;
         recalcTotals();
     });
@@ -363,8 +418,8 @@
     taxInput.addEventListener('input',      recalcTotals);
     paidInput.addEventListener('input',     recalcTotals);
 
-    // Init with one row
-    container.appendChild(createRow());
+    // ── Init ───────────────────────────────────────────────────────
+    container.appendChild(createCard());
     recalcTotals();
 
 })();
