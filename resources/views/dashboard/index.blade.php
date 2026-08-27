@@ -523,8 +523,8 @@ if(auth()->user()->hasPermission('reports.profit'))
 <script>
 // -- Sales Trend Line Chart -----------------------
 const trendCtx = document.getElementById('salesTrendChart');
-if (trendCtx) {
-    new Chart(trendCtx, {
+if (trendCtx && !trendCtx._chartInstance) {
+    trendCtx._chartInstance = new Chart(trendCtx, {
         type: 'line',
         data: {
             labels: @json($chartLabels),
@@ -585,8 +585,8 @@ if (trendCtx) {
 
 // -- Sales Mix Donut ------------------------------
 const mixCtx = document.getElementById('salesMixChart');
-if (mixCtx) {
-    new Chart(mixCtx, {
+if (mixCtx && !mixCtx._chartInstance) {
+    mixCtx._chartInstance = new Chart(mixCtx, {
         type: 'doughnut',
         data: {
             labels: ['Vehicles', 'Spare Parts'],
@@ -681,15 +681,14 @@ if (mixCtx) {
     if (closeBtn) closeBtn.addEventListener('click', closePanel);
     backdrop.addEventListener('click', closePanel);
 
-    // Show loader on submit
+    // Disable apply button on submit to prevent double-click
+    // (the global loader script already shows the page loader)
     if (form) {
         form.addEventListener('submit', function () {
             if (applyBtn) {
                 applyBtn.disabled = true;
                 applyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading...';
             }
-            var loader = document.getElementById('pageLoader');
-            if (loader) { loader.style.display = 'flex'; loader.classList.remove('hide'); }
         });
     }
 })();
