@@ -7,7 +7,7 @@
 @section('content')
 @include('partials.page-header',['title'=>'New Sale','subtitle'=>'Invoice '.$invoice])
 
-<form method="POST" action="{{ route('sales.store') }}" id="saleForm">
+<form method="POST" action="{{ route('sales.store') }}" id="saleForm" data-no-loader>
 @csrf
 
 @if($poNumber)
@@ -708,7 +708,7 @@
     document.getElementById('saleForm').addEventListener('submit', function (e) {
         let valid  = true;
         let errors = [];
-        let confirmLines = []; // items to show in confirmation popup
+        let confirmLines = [];
 
         container.querySelectorAll('.item-card').forEach(card => {
             const type    = card.querySelector('.inp-type').value;
@@ -721,8 +721,6 @@
             const price   = parseFloat(inpPr?.value || 0);
             const priceMin = parseFloat(inpPr?.dataset.priceMin || 0);
             const priceMax = parseFloat(inpPr?.dataset.priceMax || 0);
-            const buyPrice = parseFloat(inpPr?.dataset.buyPrice || 0);
-            const itemName = inpPr?.dataset.itemName || 'Item';
 
             if ((noStock && noStock.style.display !== 'none' && noStock.style.display !== '') ||
                 (noBatch && noBatch.style.display !== 'none' && noBatch.style.display !== '')) {
@@ -740,33 +738,31 @@
                 errors.push('Quantity exceeds available stock for one or more items.');
                 return;
             }
-
             // Price range validation
             if (priceMin > 0 && price < priceMin) {
                 valid = false;
                 inpPr.style.borderColor = '#dc2626';
-                errors.push('"' + itemName + '": price Br ' + price.toFixed(2) + ' is below the minimum allowed price of Br ' + priceMin.toFixed(2) + '.');
+                errors.push('"' + (card.querySelector('.sel-item')?.options[card.querySelector('.sel-item').selectedIndex]?.text?.split(' — ')[0] || 'Item')
+                    + '": price Br ' + price.toFixed(2) + ' is below the minimum of Br ' + priceMin.toFixed(2) + '.');
                 return;
             }
+            if (inpPr) inpPr.style.borderColor = '';
 
-            // Build confirmation line for ALL sale items
-            // Get purchase unit price from selected batch
-            const selBatch = card.querySelector('.sel-batch');
-            const batchOpt = selBatch ? selBatch.options[selBatch.selectedIndex] : null;
+            // Build confirmation line
+            const selBatch     = card.querySelector('.sel-batch');
+            const batchOpt     = selBatch ? selBatch.options[selBatch.selectedIndex] : null;
             const batchUnitPrice = parseFloat(batchOpt?.dataset?.unitPrice || 0);
-
-            // Get item name from the selected item option text (cleaner than dataset)
-            const selItem = card.querySelector('.sel-item');
-            const selItemOpt = selItem ? selItem.options[selItem.selectedIndex] : null;
-            const resolvedName = selItemOpt ? selItemOpt.text.split(' — ')[0] : (inpPr?.dataset.itemName || 'Item');
+            const selItem      = card.querySelector('.sel-item');
+            const selItemOpt   = selItem ? selItem.options[selItem.selectedIndex] : null;
+            const resolvedName = selItemOpt ? selItemOpt.text.split(' — ')[0] : 'Item';
 
             confirmLines.push({
-                name:           resolvedName,
-                qty:            qty,
-                price:          price,
-                priceMin:       priceMin,
-                priceMax:       priceMax,
-                batchUnitPrice: batchUnitPrice,
+                name:            resolvedName,
+                qty:             qty,
+                price:           price,
+                priceMin:        priceMin,
+                priceMax:        priceMax,
+                batchUnitPrice:  batchUnitPrice,
             });
         });
 
@@ -776,15 +772,14 @@
             return;
         }
 
-        // Show confirmation modal if there are items with price info
-        if (confirmLines.length > 0 && !this.dataset.confirmed) {
-            e.preventDefault();
-            const form = this;
-            showSaleConfirm(confirmLines, function() {
-                form.dataset.confirmed = '1';
-                form.submit();
-            });
-        }
+        // Always show confirmation modal — prevent default, show modal, submit from modal OK
+        e.preventDefault();
+        const form = this;
+        showSaleConfirm(confirmLines, function() {
+            // Show loader now that user confirmed
+            if (typeof showLoader === 'function') showLoader();
+            form.submit();
+        });
     });
 
     function esc(str) {
@@ -801,36 +796,43 @@
         // Build item cards
         body.innerHTML = items.map(function(item) {
             const priceRange = (item.priceMin > 0 || item.priceMax > 0)
-                ? '<span style="color:#94a3b8;font-size:.78rem;margin-left:6px">range: Br '
-                  + item.priceMin.toFixed(2) + ' – Br ' + item.priceMax.toFixed(2) + '</span>'
+                ? '<div style="color:#94a3b8;font-size:.72rem;margin-top:2px">range: Br '
+                  + item.priceMin.toFixed(2) + ' – Br ' + item.priceMax.toFixed(2) + '</div>'
                 : '';
 
-            // Get purchase price from the batch dropdown data-unit-price if available
-            const batchSel = document.querySelector('.sel-batch');
-            const purchasePrice = item.batchUnitPrice > 0
-                ? 'Br ' + parseFloat(item.batchUnitPrice).toFixed(2)
-                : '—';
+            const profit     = item.batchUnitPrice > 0 ? (item.price - item.batchUnitPrice) * item.qty : null;
+            const isProfit   = profit !== null && profit >= 0;
+            const profitColor = profit === null ? '#94a3b8' : (isProfit ? '#16a34a' : '#dc2626');
+            const profitLabel = profit === null ? '—'
+                : (isProfit ? '+Br ' : '-Br ') + Math.abs(profit).toFixed(2);
+            const profitText  = profit === null ? 'N/A' : (isProfit ? 'Profit' : 'Loss');
 
             return '<div style="background:#f8f9ff;border:1px solid #e2e6f0;border-radius:10px;padding:14px 16px">'
                 + '<div style="font-weight:700;color:#1e293b;margin-bottom:10px;font-size:.95rem">'
                 + '<i class="fa fa-gears me-2" style="color:#6366f1;font-size:.85rem"></i>' + item.name
                 + '</div>'
-                + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+                + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">'
 
                 + '<div style="background:#fff;border:1px solid #e2e6f0;border-radius:8px;padding:10px;text-align:center">'
-                + '<div style="font-size:.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Purchase Price</div>'
-                + '<div style="font-weight:700;color:#475569;font-size:.95rem">Br ' + item.batchUnitPrice.toFixed(2) + '</div>'
+                + '<div style="font-size:.68rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Purchase</div>'
+                + '<div style="font-weight:700;color:#475569;font-size:.9rem">'
+                + (item.batchUnitPrice > 0 ? 'Br ' + item.batchUnitPrice.toFixed(2) : '—') + '</div>'
                 + '</div>'
 
                 + '<div style="background:#fff;border:1px solid #e2e6f0;border-radius:8px;padding:10px;text-align:center">'
-                + '<div style="font-size:.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Sell Price</div>'
-                + '<div style="font-weight:700;color:#6366f1;font-size:.95rem">Br ' + item.price.toFixed(2) + '</div>'
-                + (priceRange ? '<div>' + priceRange + '</div>' : '')
+                + '<div style="font-size:.68rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Sell Price</div>'
+                + '<div style="font-weight:700;color:#6366f1;font-size:.9rem">Br ' + item.price.toFixed(2) + '</div>'
+                + priceRange
                 + '</div>'
 
                 + '<div style="background:#fff;border:1px solid #e2e6f0;border-radius:8px;padding:10px;text-align:center">'
-                + '<div style="font-size:.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Qty</div>'
-                + '<div style="font-weight:700;color:#1e293b;font-size:.95rem">' + item.qty + '</div>'
+                + '<div style="font-size:.68rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Qty</div>'
+                + '<div style="font-weight:700;color:#1e293b;font-size:.9rem">' + item.qty + '</div>'
+                + '</div>'
+
+                + '<div style="background:#fff;border:1px solid #e2e6f0;border-radius:8px;padding:10px;text-align:center">'
+                + '<div style="font-size:.68rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">' + profitText + '</div>'
+                + '<div style="font-weight:700;font-size:.9rem;color:' + profitColor + '">' + profitLabel + '</div>'
                 + '</div>'
 
                 + '</div>'

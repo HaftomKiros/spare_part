@@ -563,6 +563,7 @@
     // Show when a full-page form is submitted
     document.addEventListener('submit', function (e) {
         if (e.target.dataset.ajax) return;
+        if (e.target.dataset.noLoader) return;
         showLoader();
     });
 })();
