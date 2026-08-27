@@ -82,9 +82,14 @@
 </div>
 <div class="table-responsive">
 <table class="table">
-    <thead><tr><th>#</th><th>Item</th><th>Type</th><th>Unit Cost</th><th>Qty</th><th>Disc</th><th>Total</th></tr></thead>
+    <thead><tr><th>#</th><th>Item</th><th>Type</th><th>Unit Cost</th><th>Qty</th><th>Total Sold</th><th>Remaining</th><th>Disc</th><th>Total</th></tr></thead>
     <tbody>
         @foreach($purchase->items as $i => $item)
+        @php
+            $remaining = max(0, $item->quantity - $item->total_sold);
+            $isFullySold = $remaining === 0 && $item->quantity > 0;
+            $isPartial   = $item->total_sold > 0 && $remaining > 0;
+        @endphp
         <tr>
             <td class="text-muted">{{ $i+1 }}</td>
             <td>
@@ -94,6 +99,16 @@
             <td><span class="badge bg-{{ $item->item_type==='vehicle'?'primary':'success' }} bg-opacity-15 text-{{ $item->item_type==='vehicle'?'primary':'success' }}">{{ ucfirst(str_replace('_',' ',$item->item_type)) }}</span></td>
             <td>Br {{ number_format($item->unit_price,2) }}</td>
             <td class="fw-semibold">{{ $item->quantity }}</td>
+            <td>
+                <span class="fw-semibold {{ $item->total_sold > 0 ? 'text-danger' : 'text-muted' }}">
+                    {{ $item->total_sold }}
+                </span>
+            </td>
+            <td>
+                <span class="fw-semibold {{ $isFullySold ? 'text-danger' : ($isPartial ? 'text-warning' : 'text-success') }}">
+                    {{ $remaining }}
+                </span>
+            </td>
             <td>{{ $item->discount > 0 ? 'Br '.number_format($item->discount,2) : '—' }}</td>
             <td class="fw-semibold">Br {{ number_format($item->total,2) }}</td>
         </tr>
@@ -101,7 +116,7 @@
     </tbody>
     <tfoot>
         <tr class="table-light">
-            <td colspan="6" class="text-end fw-bold">Grand Total</td>
+            <td colspan="8" class="text-end fw-bold">Grand Total</td>
             <td class="fw-bold text-primary fs-6">Br {{ number_format($purchase->total,2) }}</td>
         </tr>
     </tfoot>

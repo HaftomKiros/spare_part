@@ -303,6 +303,7 @@ class StockService
 
     /**
      * Process stock for a completed sale (deduct from warehouse).
+     * Also increments total_sold on matching purchase_items using FIFO order.
      */
     public function processSaleStock(\App\Models\Sale $sale): void
     {
@@ -315,6 +316,7 @@ class StockService
                     "Sale #{$sale->invoice_number}",
                     $sale->warehouse_id
                 );
+                $this->incrementPurchaseItemSold('vehicle', $item->vehicle_model_id, $sale->warehouse_id, $item->quantity);
             } elseif ($item->item_type === 'spare_part' && $item->sparePart) {
                 $this->decreasePartStock(
                     $item->sparePart, $item->quantity, 'sale',
@@ -323,7 +325,58 @@ class StockService
                     "Sale #{$sale->invoice_number}",
                     $sale->warehouse_id
                 );
+                $this->incrementPurchaseItemSold('spare_part', $item->spare_part_id, $sale->warehouse_id, $item->quantity);
             }
+        }
+    }
+
+    /**
+     * Distribute a sold quantity across purchase_items using FIFO.
+     *
+     * Finds purchase items for the given item (part or vehicle) in the same
+     * warehouse, ordered oldest purchase first. For each purchase item that
+     * still has remaining stock (quantity - total_sold > 0), fills as much of
+     * the sold quantity as possible and moves on to the next batch.
+     */
+    private function incrementPurchaseItemSold(
+        string $itemType,
+        int $itemId,
+        ?int $warehouseId,
+        int $qtySold
+    ): void {
+        if ($qtySold <= 0) return;
+
+        $column = $itemType === 'vehicle' ? 'vehicle_model_id' : 'spare_part_id';
+
+        // Load purchase items oldest-first that still have remaining qty
+        $purchaseItems = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('pi.item_type', $itemType)
+            ->where("pi.{$column}", $itemId)
+            ->where('p.status', 'received')
+            ->when($warehouseId, fn($q) => $q->where('p.warehouse_id', $warehouseId))
+            ->whereRaw('pi.quantity > pi.total_sold')
+            ->orderBy('p.purchase_date')
+            ->orderBy('pi.id')
+            ->select('pi.id', 'pi.quantity', 'pi.total_sold')
+            ->get();
+
+        $remaining = $qtySold;
+
+        foreach ($purchaseItems as $pi) {
+            if ($remaining <= 0) break;
+
+            $available = $pi->quantity - $pi->total_sold;
+            $toAdd     = min($remaining, $available);
+
+            DB::table('purchase_items')
+                ->where('id', $pi->id)
+                ->update([
+                    'total_sold' => $pi->total_sold + $toAdd,
+                    'updated_at' => now(),
+                ]);
+
+            $remaining -= $toAdd;
         }
     }
 
