@@ -807,37 +807,61 @@
 
     // ── Submit via AJAX ────────────────────────────────────────────
     function submitSaleAjax() {
-        const form    = document.getElementById('saleForm');
-        const btnOk   = document.getElementById('saleConfirmOk');
+        const form   = document.getElementById('saleForm');
+        const btnOk  = document.getElementById('saleConfirmOk');
+
+        // Re-enable ALL disabled inputs so FormData includes them
+        form.querySelectorAll('input:disabled, select:disabled, textarea:disabled').forEach(function(el) {
+            el.disabled = false;
+        });
+
+        // Fix TomSelect — it hides original selects; force sync values back
+        form.querySelectorAll('.ts-select').forEach(function(sel) {
+            if (sel._tomSelect) sel._tomSelect.sync();
+        });
+
         const formData = new FormData(form);
 
-        // Show loading state on button
+        // Show loading state on OK button
         btnOk.disabled  = true;
         btnOk.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i>Processing…';
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+                       || document.querySelector('input[name="_token"]')?.value || '';
 
         fetch(form.action, {
             method:  'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept':           'application/json',
-                'X-CSRF-TOKEN':     document.querySelector('meta[name="csrf-token"]')?.content
-                                    || document.querySelector('input[name="_token"]')?.value || '',
+                'X-CSRF-TOKEN':     csrfToken,
             },
             body: formData,
         })
         .then(function(response) {
             return response.json().then(function(data) {
-                return { ok: response.ok, status: response.status, data };
+                return { ok: response.ok, data: data };
+            }).catch(function() {
+                // Non-JSON response
+                throw new Error('Unexpected server response. Please try again.');
             });
         })
-        .then(function({ ok, status, data }) {
-            if (ok && data.redirect) {
-                window.location.href = data.redirect;
+        .then(function(result) {
+            if (result.ok && result.data.redirect) {
+                // Success — navigate to sale show page
+                window.location.href = result.data.redirect;
             } else {
-                throw new Error(data.message || data.errors ? Object.values(data.errors || {})[0]?.[0] : 'Failed to save sale.');
+                // Server returned an error in JSON
+                var msg = result.data.message || '';
+                if (!msg && result.data.errors) {
+                    var firstKey = Object.keys(result.data.errors)[0];
+                    msg = result.data.errors[firstKey][0] || 'Validation failed.';
+                }
+                throw new Error(msg || 'Failed to save sale. Please check your input.');
             }
         })
         .catch(function(err) {
+            // Close confirm modal, reset button, show error modal
             document.getElementById('saleConfirmModal').style.display = 'none';
             document.body.style.overflow = '';
             btnOk.disabled  = false;
