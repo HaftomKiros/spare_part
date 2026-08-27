@@ -84,7 +84,9 @@
                     <span class="stock-pill in-stock">In Stock</span>
                 @endif
             </td>
-            <td class="text-muted small">—</td>
+            <td class="text-muted small">
+                {{ $p->last_purchase_price > 0 ? 'Br '.number_format($p->current_stock * $p->last_purchase_price, 2) : '—' }}
+            </td>
         </tr>
         @empty
         <tr><td colspan="7" class="text-center text-muted py-4">No spare parts in this warehouse yet.</td></tr>

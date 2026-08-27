@@ -79,10 +79,7 @@ class Warehouse extends Model
 
     public function getTotalStockValueAttribute(): float
     {
-        $parts = \DB::table('warehouse_spare_part_stock as ws')
-            ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
-            ->where('ws.warehouse_id', $this->id)
-            ->sum(\DB::raw('ws.current_stock * sp.buying_price'));
+        $parts = \App\Services\StockService::partsStockValue([$this->id]);
 
         $vehicles = \DB::table('warehouse_vehicle_stock as wv')
             ->join('vehicle_models as vm', 'wv.vehicle_model_id', '=', 'vm.id')

@@ -69,6 +69,13 @@ class WarehouseController extends Controller
             ->orderBy('ws.current_stock')
             ->get();
 
+        // Attach last purchase price to each part row
+        $partIds    = $parts->pluck('id')->toArray();
+        $priceMap   = \App\Services\StockService::lastPurchasePriceMap($partIds);
+        $parts->each(function ($p) use ($priceMap) {
+            $p->last_purchase_price = $priceMap[$p->id] ?? 0;
+        });
+
         // Per-warehouse vehicle stock
         $vehicles = DB::table('warehouse_vehicle_stock as wv')
             ->join('vehicle_models as vm', 'wv.vehicle_model_id', '=', 'vm.id')

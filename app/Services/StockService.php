@@ -326,4 +326,71 @@ class StockService
             }
         }
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // Stock Value Helpers
+    // ──────────────────────────────────────────────────────────────
+
+    /**
+     * Returns a map of spare_part_id => last_purchase_unit_price
+     * built from purchase_items in a single query.
+     * Parts that have never been purchased map to 0.
+     */
+    public static function lastPurchasePriceMap(array $partIds = []): array
+    {
+        if (empty($partIds)) {
+            // Load all parts that have any purchase history
+            $partIds = DB::table('purchase_items')
+                ->whereNotNull('spare_part_id')
+                ->distinct()
+                ->pluck('spare_part_id')
+                ->toArray();
+        }
+
+        if (empty($partIds)) {
+            return [];
+        }
+
+        // For each spare_part_id get the unit_price from the most recent purchase
+        $rows = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->whereIn('pi.spare_part_id', $partIds)
+            ->whereNotNull('pi.spare_part_id')
+            ->select('pi.spare_part_id', 'pi.unit_price', 'p.purchase_date')
+            ->orderByDesc('p.purchase_date')
+            ->get()
+            ->unique('spare_part_id');    // keep only the latest per part
+
+        $map = [];
+        foreach ($rows as $row) {
+            $map[$row->spare_part_id] = (float) $row->unit_price;
+        }
+
+        return $map;
+    }
+
+    /**
+     * Calculate total parts stock value for given warehouse IDs
+     * using last purchase price per part.
+     */
+    public static function partsStockValue(array $warehouseIds = []): float
+    {
+        $query = DB::table('warehouse_spare_part_stock as ws')
+            ->select('ws.spare_part_id', 'ws.current_stock');
+
+        if (!empty($warehouseIds)) {
+            $query->whereIn('ws.warehouse_id', $warehouseIds);
+        }
+
+        $rows = $query->get();
+
+        if ($rows->isEmpty()) return 0.0;
+
+        $partIds = $rows->pluck('spare_part_id')->unique()->toArray();
+        $prices  = self::lastPurchasePriceMap($partIds);
+
+        return (float) $rows->sum(function ($row) use ($prices) {
+            return $row->current_stock * ($prices[$row->spare_part_id] ?? 0);
+        });
+    }
 }

@@ -179,7 +179,10 @@
                     {{ $isOut ? 'Out of Stock' : ($isLow ? 'Low Stock' : 'In Stock') }}
                 </span>
             </td>
-            <td class="text-muted small">—</td>
+            <td class="text-muted small">
+                @php $lp = $part->last_purchase_price ?? 0; @endphp
+                {{ $lp > 0 ? 'Br '.number_format($part->current_stock * $lp, 2) : '—' }}
+            </td>
             <td class="text-end">
                 <a href="{{ route('inventory.stock-in.create') }}" class="btn btn-action btn-outline-success" title="Add Stock">
                     <i class="fa fa-plus"></i>

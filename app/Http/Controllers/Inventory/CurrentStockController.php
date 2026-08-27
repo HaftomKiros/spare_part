@@ -95,10 +95,7 @@ class CurrentStockController extends Controller
 
             // ── Per-warehouse summary ─────────────────────
             $summary = [
-                'total_parts_value'    => DB::table('warehouse_spare_part_stock as ws')
-                    ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
-                    ->where('ws.warehouse_id', $warehouseId)
-                    ->sum(DB::raw('ws.current_stock * sp.buying_price')),
+                'total_parts_value'    => \App\Services\StockService::partsStockValue([$warehouseId]),
                 'total_vehicles_value' => DB::table('warehouse_vehicle_stock as wv')
                     ->join('vehicle_models as vm', 'wv.vehicle_model_id', '=', 'vm.id')
                     ->where('wv.warehouse_id', $warehouseId)
@@ -112,6 +109,13 @@ class CurrentStockController extends Controller
                 'out_vehicles' => DB::table('warehouse_vehicle_stock')->where('warehouse_id', $warehouseId)
                     ->where('current_stock', '<=', 0)->count(),
             ];
+
+            // Attach last purchase price to each part row for the stock value column
+            $partIds  = $parts->pluck('spare_part_id', 'id')->keys()->merge($parts->pluck('id'))->unique()->toArray();
+            $priceMap = \App\Services\StockService::lastPurchasePriceMap($parts->pluck('id')->toArray());
+            foreach ($parts as $part) {
+                $part->last_purchase_price = $priceMap[$part->id] ?? 0;
+            }
 
             $isWarehouseView = true;
         } else {
@@ -161,7 +165,7 @@ class CurrentStockController extends Controller
             $vehicles = $vehiclesQuery->orderBy('current_stock')->paginate(20, ['*'], 'vehicles_page')->withQueryString();
 
             $summary = [
-                'total_parts_value'    => SparePart::selectRaw('SUM(current_stock * buying_price)')->value('SUM(current_stock * buying_price)') ?? 0,
+                'total_parts_value'    => \App\Services\StockService::partsStockValue(),
                 'total_vehicles_value' => VehicleStock::join('vehicle_models','vehicle_stocks.vehicle_model_id','=','vehicle_models.id')
                                             ->selectRaw('SUM(vehicle_stocks.current_stock * vehicle_models.buying_price)')->value('SUM(vehicle_stocks.current_stock * vehicle_models.buying_price)') ?? 0,
                 'low_parts'     => SparePart::lowStock()->count(),
@@ -171,6 +175,16 @@ class CurrentStockController extends Controller
             ];
 
             $isWarehouseView = false;
+        }
+
+        // Attach last_purchase_price to parts for the Stock Value column in the view
+        if ($parts instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+            $ids      = $parts->getCollection()->pluck('id')->toArray();
+            $priceMap = \App\Services\StockService::lastPurchasePriceMap($ids);
+            $parts->getCollection()->each(function ($part) use ($priceMap) {
+                $id = is_object($part) && isset($part->id) ? $part->id : ($part['id'] ?? null);
+                $part->last_purchase_price = $priceMap[$id] ?? ($part->last_purchase_price ?? 0);
+            });
         }
 
         $categories   = PartCategory::active()->orderBy('name')->get();
