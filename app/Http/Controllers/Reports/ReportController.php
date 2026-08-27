@@ -306,14 +306,55 @@ class ReportController extends Controller
                 ->selectRaw('vm.id, vm.brand, vm.model_name, vm.model_code, vt.name as type_name, wv.current_stock, wv.reorder_level')
                 ->get();
 
-            // Wrap raw results so views can use consistent property access
             return view('reports.low-stock', compact('lowParts', 'outParts', 'lowVehicles', 'outVehicles', 'warehouses', 'warehouseId'));
         }
 
-        $lowParts = SparePart::with('category', 'unit')->lowStock()->active()->orderBy('current_stock')->get();
-        $outParts = SparePart::with('category', 'unit')->outOfStock()->active()->get();
-        $lowVehicles = VehicleStock::with('vehicleModel.vehicleType')->whereColumn('current_stock', '<=', 'reorder_level')->orderBy('current_stock')->get();
-        $outVehicles = VehicleStock::with('vehicleModel.vehicleType')->where('current_stock', '<=', 0)->get();
+        // All accessible warehouses — query the same warehouse stock tables
+        // the notification badge uses so counts always match what is displayed.
+        $lowParts = DB::table('warehouse_spare_part_stock as ws')
+            ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
+            ->join('part_categories as pc', 'sp.part_category_id', '=', 'pc.id')
+            ->join('units as u', 'sp.unit_id', '=', 'u.id')
+            ->whereIn('ws.warehouse_id', $accessibleIds)
+            ->where('ws.current_stock', '>', 0)
+            ->whereColumn('ws.current_stock', '<=', 'ws.reorder_level')
+            ->where('sp.status', 'active')
+            ->selectRaw('sp.id, sp.name, sp.part_number, pc.name as category, u.abbreviation as unit_abbr,
+                         MAX(ws.current_stock) as current_stock, MAX(ws.reorder_level) as reorder_level')
+            ->groupBy('sp.id', 'sp.name', 'sp.part_number', 'pc.name', 'u.abbreviation')
+            ->orderBy('current_stock')
+            ->get();
+
+        $outParts = DB::table('warehouse_spare_part_stock as ws')
+            ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
+            ->join('part_categories as pc', 'sp.part_category_id', '=', 'pc.id')
+            ->join('units as u', 'sp.unit_id', '=', 'u.id')
+            ->whereIn('ws.warehouse_id', $accessibleIds)
+            ->where('ws.current_stock', '<=', 0)
+            ->where('sp.status', 'active')
+            ->selectRaw('sp.id, sp.name, sp.part_number, pc.name as category, u.abbreviation as unit_abbr,
+                         ws.current_stock, ws.reorder_level')
+            ->get();
+
+        $lowVehicles = DB::table('warehouse_vehicle_stock as wv')
+            ->join('vehicle_models as vm', 'wv.vehicle_model_id', '=', 'vm.id')
+            ->join('vehicle_types as vt', 'vm.vehicle_type_id', '=', 'vt.id')
+            ->whereIn('wv.warehouse_id', $accessibleIds)
+            ->where('wv.current_stock', '>', 0)
+            ->whereColumn('wv.current_stock', '<=', 'wv.reorder_level')
+            ->selectRaw('vm.id, vm.brand, vm.model_name, vm.model_code, vt.name as type_name,
+                         wv.current_stock, wv.reorder_level')
+            ->orderBy('wv.current_stock')
+            ->get();
+
+        $outVehicles = DB::table('warehouse_vehicle_stock as wv')
+            ->join('vehicle_models as vm', 'wv.vehicle_model_id', '=', 'vm.id')
+            ->join('vehicle_types as vt', 'vm.vehicle_type_id', '=', 'vt.id')
+            ->whereIn('wv.warehouse_id', $accessibleIds)
+            ->where('wv.current_stock', '<=', 0)
+            ->selectRaw('vm.id, vm.brand, vm.model_name, vm.model_code, vt.name as type_name,
+                         wv.current_stock, wv.reorder_level')
+            ->get();
 
         return view('reports.low-stock', compact('lowParts', 'outParts', 'lowVehicles', 'outVehicles', 'warehouses', 'warehouseId'));
     }
