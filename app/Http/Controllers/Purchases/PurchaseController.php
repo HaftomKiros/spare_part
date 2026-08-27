@@ -209,7 +209,7 @@ class PurchaseController extends Controller
 
     public function show(Purchase $purchase)
     {
-        $purchase->load('supplier', 'user', 'items.vehicleModel.vehicleType', 'items.sparePart.category');
+        $purchase->load('supplier', 'user', 'warehouse', 'items.vehicleModel.vehicleType', 'items.sparePart.category');
         return view('purchases.purchases.show', compact('purchase'));
     }
 

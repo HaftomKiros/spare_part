@@ -10,6 +10,13 @@
 <form method="POST" action="{{ route('sales.store') }}" id="saleForm">
 @csrf
 
+@if($poNumber)
+<div class="alert alert-info py-2 mb-3 small">
+    <i class="fa fa-box me-1"></i>
+    Selling from purchase <strong>{{ $poNumber }}</strong> — items have been pre-loaded below. You can adjust quantities before completing.
+</div>
+@endif
+
 {{-- Hidden totals filled by JS before submit --}}
 <input type="hidden" name="subtotal" id="subtotalInput" value="0">
 <input type="hidden" name="tax"      id="taxAmountInput" value="0">
@@ -231,6 +238,14 @@
     const WAREHOUSE_ITEMS_URL  = '{{ route("sales.ajax.warehouse-items") }}';
     const PURCHASE_BATCHES_URL = '{{ route("sales.ajax.purchase-batches") }}';
     const DEFAULT_WAREHOUSE    = '{{ $defaultWarehouse?->id }}';
+    const PO_ITEMS             = {!! json_encode($poItems->values()->map(fn($i) => [
+        'item_type'        => $i->item_type,
+        'item_id'          => $i->item_type === 'vehicle' ? $i->vehicle_model_id : $i->spare_part_id,
+        'purchase_item_id' => $i->id,
+        'remaining'        => $i->quantity - $i->total_sold,
+        'unit_price'       => $i->unit_price,
+        'item_name'        => $i->item_name,
+    ])) !!};
 
     let VEHICLES        = [];
     let CATEGORIES      = [];
@@ -885,7 +900,56 @@
     checkSubmitBtn();
     recalcTotals();
     const defaultWh = getWarehouseId();
-    if (defaultWh) loadWarehouseItems(defaultWh, null);
+    if (defaultWh) {
+        loadWarehouseItems(defaultWh, function() {
+            // If coming from a PO, auto-populate items
+            if (PO_ITEMS && PO_ITEMS.length > 0) {
+                // Remove the blank first card
+                container.innerHTML = '';
+                rowCount = 0;
+
+                PO_ITEMS.forEach(function(poi) {
+                    const card = createCard();
+                    container.appendChild(card);
+
+                    // Set type
+                    const selType  = card.querySelector('.sel-type');
+                    selType.value  = poi.item_type;
+                    selType.dispatchEvent(new Event('change'));
+
+                    // After type triggers item load, set item + batch
+                    setTimeout(function() {
+                        const selItem = card.querySelector('.sel-item');
+                        if (selItem) {
+                            selItem.value = String(poi.item_id);
+                            selItem.dispatchEvent(new Event('change'));
+
+                            // After batches load, select the specific purchase_item_id
+                            setTimeout(function() {
+                                const selBatch = card.querySelector('.sel-batch');
+                                if (selBatch && poi.purchase_item_id) {
+                                    for (let i = 0; i < selBatch.options.length; i++) {
+                                        if (String(selBatch.options[i].value) === String(poi.purchase_item_id)) {
+                                            selBatch.selectedIndex = i;
+                                            selBatch.dispatchEvent(new Event('change'));
+                                            break;
+                                        }
+                                    }
+                                }
+                                // Set qty to remaining
+                                const inpQty = card.querySelector('.inp-qty');
+                                if (inpQty && poi.remaining > 0) {
+                                    inpQty.value = poi.remaining;
+                                    inpQty.dispatchEvent(new Event('input'));
+                                }
+                            }, 600);
+                        }
+                    }, 400);
+                });
+                recalcTotals();
+            }
+        });
+    }
 
 })();
 </script>

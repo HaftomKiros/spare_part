@@ -22,6 +22,9 @@
     <tr><th class="text-muted fw-normal">Supplier</th>
         <td><a href="{{ route('purchases.suppliers.show',$purchase->supplier) }}" class="text-primary">{{ $purchase->supplier->name }}</a></td>
     </tr>
+    <tr><th class="text-muted fw-normal">Warehouse</th>
+        <td class="fw-semibold">{{ $purchase->warehouse?->name ?? '—' }}</td>
+    </tr>
     <tr><th class="text-muted fw-normal">Date</th><td>{{ $purchase->purchase_date->format('M d, Y') }}</td></tr>
     <tr><th class="text-muted fw-normal">Due Date</th>
         <td class="{{ $purchase->due_date && $purchase->due_date->isPast() && $purchase->payment_status !== 'paid' ? 'text-danger' : '' }}">
@@ -68,17 +71,25 @@
 <div class="card">
 <div class="card-header">
     <span><i class="fa fa-list me-2 text-primary"></i>Items Purchased ({{ $purchase->items->count() }})</span>
-    @if($purchase->status !== 'received')
-    <form method="POST" action="{{ route('purchases.receive',$purchase) }}" class="d-inline">
-        @csrf
-        <button type="submit" class="btn btn-sm btn-success"
-                onclick="return confirm('Mark as received and update stock?')">
-            <i class="fa fa-check me-1"></i>Mark Received
-        </button>
-    </form>
-    @else
-    <span class="badge bg-success"><i class="fa fa-check me-1"></i>Stock Updated</span>
-    @endif
+    <div class="d-flex align-items-center gap-2">
+        @if($purchase->status === 'received' && $purchase->items->sum(fn($i) => $i->quantity - $i->total_sold) > 0)
+        <a href="{{ route('sales.create', ['po_number' => $purchase->purchase_number, 'warehouse_id' => $purchase->warehouse_id]) }}"
+           class="btn btn-sm btn-outline-success">
+            <i class="fa fa-cart-plus me-1"></i>Sell from this PO
+        </a>
+        @endif
+        @if($purchase->status !== 'received')
+        <form method="POST" action="{{ route('purchases.receive',$purchase) }}" class="d-inline">
+            @csrf
+            <button type="submit" class="btn btn-sm btn-success"
+                    onclick="return confirm('Mark as received and update stock?')">
+                <i class="fa fa-check me-1"></i>Mark Received
+            </button>
+        </form>
+        @else
+        <span class="badge bg-success"><i class="fa fa-check me-1"></i>Stock Updated</span>
+        @endif
+    </div>
 </div>
 <div class="table-responsive">
 <table class="table">

@@ -64,15 +64,34 @@ class SaleController extends Controller
         return view('sales.sales.index', compact('sales', 'totals'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $customers        = Customer::active()->orderBy('name')->get();
         $warehouses       = auth()->user()->accessibleWarehouses()->get();
         $defaultWarehouse = $warehouses->firstWhere('is_default', true) ?? $warehouses->first();
         $invoice          = Sale::generateInvoiceNumber();
 
+        // Pre-select warehouse if coming from a PO
+        if ($request->warehouse_id) {
+            $whFromPo = $warehouses->firstWhere('id', (int) $request->warehouse_id);
+            if ($whFromPo) $defaultWarehouse = $whFromPo;
+        }
+
+        // Load PO items if a purchase number was passed (Sell from PO button)
+        $poItems = collect();
+        $poNumber = $request->po_number;
+        if ($poNumber) {
+            $po = \App\Models\Purchase::with('items.sparePart.unit', 'items.vehicleModel')
+                ->where('purchase_number', $poNumber)
+                ->where('status', 'received')
+                ->first();
+            if ($po) {
+                $poItems = $po->items->filter(fn($i) => ($i->quantity - $i->total_sold) > 0);
+            }
+        }
+
         return view('sales.sales.create', compact(
-            'customers', 'warehouses', 'defaultWarehouse', 'invoice'
+            'customers', 'warehouses', 'defaultWarehouse', 'invoice', 'poItems', 'poNumber'
         ));
     }
 
