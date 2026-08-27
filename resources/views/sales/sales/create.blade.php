@@ -695,6 +695,29 @@
 
         [inpPrice, inpDisc].forEach(el => el.addEventListener('input', updateRowTotal));
 
+        // Real-time price range feedback
+        inpPrice.addEventListener('input', function() {
+            const min = parseFloat(this.dataset.priceMin || 0);
+            const max = parseFloat(this.dataset.priceMax || 0);
+            const val = parseFloat(this.value || 0);
+            if ((min > 0 && val < min) || (max > 0 && val > max)) {
+                this.style.borderColor = '#dc2626';
+                // Show inline hint
+                let hint = this.parentNode.querySelector('.price-range-hint');
+                if (!hint) {
+                    hint = document.createElement('small');
+                    hint.className = 'price-range-hint text-danger d-block mt-1';
+                    this.parentNode.appendChild(hint);
+                }
+                hint.textContent = 'Range: Br ' + (min > 0 ? min.toFixed(2) : '0.00')
+                                 + ' – Br ' + (max > 0 ? max.toFixed(2) : '∞');
+            } else {
+                this.style.borderColor = '';
+                const hint = this.parentNode.querySelector('.price-range-hint');
+                if (hint) hint.remove();
+            }
+        });
+
         btnRemove.addEventListener('click', function () {
             if (container.querySelectorAll('.item-card').length > 1) {
                 card.remove();
@@ -784,16 +807,29 @@
                 return;
             }
             // Price range validation — show error modal, don't submit
-            if (priceMin > 0 && price < priceMin) {
-                inpPr.style.borderColor = '#dc2626';
-                const selItem    = card.querySelector('.sel-item');
-                const itemName   = selItem ? selItem.options[selItem.selectedIndex]?.text?.split(' — ')[0] : 'Item';
-                errors.push('"' + itemName + '": price Br ' + price.toFixed(2)
-                    + ' is below the minimum allowed price of Br ' + priceMin.toFixed(2) + '.'
-                    + '\n\nPlease increase the price to at least Br ' + priceMin.toFixed(2) + ' before submitting.');
-                return;
+            if (inpPr) {
+                const hasMin = priceMin > 0;
+                const hasMax = priceMax > 0;
+                if (hasMin && price < priceMin) {
+                    inpPr.style.borderColor = '#dc2626';
+                    const selItem  = card.querySelector('.sel-item');
+                    const itemName = selItem ? selItem.options[selItem.selectedIndex]?.text?.split(' — ')[0] : 'Item';
+                    errors.push('"' + itemName + '": sell price Br ' + price.toFixed(2)
+                        + ' is below the minimum of Br ' + priceMin.toFixed(2) + '.'
+                        + ' Please set a price between Br ' + priceMin.toFixed(2) + ' and Br ' + priceMax.toFixed(2) + '.');
+                    return;
+                }
+                if (hasMax && price > priceMax) {
+                    inpPr.style.borderColor = '#dc2626';
+                    const selItem  = card.querySelector('.sel-item');
+                    const itemName = selItem ? selItem.options[selItem.selectedIndex]?.text?.split(' — ')[0] : 'Item';
+                    errors.push('"' + itemName + '": sell price Br ' + price.toFixed(2)
+                        + ' exceeds the maximum of Br ' + priceMax.toFixed(2) + '.'
+                        + ' Please set a price between Br ' + priceMin.toFixed(2) + ' and Br ' + priceMax.toFixed(2) + '.');
+                    return;
+                }
+                inpPr.style.borderColor = '';
             }
-            if (inpPr) inpPr.style.borderColor = '';
 
             const selBatch       = card.querySelector('.sel-batch');
             const batchOpt       = selBatch ? selBatch.options[selBatch.selectedIndex] : null;

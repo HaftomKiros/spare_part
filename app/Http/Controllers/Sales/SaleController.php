@@ -174,6 +174,44 @@ class SaleController extends Controller
                         return back()->with('error', $msg)->withInput();
                     }
                 }
+
+                // Server-side price range validation
+                if ($row['item_type'] === 'spare_part' && !empty($row['item_id'])) {
+                    $part = \App\Models\SparePart::find($row['item_id']);
+                    if ($part) {
+                        $unitPrice = (float) $row['unit_price'];
+                        $min = (float) $part->selling_price_min;
+                        $max = (float) $part->selling_price_max;
+                        if ($min > 0 && $unitPrice < $min) {
+                            $msg = "'{$part->name}': sell price Br {$unitPrice} is below minimum Br {$min}.";
+                            if ($request->ajax() || $request->wantsJson()) return response()->json(['message' => $msg], 422);
+                            return back()->with('error', $msg)->withInput();
+                        }
+                        if ($max > 0 && $unitPrice > $max) {
+                            $msg = "'{$part->name}': sell price Br {$unitPrice} exceeds maximum Br {$max}.";
+                            if ($request->ajax() || $request->wantsJson()) return response()->json(['message' => $msg], 422);
+                            return back()->with('error', $msg)->withInput();
+                        }
+                    }
+                }
+                if ($row['item_type'] === 'vehicle' && !empty($row['item_id'])) {
+                    $vehicle = \App\Models\VehicleModel::find($row['item_id']);
+                    if ($vehicle) {
+                        $unitPrice = (float) $row['unit_price'];
+                        $min = (float) $vehicle->selling_price_min;
+                        $max = (float) $vehicle->selling_price_max;
+                        if ($min > 0 && $unitPrice < $min) {
+                            $msg = "'{$vehicle->full_name}': sell price Br {$unitPrice} is below minimum Br {$min}.";
+                            if ($request->ajax() || $request->wantsJson()) return response()->json(['message' => $msg], 422);
+                            return back()->with('error', $msg)->withInput();
+                        }
+                        if ($max > 0 && $unitPrice > $max) {
+                            $msg = "'{$vehicle->full_name}': sell price Br {$unitPrice} exceeds maximum Br {$max}.";
+                            if ($request->ajax() || $request->wantsJson()) return response()->json(['message' => $msg], 422);
+                            return back()->with('error', $msg)->withInput();
+                        }
+                    }
+                }
             }
 
             $sale = Sale::create([
