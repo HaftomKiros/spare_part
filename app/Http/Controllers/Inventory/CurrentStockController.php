@@ -107,18 +107,18 @@ class CurrentStockController extends Controller
                     ->where('current_stock', '<=', 0)->count(),
             ];
 
-            // Attach last purchase price to each part row for the stock value column
-            $partIds  = $parts->pluck('spare_part_id', 'id')->keys()->merge($parts->pluck('id'))->unique()->toArray();
-            $priceMap = \App\Services\StockService::lastPurchasePriceMap($parts->pluck('id')->toArray());
+            // Attach stock value to each part row (purchase value - sale value for this part)
+            $partIds  = $parts->pluck('id')->toArray();
+            $valueMap = \App\Services\StockService::partsStockValueMap($partIds, [$warehouseId]);
             foreach ($parts as $part) {
-                $part->last_purchase_price = $priceMap[$part->id] ?? 0;
+                $part->stock_value = $valueMap[$part->id] ?? 0;
             }
 
-            // Attach last purchase price to vehicle rows
-            $vehicleIds   = $vehicles->pluck('id')->toArray();
-            $vehiclePrices = \App\Services\StockService::lastVehiclePriceMap($vehicleIds);
+            // Attach stock value to vehicle rows
+            $vehicleIds    = $vehicles->pluck('id')->toArray();
+            $vValueMap     = \App\Services\StockService::vehiclesStockValueMap($vehicleIds, [$warehouseId]);
             foreach ($vehicles as $v) {
-                $v->last_purchase_price = $vehiclePrices[$v->id] ?? ($v->buying_price ?? 0);
+                $v->stock_value = $vValueMap[$v->id] ?? 0;
             }
 
             $isWarehouseView = true;
@@ -180,23 +180,25 @@ class CurrentStockController extends Controller
             $isWarehouseView = false;
         }
 
-        // Attach last_purchase_price to parts for the Stock Value column in the view
+        // Attach stock value to parts for the Stock Value column in the view
         if ($parts instanceof \Illuminate\Pagination\LengthAwarePaginator) {
             $ids      = $parts->getCollection()->pluck('id')->toArray();
-            $priceMap = \App\Services\StockService::lastPurchasePriceMap($ids);
-            $parts->getCollection()->each(function ($part) use ($priceMap) {
+            $wIds     = $warehouseId ? [$warehouseId] : [];
+            $valueMap = \App\Services\StockService::partsStockValueMap($ids, $wIds);
+            $parts->getCollection()->each(function ($part) use ($valueMap) {
                 $id = is_object($part) && isset($part->id) ? $part->id : ($part['id'] ?? null);
-                $part->last_purchase_price = $priceMap[$id] ?? ($part->last_purchase_price ?? 0);
+                $part->stock_value = $valueMap[$id] ?? ($part->stock_value ?? 0);
             });
         }
 
-        // Attach last_purchase_price to vehicles for the Stock Value column
+        // Attach stock value to vehicles for the Stock Value column
         if ($vehicles instanceof \Illuminate\Pagination\LengthAwarePaginator) {
-            $vids       = $vehicles->getCollection()->map(fn($v) => isset($v->vehicleModel) ? $v->vehicleModel->id : ($v->id ?? null))->filter()->toArray();
-            $vPriceMap  = \App\Services\StockService::lastVehiclePriceMap($vids);
-            $vehicles->getCollection()->each(function ($vs) use ($vPriceMap) {
+            $vids      = $vehicles->getCollection()->map(fn($v) => isset($v->vehicleModel) ? $v->vehicleModel->id : ($v->id ?? null))->filter()->toArray();
+            $wIds      = $warehouseId ? [$warehouseId] : [];
+            $vValueMap = \App\Services\StockService::vehiclesStockValueMap($vids, $wIds);
+            $vehicles->getCollection()->each(function ($vs) use ($vValueMap) {
                 $vmId = isset($vs->vehicleModel) ? $vs->vehicleModel->id : ($vs->id ?? null);
-                $vs->last_purchase_price = $vPriceMap[$vmId] ?? ($vs->vehicleModel->buying_price ?? 0);
+                $vs->stock_value = $vValueMap[$vmId] ?? ($vs->stock_value ?? 0);
             });
         }
 

@@ -332,6 +332,96 @@ class StockService
     // ──────────────────────────────────────────────────────────────
 
     /**
+     * Returns a map of spare_part_id => stock_value for each part.
+     *
+     * stock_value = SUM(purchase_items.quantity * purchase_items.unit_price)
+     *             - SUM(sale_items.quantity     * sale_items.unit_price)
+     *
+     * Scoped to the given warehouses when provided.
+     * Negative results are clamped to 0.
+     */
+    public static function partsStockValueMap(array $partIds, array $warehouseIds = []): array
+    {
+        if (empty($partIds)) return [];
+
+        // Purchased value per part
+        $purchasedRows = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('pi.item_type', 'spare_part')
+            ->whereIn('pi.spare_part_id', $partIds)
+            ->whereIn('p.status', ['received'])
+            ->when(!empty($warehouseIds), fn($q) => $q->whereIn('p.warehouse_id', $warehouseIds))
+            ->selectRaw('pi.spare_part_id, SUM(pi.quantity * pi.unit_price) as purchased_value')
+            ->groupBy('pi.spare_part_id')
+            ->pluck('purchased_value', 'spare_part_id');
+
+        // Sold value per part
+        $soldRows = DB::table('sale_items as si')
+            ->join('sales as s', 'si.sale_id', '=', 's.id')
+            ->where('si.item_type', 'spare_part')
+            ->whereIn('si.spare_part_id', $partIds)
+            ->where('s.status', 'completed')
+            ->when(!empty($warehouseIds), fn($q) => $q->whereIn('s.warehouse_id', $warehouseIds))
+            ->selectRaw('si.spare_part_id, SUM(si.quantity * si.unit_price) as sold_value')
+            ->groupBy('si.spare_part_id')
+            ->pluck('sold_value', 'spare_part_id');
+
+        $map = [];
+        foreach ($partIds as $id) {
+            $bought = (float) ($purchasedRows[$id] ?? 0);
+            $sold   = (float) ($soldRows[$id]     ?? 0);
+            $map[$id] = max(0.0, $bought - $sold);
+        }
+
+        return $map;
+    }
+
+    /**
+     * Returns a map of vehicle_model_id => stock_value for each vehicle model.
+     *
+     * stock_value = SUM(purchase_items.quantity * purchase_items.unit_price)
+     *             - SUM(sale_items.quantity     * sale_items.unit_price)
+     *
+     * Scoped to the given warehouses when provided.
+     * Negative results are clamped to 0.
+     */
+    public static function vehiclesStockValueMap(array $vehicleIds, array $warehouseIds = []): array
+    {
+        if (empty($vehicleIds)) return [];
+
+        // Purchased value per vehicle model
+        $purchasedRows = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('pi.item_type', 'vehicle')
+            ->whereIn('pi.vehicle_model_id', $vehicleIds)
+            ->whereIn('p.status', ['received'])
+            ->when(!empty($warehouseIds), fn($q) => $q->whereIn('p.warehouse_id', $warehouseIds))
+            ->selectRaw('pi.vehicle_model_id, SUM(pi.quantity * pi.unit_price) as purchased_value')
+            ->groupBy('pi.vehicle_model_id')
+            ->pluck('purchased_value', 'vehicle_model_id');
+
+        // Sold value per vehicle model
+        $soldRows = DB::table('sale_items as si')
+            ->join('sales as s', 'si.sale_id', '=', 's.id')
+            ->where('si.item_type', 'vehicle')
+            ->whereIn('si.vehicle_model_id', $vehicleIds)
+            ->where('s.status', 'completed')
+            ->when(!empty($warehouseIds), fn($q) => $q->whereIn('s.warehouse_id', $warehouseIds))
+            ->selectRaw('si.vehicle_model_id, SUM(si.quantity * si.unit_price) as sold_value')
+            ->groupBy('si.vehicle_model_id')
+            ->pluck('sold_value', 'vehicle_model_id');
+
+        $map = [];
+        foreach ($vehicleIds as $id) {
+            $bought = (float) ($purchasedRows[$id] ?? 0);
+            $sold   = (float) ($soldRows[$id]     ?? 0);
+            $map[$id] = max(0.0, $bought - $sold);
+        }
+
+        return $map;
+    }
+
+    /**
      * Returns a map of spare_part_id => last_purchase_unit_price
      * built from purchase_items in a single query.
      * Parts that have never been purchased map to 0.
@@ -412,52 +502,82 @@ class StockService
     }
 
     /**
-     * Calculate total parts stock value for given warehouse IDs
-     * using last purchase price per part.
+     * Calculate total spare-parts stock value for given warehouse IDs.
+     *
+     * Formula:
+     *   SUM(purchase_items.quantity * purchase_items.unit_price)  [received purchases]
+     *   - SUM(sale_items.quantity   * sale_items.unit_price)      [completed sales]
+     *
+     * Only spare_part items are counted. Returns 0 if the result would be negative.
      */
     public static function partsStockValue(array $warehouseIds = []): float
     {
-        $query = DB::table('warehouse_spare_part_stock as ws')
-            ->select('ws.spare_part_id', 'ws.current_stock');
+        // Total purchased value for spare parts
+        $purchasedQuery = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('pi.item_type', 'spare_part')
+            ->whereNotNull('pi.spare_part_id')
+            ->whereIn('p.status', ['received']);
 
         if (!empty($warehouseIds)) {
-            $query->whereIn('ws.warehouse_id', $warehouseIds);
+            $purchasedQuery->whereIn('p.warehouse_id', $warehouseIds);
         }
 
-        $rows = $query->get();
+        $purchasedValue = (float) $purchasedQuery->sum(DB::raw('pi.quantity * pi.unit_price'));
 
-        if ($rows->isEmpty()) return 0.0;
+        // Total sold value for spare parts
+        $soldQuery = DB::table('sale_items as si')
+            ->join('sales as s', 'si.sale_id', '=', 's.id')
+            ->where('si.item_type', 'spare_part')
+            ->whereNotNull('si.spare_part_id')
+            ->where('s.status', 'completed');
 
-        $partIds = $rows->pluck('spare_part_id')->unique()->toArray();
-        $prices  = self::lastPurchasePriceMap($partIds);
+        if (!empty($warehouseIds)) {
+            $soldQuery->whereIn('s.warehouse_id', $warehouseIds);
+        }
 
-        return (float) $rows->sum(function ($row) use ($prices) {
-            return $row->current_stock * ($prices[$row->spare_part_id] ?? 0);
-        });
+        $soldValue = (float) $soldQuery->sum(DB::raw('si.quantity * si.unit_price'));
+
+        return max(0.0, $purchasedValue - $soldValue);
     }
 
     /**
-     * Calculate total vehicles stock value for given warehouse IDs
-     * using last purchase price per vehicle model (falls back to catalog price).
+     * Calculate total vehicle stock value for given warehouse IDs.
+     *
+     * Formula:
+     *   SUM(purchase_items.quantity * purchase_items.unit_price)  [received purchases]
+     *   - SUM(sale_items.quantity   * sale_items.unit_price)      [completed sales]
+     *
+     * Only vehicle items are counted. Returns 0 if the result would be negative.
      */
     public static function vehiclesStockValue(array $warehouseIds = []): float
     {
-        $query = DB::table('warehouse_vehicle_stock as wv')
-            ->select('wv.vehicle_model_id', 'wv.current_stock');
+        // Total purchased value for vehicles
+        $purchasedQuery = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('pi.item_type', 'vehicle')
+            ->whereNotNull('pi.vehicle_model_id')
+            ->whereIn('p.status', ['received']);
 
         if (!empty($warehouseIds)) {
-            $query->whereIn('wv.warehouse_id', $warehouseIds);
+            $purchasedQuery->whereIn('p.warehouse_id', $warehouseIds);
         }
 
-        $rows = $query->get();
+        $purchasedValue = (float) $purchasedQuery->sum(DB::raw('pi.quantity * pi.unit_price'));
 
-        if ($rows->isEmpty()) return 0.0;
+        // Total sold value for vehicles
+        $soldQuery = DB::table('sale_items as si')
+            ->join('sales as s', 'si.sale_id', '=', 's.id')
+            ->where('si.item_type', 'vehicle')
+            ->whereNotNull('si.vehicle_model_id')
+            ->where('s.status', 'completed');
 
-        $vehicleIds = $rows->pluck('vehicle_model_id')->unique()->toArray();
-        $prices     = self::lastVehiclePriceMap($vehicleIds);
+        if (!empty($warehouseIds)) {
+            $soldQuery->whereIn('s.warehouse_id', $warehouseIds);
+        }
 
-        return (float) $rows->sum(function ($row) use ($prices) {
-            return $row->current_stock * ($prices[$row->vehicle_model_id] ?? 0);
-        });
+        $soldValue = (float) $soldQuery->sum(DB::raw('si.quantity * si.unit_price'));
+
+        return max(0.0, $purchasedValue - $soldValue);
     }
 }

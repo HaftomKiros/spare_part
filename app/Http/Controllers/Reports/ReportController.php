@@ -187,12 +187,8 @@ class ReportController extends Controller
                         ->where('ws.warehouse_id', $warehouseId)
                         ->where('sp.part_category_id', $row->cat_id)
                         ->pluck('ws.spare_part_id')->toArray();
-                    $priceMap = \App\Services\StockService::lastPurchasePriceMap($partIds);
-                    $row->value = DB::table('warehouse_spare_part_stock as ws')
-                        ->where('ws.warehouse_id', $warehouseId)
-                        ->whereIn('ws.spare_part_id', $partIds)
-                        ->get()
-                        ->sum(fn($r) => $r->current_stock * ($priceMap[$r->spare_part_id] ?? 0));
+                    $valueMap = \App\Services\StockService::partsStockValueMap($partIds, [$warehouseId]);
+                    $row->value = array_sum($valueMap);
                     return $row;
                 });
 
@@ -209,12 +205,8 @@ class ReportController extends Controller
                         ->where('wv.warehouse_id', $warehouseId)
                         ->where('vm.vehicle_type_id', $row->type_id)
                         ->pluck('wv.vehicle_model_id')->toArray();
-                    $priceMap = \App\Services\StockService::lastVehiclePriceMap($vmIds);
-                    $row->value = DB::table('warehouse_vehicle_stock as wv')
-                        ->where('wv.warehouse_id', $warehouseId)
-                        ->whereIn('wv.vehicle_model_id', $vmIds)
-                        ->get(['vehicle_model_id', 'current_stock'])
-                        ->sum(fn($r) => $r->current_stock * ($priceMap[$r->vehicle_model_id] ?? 0));
+                    $valueMap = \App\Services\StockService::vehiclesStockValueMap($vmIds, [$warehouseId]);
+                    $row->value = array_sum($valueMap);
                     return $row;
                 });
         } else {
@@ -236,10 +228,8 @@ class ReportController extends Controller
                 ->get()
                 ->map(function ($row) {
                     $partIds  = DB::table('spare_parts')->where('part_category_id', $row->cat_id)->pluck('id')->toArray();
-                    $priceMap = \App\Services\StockService::lastPurchasePriceMap($partIds);
-                    $row->value = DB::table('spare_parts')->whereIn('id', $partIds)
-                        ->get(['id', 'current_stock'])
-                        ->sum(fn($p) => $p->current_stock * ($priceMap[$p->id] ?? 0));
+                    $valueMap = \App\Services\StockService::partsStockValueMap($partIds);
+                    $row->value = array_sum($valueMap);
                     return $row;
                 });
 
@@ -254,11 +244,8 @@ class ReportController extends Controller
                         ->join('vehicle_models as vm', 'vs.vehicle_model_id', '=', 'vm.id')
                         ->where('vm.vehicle_type_id', $row->type_id)
                         ->pluck('vs.vehicle_model_id')->toArray();
-                    $priceMap = \App\Services\StockService::lastVehiclePriceMap($vmIds);
-                    $row->value = DB::table('vehicle_stocks')
-                        ->whereIn('vehicle_model_id', $vmIds)
-                        ->get(['vehicle_model_id', 'current_stock'])
-                        ->sum(fn($r) => $r->current_stock * ($priceMap[$r->vehicle_model_id] ?? 0));
+                    $valueMap = \App\Services\StockService::vehiclesStockValueMap($vmIds);
+                    $row->value = array_sum($valueMap);
                     return $row;
                 });
         }

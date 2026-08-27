@@ -180,8 +180,8 @@
                 </span>
             </td>
             <td class="text-muted small">
-                @php $lp = $part->last_purchase_price ?? 0; @endphp
-                {{ $lp > 0 ? 'Br '.number_format($part->current_stock * $lp, 2) : '—' }}
+                @php $sv = $part->stock_value ?? 0; @endphp
+                {{ $sv > 0 ? 'Br '.number_format($sv, 2) : '—' }}
             </td>
             <td class="text-end">
                 <a href="{{ route('inventory.stock-in.create') }}" class="btn btn-action btn-outline-success" title="Add Stock">
@@ -223,7 +223,7 @@
             $vmName  = $isEloquent ? ($vs->vehicleModel->brand.' '.$vs->vehicleModel->model_name) : ($vs->brand.' '.$vs->model_name);
             $vmCode  = $isEloquent ? $vs->vehicleModel->model_code : $vs->model_code;
             $vmType  = $isEloquent ? $vs->vehicleModel->vehicleType->name : $vs->type_name;
-            $vmPrice = $vs->last_purchase_price ?? ($isEloquent ? $vs->vehicleModel->buying_price : $vs->buying_price);
+            $vmStockValue = $vs->stock_value ?? 0;
             $isOut   = $vs->current_stock <= 0;
             $isLow   = !$isOut && $vs->current_stock <= $vs->reorder_level;
         @endphp
@@ -252,7 +252,7 @@
                     {{ $isOut ? 'Out of Stock' : ($isLow ? 'Low Stock' : 'In Stock') }}
                 </span>
             </td>
-            <td class="text-muted small">Br {{ number_format($vs->current_stock * $vmPrice, 2) }}</td>            <td class="text-end">
+            <td class="text-muted small">{{ $vmStockValue > 0 ? 'Br '.number_format($vmStockValue, 2) : '—' }}</td>            <td class="text-end">
                 <a href="{{ route('inventory.stock-in.create') }}" class="btn btn-action btn-outline-success" title="Add Stock">
                     <i class="fa fa-plus"></i>
                 </a>
