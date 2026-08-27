@@ -164,6 +164,27 @@
 </div>{{-- /row --}}
 </form>
 
+{{-- Validation Error Modal --}}
+<div id="saleErrorModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center">
+<div style="background:#fff;border-radius:16px;width:100%;max-width:400px;margin:16px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden">
+    <div style="background:linear-gradient(135deg,#ef4444,#dc2626);padding:18px 24px 14px;display:flex;align-items:center;gap:10px">
+        <div style="background:rgba(255,255,255,.2);border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center">
+            <i class="fa fa-circle-xmark" style="color:#fff;font-size:1rem"></i>
+        </div>
+        <div style="color:#fff;font-weight:700;font-size:1rem">Validation Error</div>
+    </div>
+    <div style="padding:20px 24px">
+        <p id="saleErrorMessage" style="margin:0;color:#374151;font-size:.95rem;line-height:1.6"></p>
+    </div>
+    <div style="padding:0 24px 20px;text-align:right">
+        <button id="saleErrorClose" type="button"
+                style="padding:9px 24px;border-radius:8px;border:none;background:#ef4444;color:#fff;font-weight:600;cursor:pointer;font-size:.9rem">
+            OK, Fix It
+        </button>
+    </div>
+</div>
+</div>
+
 {{-- Sale Confirmation Modal --}}
 <div id="saleConfirmModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center">
 <div style="background:#fff;border-radius:16px;width:100%;max-width:480px;margin:16px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden">
@@ -705,81 +726,131 @@
         balanceInput.value     = balance.toFixed(2);
     }
 
-    document.getElementById('saleForm').addEventListener('submit', function (e) {
-        let valid  = true;
+    // ── Show validation error modal ────────────────────────────────
+    function showError(message) {
+        const modal = document.getElementById('saleErrorModal');
+        document.getElementById('saleErrorMessage').textContent = message;
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        const btn = document.getElementById('saleErrorClose');
+        btn.onclick = function() {
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        };
+        modal.onclick = function(e) {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        };
+    }
+
+    // ── Validate all cards, return confirmLines or null on error ───
+    function validateAndBuildLines() {
         let errors = [];
         let confirmLines = [];
 
         container.querySelectorAll('.item-card').forEach(card => {
-            const type    = card.querySelector('.inp-type').value;
-            const id      = card.querySelector('.inp-item-id').value;
-            const qty     = parseInt(card.querySelector('.inp-qty').value) || 0;
-            const max     = parseInt(card.querySelector('.inp-qty').max);
-            const noStock = card.querySelector('.no-stock-warn');
-            const noBatch = card.querySelector('.no-batch-warn');
-            const inpPr   = card.querySelector('.inp-price');
-            const price   = parseFloat(inpPr?.value || 0);
+            const type     = card.querySelector('.inp-type').value;
+            const id       = card.querySelector('.inp-item-id').value;
+            const qty      = parseInt(card.querySelector('.inp-qty').value) || 0;
+            const max      = parseInt(card.querySelector('.inp-qty').max);
+            const noStock  = card.querySelector('.no-stock-warn');
+            const noBatch  = card.querySelector('.no-batch-warn');
+            const inpPr    = card.querySelector('.inp-price');
+            const price    = parseFloat(inpPr?.value || 0);
             const priceMin = parseFloat(inpPr?.dataset.priceMin || 0);
             const priceMax = parseFloat(inpPr?.dataset.priceMax || 0);
 
             if ((noStock && noStock.style.display !== 'none' && noStock.style.display !== '') ||
                 (noBatch && noBatch.style.display !== 'none' && noBatch.style.display !== '')) {
-                valid = false;
-                errors.push('One or more items have no available stock. Cannot complete this sale.');
+                errors.push('One or more items have no available purchase batch. Cannot complete this sale.');
                 return;
             }
             if (!type || !id) {
-                valid = false;
+                if (inpPr) { card.querySelector('.sel-type').style.borderColor = '#dc2626'; card.querySelector('.sel-item').style.borderColor = '#dc2626'; }
                 errors.push('Please select a type and item for every row.');
                 return;
             }
             if (!isNaN(max) && qty > max) {
-                valid = false;
+                card.querySelector('.inp-qty').style.borderColor = '#dc2626';
                 errors.push('Quantity exceeds available stock for one or more items.');
                 return;
             }
-            // Price range validation
+            // Price range validation — show error modal, don't submit
             if (priceMin > 0 && price < priceMin) {
-                valid = false;
                 inpPr.style.borderColor = '#dc2626';
-                errors.push('"' + (card.querySelector('.sel-item')?.options[card.querySelector('.sel-item').selectedIndex]?.text?.split(' — ')[0] || 'Item')
-                    + '": price Br ' + price.toFixed(2) + ' is below the minimum of Br ' + priceMin.toFixed(2) + '.');
+                const selItem    = card.querySelector('.sel-item');
+                const itemName   = selItem ? selItem.options[selItem.selectedIndex]?.text?.split(' — ')[0] : 'Item';
+                errors.push('"' + itemName + '": price Br ' + price.toFixed(2)
+                    + ' is below the minimum allowed price of Br ' + priceMin.toFixed(2) + '.'
+                    + '\n\nPlease increase the price to at least Br ' + priceMin.toFixed(2) + ' before submitting.');
                 return;
             }
             if (inpPr) inpPr.style.borderColor = '';
 
-            // Build confirmation line
-            const selBatch     = card.querySelector('.sel-batch');
-            const batchOpt     = selBatch ? selBatch.options[selBatch.selectedIndex] : null;
+            const selBatch       = card.querySelector('.sel-batch');
+            const batchOpt       = selBatch ? selBatch.options[selBatch.selectedIndex] : null;
             const batchUnitPrice = parseFloat(batchOpt?.dataset?.unitPrice || 0);
-            const selItem      = card.querySelector('.sel-item');
-            const selItemOpt   = selItem ? selItem.options[selItem.selectedIndex] : null;
-            const resolvedName = selItemOpt ? selItemOpt.text.split(' — ')[0] : 'Item';
+            const selItem        = card.querySelector('.sel-item');
+            const resolvedName   = selItem ? selItem.options[selItem.selectedIndex]?.text?.split(' — ')[0] : 'Item';
 
-            confirmLines.push({
-                name:            resolvedName,
-                qty:             qty,
-                price:           price,
-                priceMin:        priceMin,
-                priceMax:        priceMax,
-                batchUnitPrice:  batchUnitPrice,
-            });
+            confirmLines.push({ name: resolvedName, qty, price, priceMin, priceMax, batchUnitPrice });
         });
 
-        if (!valid) {
-            e.preventDefault();
-            alert(errors[0]);
-            return;
+        if (errors.length > 0) {
+            showError(errors[0]);
+            return null;
         }
+        return confirmLines;
+    }
 
-        // Always show confirmation modal — prevent default, show modal, submit from modal OK
-        e.preventDefault();
-        const form = this;
-        showSaleConfirm(confirmLines, function() {
-            // Show loader now that user confirmed
-            if (typeof showLoader === 'function') showLoader();
-            form.submit();
+    // ── Submit via AJAX ────────────────────────────────────────────
+    function submitSaleAjax() {
+        const form    = document.getElementById('saleForm');
+        const btnOk   = document.getElementById('saleConfirmOk');
+        const formData = new FormData(form);
+
+        // Show loading state on button
+        btnOk.disabled  = true;
+        btnOk.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i>Processing…';
+
+        fetch(form.action, {
+            method:  'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept':           'application/json',
+                'X-CSRF-TOKEN':     document.querySelector('meta[name="csrf-token"]')?.content
+                                    || document.querySelector('input[name="_token"]')?.value || '',
+            },
+            body: formData,
+        })
+        .then(function(response) {
+            return response.json().then(function(data) {
+                return { ok: response.ok, status: response.status, data };
+            });
+        })
+        .then(function({ ok, status, data }) {
+            if (ok && data.redirect) {
+                window.location.href = data.redirect;
+            } else {
+                throw new Error(data.message || data.errors ? Object.values(data.errors || {})[0]?.[0] : 'Failed to save sale.');
+            }
+        })
+        .catch(function(err) {
+            document.getElementById('saleConfirmModal').style.display = 'none';
+            document.body.style.overflow = '';
+            btnOk.disabled  = false;
+            btnOk.innerHTML = '<i class="fa fa-check me-1"></i>Complete Sale';
+            showError(err.message || 'An unexpected error occurred. Please try again.');
         });
+    }
+
+    document.getElementById('saleForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const lines = validateAndBuildLines();
+        if (!lines) return; // validation error shown
+        showSaleConfirm(lines, submitSaleAjax);
     });
 
     function esc(str) {

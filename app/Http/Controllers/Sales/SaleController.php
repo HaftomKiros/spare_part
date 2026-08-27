@@ -145,25 +145,33 @@ class SaleController extends Controller
                         ? \App\Models\SparePart::find($row['item_id'])?->name
                         : \App\Models\VehicleModel::find($row['item_id'])?->full_name;
                     DB::rollBack();
-                    return back()
-                        ->with('error', "Insufficient stock for '{$name}'. Available: {$available}, Requested: {$qty}.")
-                        ->withInput();
+                    $msg = "Insufficient stock for '{$name}'. Available: {$available}, Requested: {$qty}.";
+                    if ($request->ajax() || $request->wantsJson()) {
+                        return response()->json(['message' => $msg], 422);
+                    }
+                    return back()->with('error', $msg)->withInput();
                 }
 
                 // If a specific purchase batch was selected, validate it has enough remaining stock
                 if (!empty($row['purchase_item_id'])) {
                     $pi = DB::table('purchase_items')->where('id', $row['purchase_item_id'])->first();
                     if (!$pi) {
-                        return back()->with('error', 'Selected purchase batch not found.')->withInput();
+                        $msg = 'Selected purchase batch not found.';
+                        if ($request->ajax() || $request->wantsJson()) {
+                            return response()->json(['message' => $msg], 422);
+                        }
+                        return back()->with('error', $msg)->withInput();
                     }
                     $remaining = $pi->quantity - $pi->total_sold;
                     if ($qty > $remaining) {
                         $name = $row['item_type'] === 'spare_part'
                             ? \App\Models\SparePart::find($row['item_id'])?->name
                             : \App\Models\VehicleModel::find($row['item_id'])?->full_name;
-                        return back()
-                            ->with('error', "Quantity ({$qty}) exceeds remaining stock in selected purchase batch ({$remaining}) for '{$name}'.")
-                            ->withInput();
+                        $msg = "Quantity ({$qty}) exceeds remaining stock in selected purchase batch ({$remaining}) for '{$name}'.";
+                        if ($request->ajax() || $request->wantsJson()) {
+                            return response()->json(['message' => $msg], 422);
+                        }
+                        return back()->with('error', $msg)->withInput();
                     }
                 }
             }
@@ -210,10 +218,19 @@ class SaleController extends Controller
             }
 
             DB::commit();
+
+            // AJAX request → return JSON redirect URL
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['redirect' => route('sales.show', $sale), 'message' => "Invoice #{$sale->invoice_number} created successfully."]);
+            }
+
             return redirect()->route('sales.show', $sale)
                 ->with('success', "Invoice #{$sale->invoice_number} created successfully.");
         } catch (\Throwable $e) {
             DB::rollBack();
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => 'Failed to create sale: ' . $e->getMessage()], 422);
+            }
             return back()->with('error', 'Failed to create sale: ' . $e->getMessage())->withInput();
         }
     }
