@@ -238,7 +238,7 @@ class SaleController extends Controller
             return response()->json(['vehicles' => [], 'categories' => []]);
         }
 
-        // Spare parts that exist in this warehouse (current_stock > 0)
+        // Spare parts in this warehouse with current_stock > 0
         $parts = DB::table('warehouse_spare_part_stock as ws')
             ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
             ->join('part_categories as pc', 'sp.part_category_id', '=', 'pc.id')
@@ -256,9 +256,24 @@ class SaleController extends Controller
             ->orderBy('sp.name')
             ->get();
 
-        // Group parts by category
+        // Which spare_part_ids have at least one purchase batch with remaining stock
+        $partIdsWithBatches = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('p.warehouse_id', $warehouseId)
+            ->where('p.status', 'received')
+            ->where('pi.item_type', 'spare_part')
+            ->whereRaw('pi.quantity > pi.total_sold')
+            ->pluck('pi.spare_part_id')
+            ->unique()
+            ->toArray();
+
+        // Group parts by category — only include parts that have batches
         $categories = [];
         foreach ($parts as $p) {
+            $hasBatches = in_array($p->id, $partIdsWithBatches);
+            // Skip items with no batches entirely — they cannot be sold
+            if (!$hasBatches) continue;
+
             $catId = $p->category_id;
             if (!isset($categories[$catId])) {
                 $categories[$catId] = [
@@ -277,7 +292,7 @@ class SaleController extends Controller
             ];
         }
 
-        // Vehicle models that exist in this warehouse (current_stock > 0)
+        // Vehicle models in this warehouse with current_stock > 0
         $vehicles = DB::table('warehouse_vehicle_stock as wv')
             ->join('vehicle_models as vm', 'wv.vehicle_model_id', '=', 'vm.id')
             ->join('vehicle_types as vt', 'vm.vehicle_type_id', '=', 'vt.id')
@@ -293,9 +308,22 @@ class SaleController extends Controller
             ->orderBy('vm.brand')
             ->get();
 
-        // Group vehicles by type
+        // Which vehicle_model_ids have at least one purchase batch with remaining stock
+        $vehicleIdsWithBatches = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('p.warehouse_id', $warehouseId)
+            ->where('p.status', 'received')
+            ->where('pi.item_type', 'vehicle')
+            ->whereRaw('pi.quantity > pi.total_sold')
+            ->pluck('pi.vehicle_model_id')
+            ->unique()
+            ->toArray();
+
+        // Group vehicles by type — only include vehicles that have batches
         $vehicleTypes = [];
         foreach ($vehicles as $v) {
+            if (!in_array($v->id, $vehicleIdsWithBatches)) continue;
+
             $typeId = $v->type_id;
             if (!isset($vehicleTypes[$typeId])) {
                 $vehicleTypes[$typeId] = [
