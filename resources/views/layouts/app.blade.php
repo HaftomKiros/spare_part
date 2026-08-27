@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" style="background:#13112a">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="theme-color" content="#13112a">
     <title>@yield('title', 'Dashboard') - {{ $company->company_name ?? 'Abush Spare Part' }}</title>
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
@@ -498,7 +497,7 @@
 
     @stack('styles')
 </head>
-<body style="background:#13112a">
+<body>
 
 {{-- == PAGE LOADER ============================================== --}}
 <div id="pageLoader" style="display:flex">
@@ -517,48 +516,38 @@
     var loader = document.getElementById('pageLoader');
     if (!loader) return;
 
+    // Track whether the user triggered a navigation away from this page.
+    // When true, this page's window.load must NOT hide the loader
+    // (the loader belongs to the incoming page, not this one).
     var navigating = false;
 
     function hideLoader() {
         loader.classList.add('hide');
+        // Remove from layout after fade completes
         setTimeout(function () { loader.style.display = 'none'; }, 400);
     }
 
     function showLoader() {
         navigating = true;
+        // Restart progress bar animation from zero
         var bar = loader.querySelector('.ldr-bar');
         if (bar) { bar.style.animation = 'none'; bar.offsetWidth; bar.style.animation = ''; }
         loader.style.display = 'flex';
         loader.classList.remove('hide');
     }
 
-    // ── Hide triggers ────────────────────────────────────────────────
-
-    // Primary: hide once ALL resources are loaded (CSS, JS, fonts, images)
+    // Hide when everything on this page is fully loaded (CSS, JS, images)
     window.addEventListener('load', function () {
         if (!navigating) hideLoader();
     });
 
-    // bfcache restore — page served from browser memory cache
+    // Handle bfcache restores (back/forward navigation from browser cache)
     window.addEventListener('pageshow', function (e) {
         if (e.persisted) { navigating = false; hideLoader(); }
     });
 
-    // Safety: hide after 15 s
-    setTimeout(function () { navigating = false; hideLoader(); }, 15000);
-
-    // ── Show triggers ────────────────────────────────────────────────
-
-    // Keep loader visible during the blank period between pages:
-    // when the browser unloads this page, freeze the page with loader
-    // showing so there's no white gap before the next page arrives.
-    window.addEventListener('pagehide', function () {
-        if (navigating) {
-            // Re-assert loader visible — prevents white flash during unload
-            loader.style.display = 'flex';
-            loader.classList.remove('hide');
-        }
-    });
+    // Safety valve — hide after 12 s no matter what
+    setTimeout(function () { navigating = false; hideLoader(); }, 12000);
 
     // Show when user clicks a real navigation link
     document.addEventListener('click', function (e) {
