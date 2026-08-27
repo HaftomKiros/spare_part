@@ -28,7 +28,7 @@
     <tr><th class="text-muted fw-normal">Type</th><td><span class="badge bg-warning text-dark">{{ ucfirst($return->return_type) }}</span></td></tr>
     <tr><th class="text-muted fw-normal">Total</th><td class="fw-bold text-danger">Br {{ number_format($return->total_amount,2) }}</td></tr>
     <tr><th class="text-muted fw-normal">Status</th><td><span class="badge bg-{{ $return->status_badge }}">{{ ucfirst($return->status) }}</span></td></tr>
-    <tr><th class="text-muted fw-normal">By</th><td>{{ $return->user->name }}</td></tr>
+    <tr><th class="text-muted fw-normal">By</th><td>{{ $return->user?->name ?? 'Deleted user' }}</td></tr>
     @if($return->reason)
     <tr><th class="text-muted fw-normal">Reason</th><td>{{ $return->reason }}</td></tr>
     @endif

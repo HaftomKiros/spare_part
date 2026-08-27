@@ -66,7 +66,7 @@
             <td><span class="badge bg-warning text-dark">{{ ucfirst($ret->return_type) }}</span></td>
             <td class="fw-semibold text-danger">Br {{ number_format($ret->total_amount,2) }}</td>
             <td><span class="badge bg-{{ $ret->status_badge }}">{{ ucfirst($ret->status) }}</span></td>
-            <td class="small text-muted">{{ $ret->user->name }}</td>
+            <td class="small text-muted">{{ $ret->user?->name ?? 'Deleted user' }}</td>
             <td class="text-end">
                 <a href="{{ route('sales.returns.show',$ret) }}" class="btn btn-action btn-outline-primary"><i class="fa fa-eye"></i></a>
             </td>
