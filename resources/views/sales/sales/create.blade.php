@@ -299,9 +299,10 @@
         fetch(PURCHASE_BATCHES_URL + '?item_type=' + itemType + '&item_id=' + itemId + '&warehouse_id=' + whId)
             .then(r => r.json())
             .then(batches => {
+                // No batches with remaining stock — hide the block entirely.
+                // The sale will proceed using warehouse stock (FIFO auto).
                 if (!batches.length) {
-                    selBatch.innerHTML = '<option value="">No purchase batches found</option>';
-                    batchBlock.style.display = 'block';
+                    batchBlock.style.display = 'none';
                     return;
                 }
 
