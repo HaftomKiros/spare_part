@@ -22,6 +22,23 @@
 
 @include('partials.confirm-modal')
 
+@push('scripts')
+<script>
+(function() {
+    var btnDelete = document.getElementById('btnDeleteSale');
+    if (btnDelete) {
+        btnDelete.addEventListener('click', function() {
+            confirmModal(
+                'Delete sale {{ $sale->invoice_number }}? This will reverse all stock changes and cannot be undone.',
+                function() { document.getElementById('deleteSaleForm').submit(); },
+                { title: 'Delete Sale', icon: 'fa-trash', iconColor: '#ef4444', confirmText: 'Delete', confirmClass: 'danger' }
+            );
+        });
+    }
+})();
+</script>
+@endpush
+
 <div class="row g-3">
 <!-- Sale Info -->
 <div class="col-12 col-md-4">
@@ -40,8 +57,7 @@
     <a href="{{ route('sales.edit', $sale) }}" class="btn btn-sm btn-outline-primary">
         <i class="fa fa-pen me-1"></i>Edit
     </a>
-    <button type="button" class="btn btn-sm btn-outline-danger"
-            onclick="confirmModal('Delete sale {{ $sale->invoice_number }}? This will reverse all stock changes and cannot be undone.', function(){ document.getElementById(\'deleteSaleForm\').submit(); }, { title: \'Delete Sale\', icon: \'fa-trash\', iconColor: \'#ef4444\', confirmText: \'Delete\', confirmClass: \'danger\' })">
+    <button type="button" class="btn btn-sm btn-outline-danger" id="btnDeleteSale">
         <i class="fa fa-trash me-1"></i>Delete
     </button>
 </div>
