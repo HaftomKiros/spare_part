@@ -263,7 +263,7 @@
                 if (!vt.models.length) return;
                 html += '<optgroup label="' + esc(vt.name) + '">';
                 vt.models.forEach(m => {
-                    html += '<option value="' + m.id + '" data-price="' + m.price + '" data-stock="' + m.stock + '">'
+                    html += '<option value="' + m.id + '" data-price="' + m.price + '" data-stock="' + m.stock + '" data-reorder="' + (m.reorder||2) + '">'
                          +  esc(m.name) + ' — Stock: ' + m.stock + '</option>';
                 });
                 html += '</optgroup>';
@@ -274,7 +274,7 @@
                 if (!cat.parts.length) return;
                 html += '<optgroup label="' + esc(cat.name) + '">';
                 cat.parts.forEach(p => {
-                    html += '<option value="' + p.id + '" data-price="' + p.price + '" data-stock="' + p.stock + '">'
+                    html += '<option value="' + p.id + '" data-price="' + p.price + '" data-stock="' + p.stock + '" data-reorder="' + (p.reorder||5) + '">'
                          +  esc(p.name) + ' — Stock: ' + p.stock + (p.unit ? ' ' + p.unit : '') + '</option>';
                 });
                 html += '</optgroup>';
@@ -486,17 +486,20 @@
 
             if (this.value && opt.dataset.price !== undefined) {
                 inpPrice.value = parseFloat(opt.dataset.price).toFixed(2);
-                const stock    = parseInt(opt.dataset.stock) || 0;
+                const stock   = parseInt(opt.dataset.stock)  || 0;
+                const reorder = parseInt(opt.dataset.reorder) || 0;
 
                 inpQty.max = stock;
                 if (parseInt(inpQty.value) > stock) inpQty.value = stock;
 
                 if (stock <= 0) {
                     stockWarn.className = 'stock-warn text-danger d-block mt-1';
-                    stockWarn.innerHTML = '<i class="fa fa-circle-xmark me-1"></i>Out of stock in this warehouse';
-                } else if (stock <= 5) {
+                    stockWarn.innerHTML = '<i class="fa fa-circle-xmark me-1"></i>Out of stock in selected warehouse';
+                } else if (reorder > 0 && stock <= reorder) {
                     stockWarn.className = 'stock-warn text-warning d-block mt-1';
-                    stockWarn.innerHTML = '<i class="fa fa-triangle-exclamation me-1"></i>Only ' + stock + ' left in warehouse';
+                    stockWarn.innerHTML = '<i class="fa fa-triangle-exclamation me-1"></i>Low stock in selected warehouse: ' + stock + ' remaining';
+                } else {
+                    stockWarn.className = 'stock-warn d-none';
                 }
 
                 // Load purchase batches for this item

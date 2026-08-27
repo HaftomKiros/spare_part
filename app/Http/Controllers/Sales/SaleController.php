@@ -251,11 +251,12 @@ class SaleController extends Controller
                 ];
             }
             $categories[$catId]['parts'][] = [
-                'id'    => $p->id,
-                'name'  => $p->name . ' (' . $p->part_number . ')',
-                'price' => $p->selling_price,
-                'stock' => $p->current_stock,
-                'unit'  => $p->unit,
+                'id'      => $p->id,
+                'name'    => $p->name . ' (' . $p->part_number . ')',
+                'price'   => $p->selling_price,
+                'stock'   => $p->current_stock,
+                'reorder' => $p->reorder_level,
+                'unit'    => $p->unit,
             ];
         }
 
@@ -268,7 +269,7 @@ class SaleController extends Controller
             ->where('vm.status', 'active')
             ->select(
                 'vm.id', 'vm.brand', 'vm.model_name', 'vm.model_code', 'vm.selling_price',
-                'wv.current_stock',
+                'wv.current_stock', 'wv.reorder_level',
                 'vt.id as type_id', 'vt.name as type_name'
             )
             ->orderBy('vt.name')
@@ -289,10 +290,11 @@ class SaleController extends Controller
             $name = $v->brand . ' ' . $v->model_name;
             if ($v->model_code) $name .= ' (' . $v->model_code . ')';
             $vehicleTypes[$typeId]['models'][] = [
-                'id'    => $v->id,
-                'name'  => $name,
-                'price' => $v->selling_price,
-                'stock' => $v->current_stock,
+                'id'      => $v->id,
+                'name'    => $name,
+                'price'   => $v->selling_price,
+                'stock'   => $v->current_stock,
+                'reorder' => $v->reorder_level,
             ];
         }
 
