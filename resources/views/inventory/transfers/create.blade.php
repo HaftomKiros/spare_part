@@ -327,7 +327,7 @@ fromSel.addEventListener('change', refreshStocks);
 toSel.addEventListener('change', () => { checkSameWarehouse(); refreshStocks(); });
 qtyInput.addEventListener('change', updateAfterPreview);
 
-// Hook TomSelect onChange after global init (runs after @stack scripts)
+// Hook TomSelect onChange after global init (runs after @@stack scripts)
 document.addEventListener('DOMContentLoaded', function () {
     if (partSel._tomSelect)    partSel._tomSelect.on('change', refreshStocks);
     if (vehicleSel._tomSelect) vehicleSel._tomSelect.on('change', refreshStocks);
