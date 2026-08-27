@@ -123,8 +123,7 @@
                     <span class="stock-pill in-stock">In Stock</span>
                 @endif
             </td>
-            <td class="text-muted small">Br {{ number_format($v->current_stock * $v->buying_price, 2) }}</td>
-        </tr>
+            <td class="text-muted small">Br {{ number_format($v->current_stock * $v->last_purchase_price, 2) }}</td>
         @empty
         <tr><td colspan="6" class="text-center text-muted py-4">No vehicles in this warehouse yet.</td></tr>
         @endforelse

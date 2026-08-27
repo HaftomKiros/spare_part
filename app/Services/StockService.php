@@ -339,7 +339,6 @@ class StockService
     public static function lastPurchasePriceMap(array $partIds = []): array
     {
         if (empty($partIds)) {
-            // Load all parts that have any purchase history
             $partIds = DB::table('purchase_items')
                 ->whereNotNull('spare_part_id')
                 ->distinct()
@@ -351,7 +350,6 @@ class StockService
             return [];
         }
 
-        // For each spare_part_id get the unit_price from the most recent purchase
         $rows = DB::table('purchase_items as pi')
             ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
             ->whereIn('pi.spare_part_id', $partIds)
@@ -359,11 +357,55 @@ class StockService
             ->select('pi.spare_part_id', 'pi.unit_price', 'p.purchase_date')
             ->orderByDesc('p.purchase_date')
             ->get()
-            ->unique('spare_part_id');    // keep only the latest per part
+            ->unique('spare_part_id');
 
         $map = [];
         foreach ($rows as $row) {
             $map[$row->spare_part_id] = (float) $row->unit_price;
+        }
+
+        return $map;
+    }
+
+    /**
+     * Returns a map of vehicle_model_id => last_purchase_unit_price.
+     * Falls back to vehicle_models.buying_price if no purchase exists.
+     */
+    public static function lastVehiclePriceMap(array $vehicleIds = []): array
+    {
+        if (empty($vehicleIds)) {
+            $vehicleIds = DB::table('warehouse_vehicle_stock')
+                ->distinct()->pluck('vehicle_model_id')->toArray();
+        }
+
+        if (empty($vehicleIds)) {
+            return [];
+        }
+
+        // Last purchase price per vehicle model
+        $rows = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->whereIn('pi.vehicle_model_id', $vehicleIds)
+            ->whereNotNull('pi.vehicle_model_id')
+            ->select('pi.vehicle_model_id', 'pi.unit_price', 'p.purchase_date')
+            ->orderByDesc('p.purchase_date')
+            ->get()
+            ->unique('vehicle_model_id');
+
+        $map = [];
+        foreach ($rows as $row) {
+            $map[$row->vehicle_model_id] = (float) $row->unit_price;
+        }
+
+        // Fall back to catalog buying_price for vehicles with no purchase record
+        $missing = array_diff($vehicleIds, array_keys($map));
+        if (!empty($missing)) {
+            DB::table('vehicle_models')
+                ->whereIn('id', $missing)
+                ->get(['id', 'buying_price'])
+                ->each(function ($vm) use (&$map) {
+                    $map[$vm->id] = (float) $vm->buying_price;
+                });
         }
 
         return $map;
@@ -391,6 +433,31 @@ class StockService
 
         return (float) $rows->sum(function ($row) use ($prices) {
             return $row->current_stock * ($prices[$row->spare_part_id] ?? 0);
+        });
+    }
+
+    /**
+     * Calculate total vehicles stock value for given warehouse IDs
+     * using last purchase price per vehicle model (falls back to catalog price).
+     */
+    public static function vehiclesStockValue(array $warehouseIds = []): float
+    {
+        $query = DB::table('warehouse_vehicle_stock as wv')
+            ->select('wv.vehicle_model_id', 'wv.current_stock');
+
+        if (!empty($warehouseIds)) {
+            $query->whereIn('wv.warehouse_id', $warehouseIds);
+        }
+
+        $rows = $query->get();
+
+        if ($rows->isEmpty()) return 0.0;
+
+        $vehicleIds = $rows->pluck('vehicle_model_id')->unique()->toArray();
+        $prices     = self::lastVehiclePriceMap($vehicleIds);
+
+        return (float) $rows->sum(function ($row) use ($prices) {
+            return $row->current_stock * ($prices[$row->vehicle_model_id] ?? 0);
         });
     }
 }

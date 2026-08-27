@@ -96,10 +96,7 @@ class CurrentStockController extends Controller
             // ── Per-warehouse summary ─────────────────────
             $summary = [
                 'total_parts_value'    => \App\Services\StockService::partsStockValue([$warehouseId]),
-                'total_vehicles_value' => DB::table('warehouse_vehicle_stock as wv')
-                    ->join('vehicle_models as vm', 'wv.vehicle_model_id', '=', 'vm.id')
-                    ->where('wv.warehouse_id', $warehouseId)
-                    ->sum(DB::raw('wv.current_stock * vm.buying_price')),
+                'total_vehicles_value' => \App\Services\StockService::vehiclesStockValue([$warehouseId]),
                 'low_parts'    => DB::table('warehouse_spare_part_stock')->where('warehouse_id', $warehouseId)
                     ->where('current_stock', '>', 0)->whereColumn('current_stock', '<=', 'reorder_level')->count(),
                 'out_parts'    => DB::table('warehouse_spare_part_stock')->where('warehouse_id', $warehouseId)
@@ -115,6 +112,13 @@ class CurrentStockController extends Controller
             $priceMap = \App\Services\StockService::lastPurchasePriceMap($parts->pluck('id')->toArray());
             foreach ($parts as $part) {
                 $part->last_purchase_price = $priceMap[$part->id] ?? 0;
+            }
+
+            // Attach last purchase price to vehicle rows
+            $vehicleIds   = $vehicles->pluck('id')->toArray();
+            $vehiclePrices = \App\Services\StockService::lastVehiclePriceMap($vehicleIds);
+            foreach ($vehicles as $v) {
+                $v->last_purchase_price = $vehiclePrices[$v->id] ?? ($v->buying_price ?? 0);
             }
 
             $isWarehouseView = true;
@@ -166,8 +170,7 @@ class CurrentStockController extends Controller
 
             $summary = [
                 'total_parts_value'    => \App\Services\StockService::partsStockValue(),
-                'total_vehicles_value' => VehicleStock::join('vehicle_models','vehicle_stocks.vehicle_model_id','=','vehicle_models.id')
-                                            ->selectRaw('SUM(vehicle_stocks.current_stock * vehicle_models.buying_price)')->value('SUM(vehicle_stocks.current_stock * vehicle_models.buying_price)') ?? 0,
+                'total_vehicles_value' => \App\Services\StockService::vehiclesStockValue(),
                 'low_parts'     => SparePart::lowStock()->count(),
                 'out_parts'     => SparePart::outOfStock()->count(),
                 'low_vehicles'  => VehicleStock::whereColumn('current_stock', '<=', 'reorder_level')->count(),
@@ -184,6 +187,16 @@ class CurrentStockController extends Controller
             $parts->getCollection()->each(function ($part) use ($priceMap) {
                 $id = is_object($part) && isset($part->id) ? $part->id : ($part['id'] ?? null);
                 $part->last_purchase_price = $priceMap[$id] ?? ($part->last_purchase_price ?? 0);
+            });
+        }
+
+        // Attach last_purchase_price to vehicles for the Stock Value column
+        if ($vehicles instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+            $vids       = $vehicles->getCollection()->map(fn($v) => isset($v->vehicleModel) ? $v->vehicleModel->id : ($v->id ?? null))->filter()->toArray();
+            $vPriceMap  = \App\Services\StockService::lastVehiclePriceMap($vids);
+            $vehicles->getCollection()->each(function ($vs) use ($vPriceMap) {
+                $vmId = isset($vs->vehicleModel) ? $vs->vehicleModel->id : ($vs->id ?? null);
+                $vs->last_purchase_price = $vPriceMap[$vmId] ?? ($vs->vehicleModel->buying_price ?? 0);
             });
         }
 

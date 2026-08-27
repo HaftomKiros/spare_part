@@ -69,18 +69,13 @@ class DashboardController extends Controller
                 ->whereIn('warehouse_id', $warehouseIds)->whereColumn('current_stock', '<=', 'reorder_level')->count();
             $stats['low_stock_vehicles'] = DB::table('warehouse_vehicle_stock')
                 ->whereIn('warehouse_id', $warehouseIds)->whereColumn('current_stock', '<=', 'reorder_level')->count();
-            $stats['inventory_value_parts'] = \App\Services\StockService::partsStockValue($warehouseIds);
-            $stats['inventory_value_vehicles'] = DB::table('warehouse_vehicle_stock as wv')
-                ->join('vehicle_models as vm', 'wv.vehicle_model_id', '=', 'vm.id')
-                ->whereIn('wv.warehouse_id', $warehouseIds)
-                ->sum(DB::raw('wv.current_stock * vm.buying_price'));
+            $stats['inventory_value_parts']    = \App\Services\StockService::partsStockValue($warehouseIds);
+            $stats['inventory_value_vehicles']  = \App\Services\StockService::vehiclesStockValue($warehouseIds);
         } else {
             $stats['low_stock_parts']    = SparePart::lowStock()->count();
             $stats['low_stock_vehicles'] = VehicleStock::whereColumn('current_stock', '<=', 'reorder_level')->count();
-            $stats['inventory_value_parts'] = \App\Services\StockService::partsStockValue();
-            $stats['inventory_value_vehicles'] = DB::table('vehicle_stocks as vs')
-                ->join('vehicle_models as vm', 'vs.vehicle_model_id', '=', 'vm.id')
-                ->selectRaw('SUM(vs.current_stock * vm.buying_price) as val')->value('val') ?? 0;
+            $stats['inventory_value_parts']    = \App\Services\StockService::partsStockValue();
+            $stats['inventory_value_vehicles']  = \App\Services\StockService::vehiclesStockValue();
         }
         $stats['total_inventory_value'] = $stats['inventory_value_parts'] + $stats['inventory_value_vehicles'];
 

@@ -101,6 +101,13 @@ class WarehouseController extends Controller
             ->limit(20)
             ->get();
 
+        // Attach last purchase price to vehicle rows
+        $vehicleIds    = $vehicles->pluck('id')->toArray();
+        $vehiclePrices = \App\Services\StockService::lastVehiclePriceMap($vehicleIds);
+        $vehicles->each(function ($v) use ($vehiclePrices) {
+            $v->last_purchase_price = $vehiclePrices[$v->id] ?? $v->buying_price;
+        });
+
         return view('settings.warehouses.show', compact('warehouse', 'parts', 'vehicles', 'movements'));
     }
 
