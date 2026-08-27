@@ -129,6 +129,24 @@ class SaleReturnController extends Controller
                         SaleReturn::class, $return->id, "Return #{$return->return_number}", $warehouseId
                     );
                 }
+
+                // Reduce total_sold on the linked purchase_item so the batch
+                // becomes available again for future sales.
+                $saleItemId = $row['sale_item_id'] ?? null;
+                if ($saleItemId) {
+                    $purchaseItemId = DB::table('sale_items')
+                        ->where('id', $saleItemId)
+                        ->value('purchase_item_id');
+
+                    if ($purchaseItemId) {
+                        DB::table('purchase_items')
+                            ->where('id', $purchaseItemId)
+                            ->update([
+                                'total_sold' => DB::raw("GREATEST(0, total_sold - {$qty})"),
+                                'updated_at' => now(),
+                            ]);
+                    }
+                }
             }
 
             DB::commit();
