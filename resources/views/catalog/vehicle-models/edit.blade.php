@@ -48,20 +48,16 @@
         <input type="text" name="engine_cc" class="form-control" value="{{ old('engine_cc', $vehicleModel->engine_cc) }}">
     </div>
     <div class="col-md-6">
-        <label class="form-label">Buying Price (Br) <span class="text-danger">*</span></label>
-        <div class="input-group">
-            <span class="input-group-text">Br</span>
-            <input type="number" name="buying_price" class="form-control currency-input"
-                   value="{{ old('buying_price', $vehicleModel->buying_price) }}" min="0" step="0.01" required>
-        </div>
+        <label class="form-label">Min Selling Price (Br)</label>
+        <input type="number" name="selling_price_min" class="form-control"
+               value="{{ old('selling_price_min', $vehicleModel->selling_price_min) }}" min="0" step="0.01">
+        <div class="form-text">Lowest allowed price when selling.</div>
     </div>
     <div class="col-md-6">
-        <label class="form-label">Selling Price (Br) <span class="text-danger">*</span></label>
-        <div class="input-group">
-            <span class="input-group-text">Br</span>
-            <input type="number" name="selling_price" class="form-control currency-input"
-                   value="{{ old('selling_price', $vehicleModel->selling_price) }}" min="0" step="0.01" required>
-        </div>
+        <label class="form-label">Max Selling Price (Br)</label>
+        <input type="number" name="selling_price_max" class="form-control"
+               value="{{ old('selling_price_max', $vehicleModel->selling_price_max) }}" min="0" step="0.01">
+        <div class="form-text">Default price shown when selling.</div>
     </div>
     <div class="col-12">
         <label class="form-label">Description</label>

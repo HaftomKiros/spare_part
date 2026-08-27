@@ -294,8 +294,13 @@
                 if (!vt.models.length) return;
                 html += '<optgroup label="' + esc(vt.name) + '">';
                 vt.models.forEach(m => {
-                    html += '<option value="' + m.id + '" data-price="' + m.price
-                         +  '" data-stock="' + m.stock + '" data-reorder="' + (m.reorder||2) + '">'
+                    html += '<option value="' + m.id
+                         +  '" data-price="'     + (m.price_max || m.price || 0)
+                         +  '" data-price-min="' + (m.price_min || 0)
+                         +  '" data-price-max="' + (m.price_max || m.price || 0)
+                         +  '" data-stock="'     + m.stock
+                         +  '" data-reorder="'   + (m.reorder||2)
+                         +  '" data-name="'      + esc(m.name) + '">'
                          +  esc(m.name) + ' — Stock: ' + m.stock + '</option>';
                 });
                 html += '</optgroup>';

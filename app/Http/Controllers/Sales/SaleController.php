@@ -304,7 +304,8 @@ class SaleController extends Controller
             ->where('wv.current_stock', '>', 0)
             ->where('vm.status', 'active')
             ->select(
-                'vm.id', 'vm.brand', 'vm.model_name', 'vm.model_code', 'vm.selling_price',
+                'vm.id', 'vm.brand', 'vm.model_name', 'vm.model_code',
+                'vm.selling_price_min', 'vm.selling_price_max',
                 'wv.current_stock', 'wv.reorder_level',
                 'vt.id as type_id', 'vt.name as type_name'
             )
@@ -339,11 +340,13 @@ class SaleController extends Controller
             $name = $v->brand . ' ' . $v->model_name;
             if ($v->model_code) $name .= ' (' . $v->model_code . ')';
             $vehicleTypes[$typeId]['models'][] = [
-                'id'      => $v->id,
-                'name'    => $name,
-                'price'   => $v->selling_price,
-                'stock'   => $v->current_stock,
-                'reorder' => $v->reorder_level,
+                'id'        => $v->id,
+                'name'      => $name,
+                'price'     => $v->selling_price_max,
+                'price_min' => $v->selling_price_min,
+                'price_max' => $v->selling_price_max,
+                'stock'     => $v->current_stock,
+                'reorder'   => $v->reorder_level,
             ];
         }
 
@@ -425,12 +428,14 @@ class SaleController extends Controller
 
             foreach ($vehicles as $v) {
                 $results[] = [
-                    'id'    => $v->id,
-                    'type'  => 'vehicle',
-                    'name'  => $v->full_name,
-                    'price' => $v->selling_price,
-                    'stock' => $v->stock?->current_stock ?? 0,
-                    'code'  => $v->model_code,
+                    'id'        => $v->id,
+                    'type'      => 'vehicle',
+                    'name'      => $v->full_name,
+                    'price'     => $v->selling_price_max,
+                    'price_min' => $v->selling_price_min,
+                    'price_max' => $v->selling_price_max,
+                    'stock'     => $v->stock?->current_stock ?? 0,
+                    'code'      => $v->model_code,
                 ];
             }
         }
@@ -443,13 +448,15 @@ class SaleController extends Controller
 
             foreach ($parts as $p) {
                 $results[] = [
-                    'id'    => $p->id,
-                    'type'  => 'spare_part',
-                    'name'  => $p->name,
-                    'price' => $p->selling_price,
-                    'stock' => $p->current_stock,
-                    'code'  => $p->part_number,
-                    'unit'  => $p->unit->abbreviation,
+                    'id'        => $p->id,
+                    'type'      => 'spare_part',
+                    'name'      => $p->name,
+                    'price'     => $p->selling_price_max,
+                    'price_min' => $p->selling_price_min,
+                    'price_max' => $p->selling_price_max,
+                    'stock'     => $p->current_stock,
+                    'code'      => $p->part_number,
+                    'unit'      => $p->unit->abbreviation,
                 ];
             }
         }

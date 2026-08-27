@@ -43,22 +43,22 @@ class VehicleModelController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'vehicle_type_id' => 'required|exists:vehicle_types,id',
-            'brand'           => 'required|string|max:100',
-            'model_name'      => 'required|string|max:100',
-            'model_code'      => 'nullable|string|max:50',
-            'year'            => 'nullable|integer|min:2000|max:' . (date('Y') + 1),
-            'engine_cc'       => 'nullable|string|max:50',
-            'buying_price'    => 'required|numeric|min:0',
-            'selling_price'   => 'required|numeric|min:0',
-            'description'     => 'nullable|string|max:1000',
-            'status'          => 'required|in:active,inactive',
-            'opening_stock'   => 'nullable|integer|min:0',
-            'reorder_level'   => 'nullable|integer|min:0',
+            'vehicle_type_id'   => 'required|exists:vehicle_types,id',
+            'brand'             => 'required|string|max:100',
+            'model_name'        => 'required|string|max:100',
+            'model_code'        => 'nullable|string|max:50',
+            'year'              => 'nullable|integer|min:2000|max:' . (date('Y') + 1),
+            'engine_cc'         => 'nullable|string|max:50',
+            'selling_price_min' => 'nullable|numeric|min:0',
+            'selling_price_max' => 'nullable|numeric|min:0',
+            'description'       => 'nullable|string|max:1000',
+            'status'            => 'required|in:active,inactive',
+            'opening_stock'     => 'nullable|integer|min:0',
+            'reorder_level'     => 'nullable|integer|min:0',
         ]);
 
-        $openingStock  = (int) ($data['opening_stock'] ?? 0);
-        $reorderLevel  = (int) ($data['reorder_level'] ?? 2);
+        $openingStock = (int) ($data['opening_stock'] ?? 0);
+        $reorderLevel = (int) ($data['reorder_level'] ?? 2);
 
         unset($data['opening_stock'], $data['reorder_level']);
 
@@ -92,17 +92,17 @@ class VehicleModelController extends Controller
     public function update(Request $request, VehicleModel $vehicleModel)
     {
         $data = $request->validate([
-            'vehicle_type_id' => 'required|exists:vehicle_types,id',
-            'brand'           => 'required|string|max:100',
-            'model_name'      => 'required|string|max:100',
-            'model_code'      => 'nullable|string|max:50',
-            'year'            => 'nullable|integer|min:2000|max:' . (date('Y') + 1),
-            'engine_cc'       => 'nullable|string|max:50',
-            'buying_price'    => 'required|numeric|min:0',
-            'selling_price'   => 'required|numeric|min:0',
-            'description'     => 'nullable|string|max:1000',
-            'status'          => 'required|in:active,inactive',
-            'reorder_level'   => 'nullable|integer|min:0',
+            'vehicle_type_id'   => 'required|exists:vehicle_types,id',
+            'brand'             => 'required|string|max:100',
+            'model_name'        => 'required|string|max:100',
+            'model_code'        => 'nullable|string|max:50',
+            'year'              => 'nullable|integer|min:2000|max:' . (date('Y') + 1),
+            'engine_cc'         => 'nullable|string|max:50',
+            'selling_price_min' => 'nullable|numeric|min:0',
+            'selling_price_max' => 'nullable|numeric|min:0',
+            'description'       => 'nullable|string|max:1000',
+            'status'            => 'required|in:active,inactive',
+            'reorder_level'     => 'nullable|integer|min:0',
         ]);
 
         $reorderLevel = (int) ($data['reorder_level'] ?? 2);

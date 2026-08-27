@@ -17,7 +17,8 @@ class VehicleModel extends Model
         'model_code',
         'year',
         'engine_cc',
-        'selling_price',
+        'selling_price_min',
+        'selling_price_max',
         'buying_price',
         'description',
         'image',
@@ -25,8 +26,9 @@ class VehicleModel extends Model
     ];
 
     protected $casts = [
-        'selling_price' => 'decimal:2',
-        'buying_price'  => 'decimal:2',
+        'selling_price_min' => 'decimal:2',
+        'selling_price_max' => 'decimal:2',
+        'buying_price'      => 'decimal:2',
     ];
 
     // ──────────────────────────────────────────
