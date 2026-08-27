@@ -49,16 +49,22 @@ class DashboardController extends Controller
 
         // ── Stat Cards ────────────────────────────────
         // ── Returns (approved) ───────────────────────
-        // Returns are linked via sale_returns → sales (warehouse is on the sale)
-        $todayReturnsQuery = SaleReturn::where('status', 'approved')
+        // Today: returns processed today on today's sales
+        $todayReturnsAmt = SaleReturn::where('status', 'approved')
             ->whereDate('return_date', $today)
-            ->when($hasFilter, fn($q) => $q->whereHas('sale', fn($s) => $s->whereIn('warehouse_id', $warehouseIds)));
-        $monthReturnsQuery = SaleReturn::where('status', 'approved')
-            ->whereYear('return_date', now()->year)->whereMonth('return_date', now()->month)
-            ->when($hasFilter, fn($q) => $q->whereHas('sale', fn($s) => $s->whereIn('warehouse_id', $warehouseIds)));
+            ->when($hasFilter, fn($q) => $q->whereHas('sale', fn($s) => $s->whereIn('warehouse_id', $warehouseIds)))
+            ->sum('total_amount');
 
-        $todayReturnsAmt  = $todayReturnsQuery->sum('total_amount');
-        $monthReturnsAmt  = $monthReturnsQuery->clone()->sum('total_amount');
+        // Month: returns on sales that were made THIS month (matches the scope of month_sales)
+        $monthReturnsQuery = SaleReturn::where('status', 'approved')
+            ->whereHas('sale', function($q) use ($warehouseIds, $hasFilter) {
+                $q->whereYear('sale_date', now()->year)
+                  ->whereMonth('sale_date', now()->month)
+                  ->where('status', 'completed');
+                if ($hasFilter) $q->whereIn('warehouse_id', $warehouseIds);
+            });
+
+        $monthReturnsAmt   = $monthReturnsQuery->sum('total_amount');
         $monthReturnsCount = $monthReturnsQuery->count();
 
         $stats = [
