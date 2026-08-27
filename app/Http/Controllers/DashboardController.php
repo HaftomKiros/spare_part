@@ -104,7 +104,7 @@ class DashboardController extends Controller
         }
         $stats['total_inventory_value'] = $stats['inventory_value_parts'] + $stats['inventory_value_vehicles'];
 
-        // Profit this month
+        // Profit this month — from sales
         $profitQuery = DB::table('sale_items as si')
             ->join('sales as s', 'si.sale_id', '=', 's.id')
             ->where('s.status', 'completed')
@@ -118,7 +118,6 @@ class DashboardController extends Controller
             if ($item->item_type === 'vehicle') {
                 $cost = DB::table('vehicle_models')->where('id', $item->vehicle_model_id)->value('buying_price') ?? 0;
             } else {
-                // Use the last purchase price for this spare part as cost basis
                 $cost = DB::table('purchase_items')
                     ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
                     ->where('purchase_items.spare_part_id', $item->spare_part_id)
@@ -127,7 +126,37 @@ class DashboardController extends Controller
             }
             $profit += ($item->unit_price - $cost) * $item->quantity;
         }
-        $stats['month_profit'] = $profit - $monthReturnsAmt;
+
+        // Subtract only the PROFIT lost from returned items (not the full return amount)
+        // Get return items for this month's sales
+        $returnItemsQuery = DB::table('sale_return_items as sri')
+            ->join('sale_returns as sr', 'sri.sale_return_id', '=', 'sr.id')
+            ->join('sales as s', 'sr.sale_id', '=', 's.id')
+            ->where('sr.status', 'approved')
+            ->whereYear('s.sale_date', now()->year)
+            ->whereMonth('s.sale_date', now()->month)
+            ->where('s.status', 'completed');
+        if ($hasFilter) $returnItemsQuery->whereIn('s.warehouse_id', $warehouseIds);
+
+        $returnItems = $returnItemsQuery
+            ->select('sri.item_type', 'sri.vehicle_model_id', 'sri.spare_part_id', 'sri.quantity', 'sri.unit_price')
+            ->get();
+
+        $returnedProfit = 0;
+        foreach ($returnItems as $item) {
+            if ($item->item_type === 'vehicle') {
+                $cost = DB::table('vehicle_models')->where('id', $item->vehicle_model_id)->value('buying_price') ?? 0;
+            } else {
+                $cost = DB::table('purchase_items')
+                    ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
+                    ->where('purchase_items.spare_part_id', $item->spare_part_id)
+                    ->orderByDesc('purchases.purchase_date')
+                    ->value('purchase_items.unit_price') ?? 0;
+            }
+            $returnedProfit += ($item->unit_price - $cost) * $item->quantity;
+        }
+
+        $stats['month_profit'] = $profit - $returnedProfit;
 
         // ── Recent Returns ────────────────────────────
         $recentReturns = SaleReturn::with('sale', 'customer', 'user')
