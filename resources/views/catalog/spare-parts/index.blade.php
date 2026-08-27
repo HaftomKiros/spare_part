@@ -63,9 +63,6 @@
             <th>#</th>
             <th>Part</th>
             <th>Category</th>
-            <th>Buy Price</th>
-            <th>Sell Price</th>
-            <th>Margin</th>
             <th>Stock</th>
             <th>Reorder</th>
             <th>Status</th>
@@ -87,11 +84,6 @@
             <td>
                 <span class="badge" style="background:#f1f5f9;color:#475569;font-size:.72rem;padding:3px 8px;border-radius:5px">{{ $part->category->name }}</span>
             </td>
-            <td>Br {{ number_format($part->buying_price, 2) }}</td>
-            <td class="fw-semibold">Br {{ number_format($part->selling_price, 2) }}</td>
-            <td class="{{ $part->profit_margin > 0 ? 'text-success' : 'text-danger' }}">
-                {{ $part->profit_margin }}%
-            </td>
             <td>
                 <span class="stock-pill {{ $part->stock_status === 'out_of_stock' ? 'out' : ($part->stock_status === 'low' ? 'low' : 'in-stock') }}">
                     {{ $part->current_stock }} {{ $part->unit->abbreviation }}
@@ -111,7 +103,7 @@
         </tr>
         @empty
         <tr>
-            <td colspan="10" class="text-center text-muted py-5">
+            <td colspan="7" class="text-center text-muted py-5">
                 <i class="fa fa-gears fs-2 d-block mb-2 opacity-25"></i>
                 No spare parts found.
                 <a href="{{ route('catalog.spare-parts.create') }}">Add one now.</a>

@@ -69,10 +69,7 @@ class DashboardController extends Controller
                 ->whereIn('warehouse_id', $warehouseIds)->whereColumn('current_stock', '<=', 'reorder_level')->count();
             $stats['low_stock_vehicles'] = DB::table('warehouse_vehicle_stock')
                 ->whereIn('warehouse_id', $warehouseIds)->whereColumn('current_stock', '<=', 'reorder_level')->count();
-            $stats['inventory_value_parts'] = DB::table('warehouse_spare_part_stock as ws')
-                ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
-                ->whereIn('ws.warehouse_id', $warehouseIds)
-                ->sum(DB::raw('ws.current_stock * sp.buying_price'));
+            $stats['inventory_value_parts'] = 0; // price set per purchase, not catalog
             $stats['inventory_value_vehicles'] = DB::table('warehouse_vehicle_stock as wv')
                 ->join('vehicle_models as vm', 'wv.vehicle_model_id', '=', 'vm.id')
                 ->whereIn('wv.warehouse_id', $warehouseIds)
@@ -80,7 +77,7 @@ class DashboardController extends Controller
         } else {
             $stats['low_stock_parts']    = SparePart::lowStock()->count();
             $stats['low_stock_vehicles'] = VehicleStock::whereColumn('current_stock', '<=', 'reorder_level')->count();
-            $stats['inventory_value_parts'] = SparePart::selectRaw('SUM(current_stock * buying_price) as val')->value('val') ?? 0;
+            $stats['inventory_value_parts'] = 0; // price set per purchase, not catalog
             $stats['inventory_value_vehicles'] = DB::table('vehicle_stocks as vs')
                 ->join('vehicle_models as vm', 'vs.vehicle_model_id', '=', 'vm.id')
                 ->selectRaw('SUM(vs.current_stock * vm.buying_price) as val')->value('val') ?? 0;
@@ -98,9 +95,16 @@ class DashboardController extends Controller
 
         $profit = 0;
         foreach ($salesItems as $item) {
-            $cost = $item->item_type === 'vehicle'
-                ? (DB::table('vehicle_models')->where('id', $item->vehicle_model_id)->value('buying_price') ?? 0)
-                : (DB::table('spare_parts')->where('id', $item->spare_part_id)->value('buying_price') ?? 0);
+            if ($item->item_type === 'vehicle') {
+                $cost = DB::table('vehicle_models')->where('id', $item->vehicle_model_id)->value('buying_price') ?? 0;
+            } else {
+                // Use the last purchase price for this spare part as cost basis
+                $cost = DB::table('purchase_items')
+                    ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
+                    ->where('purchase_items.spare_part_id', $item->spare_part_id)
+                    ->orderByDesc('purchases.purchase_date')
+                    ->value('purchase_items.unit_price') ?? 0;
+            }
             $profit += ($item->unit_price - $cost) * $item->quantity;
         }
         $stats['month_profit'] = $profit;

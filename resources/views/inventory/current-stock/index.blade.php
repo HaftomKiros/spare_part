@@ -179,8 +179,7 @@
                     {{ $isOut ? 'Out of Stock' : ($isLow ? 'Low Stock' : 'In Stock') }}
                 </span>
             </td>
-            @php $buyPrice = $isWarehouseView ? $part->buying_price : $part->buying_price; @endphp
-            <td class="text-muted small">Br {{ number_format($part->current_stock * $buyPrice, 2) }}</td>
+            <td class="text-muted small">—</td>
             <td class="text-end">
                 <a href="{{ route('inventory.stock-in.create') }}" class="btn btn-action btn-outline-success" title="Add Stock">
                     <i class="fa fa-plus"></i>

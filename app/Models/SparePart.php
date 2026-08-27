@@ -16,8 +16,6 @@ class SparePart extends Model
         'oem_number',
         'name',
         'description',
-        'buying_price',
-        'selling_price',
         'reorder_level',
         'current_stock',
         'location',
@@ -25,10 +23,7 @@ class SparePart extends Model
         'status',
     ];
 
-    protected $casts = [
-        'buying_price'  => 'decimal:2',
-        'selling_price' => 'decimal:2',
-    ];
+    protected $casts = [];
 
     // ──────────────────────────────────────────
     // Relationships
@@ -121,12 +116,11 @@ class SparePart extends Model
 
     public function getProfitMarginAttribute(): float
     {
-        if ($this->buying_price <= 0) return 0;
-        return round((($this->selling_price - $this->buying_price) / $this->buying_price) * 100, 2);
+        return 0;
     }
 
     public function getProfitAmountAttribute(): float
     {
-        return $this->selling_price - $this->buying_price;
+        return 0;
     }
 }

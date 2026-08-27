@@ -63,7 +63,7 @@ class WarehouseController extends Controller
             ->join('part_categories as pc', 'sp.part_category_id', '=', 'pc.id')
             ->join('units as u', 'sp.unit_id', '=', 'u.id')
             ->where('ws.warehouse_id', $warehouse->id)
-            ->select('sp.id', 'sp.name', 'sp.part_number', 'sp.selling_price', 'sp.buying_price',
+            ->select('sp.id', 'sp.name', 'sp.part_number',
                      'pc.name as category', 'u.abbreviation as unit',
                      'ws.current_stock', 'ws.reorder_level')
             ->orderBy('ws.current_stock')

@@ -86,29 +86,6 @@
 
 <div class="col-12 col-lg-4">
 <div class="card mb-3">
-<div class="card-header"><i class="fa fa-sack-dollar me-2 text-primary"></i>Pricing</div>
-<div class="card-body">
-    <div class="mb-3">
-        <label class="form-label">Buying Price</label>
-        <div class="input-group">
-            <span class="input-group-text">Br</span>
-            <input type="number" name="buying_price" id="buyPrice" class="form-control currency-input"
-                   value="{{ old('buying_price', $sparePart->buying_price) }}" min="0" step="0.01" required>
-        </div>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Selling Price</label>
-        <div class="input-group">
-            <span class="input-group-text">Br</span>
-            <input type="number" name="selling_price" id="sellPrice" class="form-control currency-input"
-                   value="{{ old('selling_price', $sparePart->selling_price) }}" min="0" step="0.01" required>
-        </div>
-    </div>
-    <div class="p-2 rounded bg-light text-center small">Margin: <strong id="marginDisplay">{{ $sparePart->profit_margin }}%</strong></div>
-</div>
-</div>
-
-<div class="card mb-3">
 <div class="card-header"><i class="fa fa-warehouse me-2 text-primary"></i>Stock</div>
 <div class="card-body">
     <div class="mb-3">
@@ -140,15 +117,3 @@
 </div>
 </form>
 @endsection
-@push('scripts')
-<script>
-function updateMargin() {
-    const buy  = parseFloat(document.getElementById('buyPrice').value)  || 0;
-    const sell = parseFloat(document.getElementById('sellPrice').value) || 0;
-    const margin = buy > 0 ? (((sell - buy) / buy) * 100).toFixed(1) : 0;
-    document.getElementById('marginDisplay').textContent = margin + '%';
-}
-document.getElementById('buyPrice')?.addEventListener('input', updateMargin);
-document.getElementById('sellPrice')?.addEventListener('input', updateMargin);
-</script>
-@endpush

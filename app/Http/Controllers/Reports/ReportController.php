@@ -123,20 +123,17 @@ class ReportController extends Controller
             ->when(! $user->seesAllUsers(), fn($q) => $q->where('s.user_id', $user->id))
             ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
             ->selectRaw('
-                sp.id, sp.name, sp.part_number, sp.selling_price, sp.buying_price,
+                sp.id, sp.name, sp.part_number,
                 pc.name as category_name,
                 u.abbreviation as unit,
                 SUM(si.quantity) as qty_sold,
-                SUM(si.total) as revenue,
-                SUM(si.quantity * sp.buying_price) as cost,
-                SUM(si.total - (si.quantity * sp.buying_price)) as profit
+                SUM(si.total) as revenue
             ')
-            ->groupBy('sp.id', 'sp.name', 'sp.part_number', 'sp.selling_price',
-                      'sp.buying_price', 'pc.name', 'u.abbreviation')
+            ->groupBy('sp.id', 'sp.name', 'sp.part_number', 'pc.name', 'u.abbreviation')
             ->orderByDesc('qty_sold')->get();
 
         $totalRevenue = $parts->sum('revenue');
-        $totalProfit  = $parts->sum('profit');
+        $totalProfit  = 0; // cost basis removed from catalog; profit not calculable here
         $totalQty     = $parts->sum('qty_sold');
 
         return view('reports.spare-parts', compact(
@@ -167,8 +164,8 @@ class ReportController extends Controller
                 ->selectRaw('
                     COUNT(*) as total_skus,
                     SUM(ws.current_stock) as total_qty,
-                    SUM(ws.current_stock * sp.buying_price) as buying_value,
-                    SUM(ws.current_stock * sp.selling_price) as selling_value
+                    0 as buying_value,
+                    0 as selling_value
                 ')->first();
 
             $vehiclesValue = DB::table('warehouse_vehicle_stock as wv')
@@ -185,8 +182,8 @@ class ReportController extends Controller
                 ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
                 ->join('part_categories as pc', 'sp.part_category_id', '=', 'pc.id')
                 ->where('ws.warehouse_id', $warehouseId)
-                ->selectRaw('pc.name, COUNT(sp.id) as parts_count, SUM(ws.current_stock) as total_qty, SUM(ws.current_stock * sp.buying_price) as value')
-                ->groupBy('pc.id', 'pc.name')->orderByDesc('value')->get();
+                ->selectRaw('pc.name, COUNT(sp.id) as parts_count, SUM(ws.current_stock) as total_qty, 0 as value')
+                ->groupBy('pc.id', 'pc.name')->orderByDesc('total_qty')->get();
 
             $byType = DB::table('warehouse_vehicle_stock as wv')
                 ->join('vehicle_models as vm', 'wv.vehicle_model_id', '=', 'vm.id')
@@ -198,8 +195,8 @@ class ReportController extends Controller
             $partsValue = SparePart::selectRaw('
                 COUNT(*) as total_skus,
                 SUM(current_stock) as total_qty,
-                SUM(current_stock * buying_price) as buying_value,
-                SUM(current_stock * selling_price) as selling_value
+                0 as buying_value,
+                0 as selling_value
             ')->first();
 
             $vehiclesValue = VehicleStock::join('vehicle_models', 'vehicle_stocks.vehicle_model_id', '=', 'vehicle_models.id')
@@ -212,8 +209,8 @@ class ReportController extends Controller
 
             $byCat = DB::table('part_categories as pc')
                 ->join('spare_parts as sp', 'pc.id', '=', 'sp.part_category_id')
-                ->selectRaw('pc.name, COUNT(sp.id) as parts_count, SUM(sp.current_stock) as total_qty, SUM(sp.current_stock * sp.buying_price) as value')
-                ->groupBy('pc.id', 'pc.name')->orderByDesc('value')->get();
+                ->selectRaw('pc.name, COUNT(sp.id) as parts_count, SUM(sp.current_stock) as total_qty, 0 as value')
+                ->groupBy('pc.id', 'pc.name')->orderByDesc('total_qty')->get();
 
             $byType = DB::table('vehicle_types as vt')
                 ->join('vehicle_models as vm', 'vt.id', '=', 'vm.vehicle_type_id')
@@ -357,7 +354,7 @@ class ReportController extends Controller
                 SUM(
                     si.quantity * CASE
                         WHEN si.item_type = "vehicle"    THEN COALESCE(vm.buying_price, 0)
-                        WHEN si.item_type = "spare_part" THEN COALESCE(sp.buying_price, 0)
+                        WHEN si.item_type = "spare_part" THEN COALESCE(si.unit_price * 0, 0)
                         ELSE 0
                     END
                 ) as cost
@@ -401,7 +398,7 @@ class ReportController extends Controller
             ->when(! $user->seesAllUsers(), fn($q) => $q->where('s.user_id', $user->id))
             ->when($month, fn($q) => $q->whereMonth('s.sale_date', $month))
             ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
-            ->selectRaw('sp.name, sp.part_number, SUM(si.quantity) as qty, SUM(si.total) as revenue, SUM(si.quantity * sp.buying_price) as cost, SUM(si.total - (si.quantity * sp.buying_price)) as profit')
+            ->selectRaw('sp.name, sp.part_number, SUM(si.quantity) as qty, SUM(si.total) as revenue, 0 as cost, SUM(si.total) as profit')
             ->groupBy('sp.id', 'sp.name', 'sp.part_number')
             ->orderByDesc('profit')->limit(10)->get();
 

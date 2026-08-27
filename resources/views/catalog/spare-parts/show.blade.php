@@ -32,40 +32,6 @@
 
 <div class="col-12 col-md-6 col-xl-3">
 <div class="card">
-<div class="card-header"><i class="fa fa-sack-dollar me-2 text-primary"></i>Pricing</div>
-<div class="card-body text-center">
-    <div class="row g-2">
-        <div class="col-6">
-            <div class="p-3 rounded-3 bg-primary bg-opacity-10">
-                <div class="fw-bold text-primary">Br {{ number_format($sparePart->buying_price, 2) }}</div>
-                <div class="small text-muted">Buy</div>
-            </div>
-        </div>
-        <div class="col-6">
-            <div class="p-3 rounded-3 bg-success bg-opacity-10">
-                <div class="fw-bold text-success">Br {{ number_format($sparePart->selling_price, 2) }}</div>
-                <div class="small text-muted">Sell</div>
-            </div>
-        </div>
-        <div class="col-6">
-            <div class="p-3 rounded-3 bg-warning bg-opacity-10">
-                <div class="fw-bold text-warning">{{ $sparePart->profit_margin }}%</div>
-                <div class="small text-muted">Margin</div>
-            </div>
-        </div>
-        <div class="col-6">
-            <div class="p-3 rounded-3 bg-secondary bg-opacity-10">
-                <div class="fw-bold">Br {{ number_format($sparePart->profit_amount, 2) }}</div>
-                <div class="small text-muted">Profit/unit</div>
-            </div>
-        </div>
-    </div>
-</div>
-</div>
-</div>
-
-<div class="col-12 col-md-6 col-xl-3">
-<div class="card">
 <div class="card-header"><i class="fa fa-warehouse me-2 text-primary"></i>Stock Status</div>
 <div class="card-body text-center">
     <div class="display-5 fw-bold {{ $sparePart->isOutOfStock() ? 'text-danger' : ($sparePart->isLowStock() ? 'text-warning' : 'text-success') }}">
