@@ -142,7 +142,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('transfers',                  [StockTransferController::class, 'index'])         ->name('transfers.index')          ->middleware('perm:inventory.transfers.view');
         Route::get('transfers/create',           [StockTransferController::class, 'create'])        ->name('transfers.create')         ->middleware('perm:inventory.transfers.create');
         Route::post('transfers',                 [StockTransferController::class, 'store'])         ->name('transfers.store')          ->middleware('perm:inventory.transfers.create');
-        Route::get('transfers/warehouse-stock',  [StockTransferController::class, 'warehouseStock'])->name('transfers.warehouse-stock')->middleware('perm:inventory.transfers.view,inventory.transfers.create');
+        Route::get('transfers/warehouse-stock',  [StockTransferController::class, 'warehouseStock']) ->name('transfers.warehouse-stock') ->middleware('perm:inventory.transfers.view,inventory.transfers.create');
+        Route::get('transfers/warehouse-items',  [StockTransferController::class, 'warehouseItems']) ->name('transfers.warehouse-items') ->middleware('perm:inventory.transfers.view,inventory.transfers.create');
     });
 
     // ── SALES ────────────────────────────────────────────────────────────

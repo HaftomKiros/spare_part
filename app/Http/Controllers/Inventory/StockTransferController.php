@@ -201,4 +201,54 @@ class StockTransferController extends Controller
 
         return response()->json(['stock' => (int) $stock]);
     }
+
+    /**
+     * AJAX: return parts/vehicles that have current_stock > 0 in a given warehouse.
+     * Used by the transfer form to filter the item dropdown.
+     */
+    public function warehouseItems(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $warehouseId = (int) $request->warehouse_id;
+        $type        = $request->item_type ?? 'spare_part';
+
+        if (!$warehouseId) return response()->json([]);
+
+        if (!in_array($warehouseId, auth()->user()->accessibleWarehouseIds())) {
+            return response()->json([]);
+        }
+
+        if ($type === 'spare_part') {
+            $items = DB::table('warehouse_spare_part_stock as ws')
+                ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
+                ->join('units as u', 'sp.unit_id', '=', 'u.id')
+                ->where('ws.warehouse_id', $warehouseId)
+                ->where('ws.current_stock', '>', 0)
+                ->where('sp.status', 'active')
+                ->orderBy('sp.name')
+                ->select('sp.id', 'sp.name', 'sp.part_number', 'u.abbreviation as unit', 'ws.current_stock')
+                ->get()
+                ->map(fn($p) => [
+                    'id'    => $p->id,
+                    'label' => $p->name . ' (' . $p->part_number . ') — ' . $p->unit . ' — Stock: ' . $p->current_stock,
+                    'stock' => $p->current_stock,
+                ]);
+        } else {
+            $items = DB::table('warehouse_vehicle_stock as wv')
+                ->join('vehicle_models as vm', 'wv.vehicle_model_id', '=', 'vm.id')
+                ->join('vehicle_types as vt', 'vm.vehicle_type_id', '=', 'vt.id')
+                ->where('wv.warehouse_id', $warehouseId)
+                ->where('wv.current_stock', '>', 0)
+                ->where('vm.status', 'active')
+                ->orderBy('vm.brand')
+                ->select('vm.id', 'vm.brand', 'vm.model_name', 'vm.model_code', 'vt.name as type_name', 'wv.current_stock')
+                ->get()
+                ->map(fn($v) => [
+                    'id'    => $v->id,
+                    'label' => $v->brand . ' ' . $v->model_name . ($v->model_code ? ' (' . $v->model_code . ')' : '') . ' — ' . $v->type_name . ' — Stock: ' . $v->current_stock,
+                    'stock' => $v->current_stock,
+                ]);
+        }
+
+        return response()->json($items);
+    }
 }

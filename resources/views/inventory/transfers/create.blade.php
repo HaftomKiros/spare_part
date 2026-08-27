@@ -87,28 +87,23 @@
 <!-- Item selector -->
 <div class="mb-3" id="partSection">
     <label class="form-label fw-semibold">Spare Part <span class="text-danger">*</span></label>
-    <select name="item_id" id="partSelect" class="form-select ts-select @error('item_id') is-invalid @enderror">
-        <option value="">- Choose spare part -</option>
-        @foreach($parts as $p)
-            <option value="{{ $p->id }}" {{ old('item_id') == $p->id ? 'selected' : '' }}>
-                {{ $p->name }} ({{ $p->part_number }}) - {{ $p->unit->abbreviation }}
-            </option>
-        @endforeach
+    <select name="item_id" id="partSelect" class="form-select @error('item_id') is-invalid @enderror">
+        <option value="">— Select source warehouse first —</option>
     </select>
+    <div id="partNoStock" class="alert alert-warning py-2 small mt-2 d-none">
+        <i class="fa fa-triangle-exclamation me-1"></i>No spare parts with available stock in the selected warehouse.
+    </div>
     @error('item_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
 </div>
 
 <div class="mb-3" id="vehicleSection" style="display:none">
     <label class="form-label fw-semibold">Vehicle Model <span class="text-danger">*</span></label>
-    <select name="item_id" id="vehicleSelect" class="form-select ts-select" disabled>
-        <option value="">- Choose vehicle -</option>
-        @foreach($vehicles as $v)
-            <option value="{{ $v->id }}" {{ old('item_id') == $v->id ? 'selected' : '' }}>
-                {{ $v->brand }} {{ $v->model_name }}{{ $v->model_code ? ' ('.$v->model_code.')' : '' }}
-                - {{ $v->vehicleType->name }}
-            </option>
-        @endforeach
+    <select name="item_id" id="vehicleSelect" class="form-select" disabled>
+        <option value="">— Select source warehouse first —</option>
     </select>
+    <div id="vehicleNoStock" class="alert alert-warning py-2 small mt-2 d-none">
+        <i class="fa fa-triangle-exclamation me-1"></i>No vehicles with available stock in the selected warehouse.
+    </div>
 </div>
 
 <!-- Stock info boxes -->
@@ -181,22 +176,23 @@
 
 @push('scripts')
 <script>
-const stockUrl          = '{{ route("inventory.transfers.warehouse-stock") }}';
-const partRadio         = document.getElementById('typePart');
-const vehicleRadio      = document.getElementById('typeVehicle');
-const partSec           = document.getElementById('partSection');
-const vehicleSec        = document.getElementById('vehicleSection');
-const partSel           = document.getElementById('partSelect');
-const vehicleSel        = document.getElementById('vehicleSelect');
-const fromSel           = document.getElementById('fromWarehouse');
-const toSel             = document.getElementById('toWarehouse');
-const qtyInput          = document.getElementById('qtyInput');
-const stockInfo         = document.getElementById('stockInfo');
-const afterPreview      = document.getElementById('afterPreview');
+const stockUrl      = '{{ route("inventory.transfers.warehouse-stock") }}';
+const itemsUrl      = '{{ route("inventory.transfers.warehouse-items") }}';
+const partRadio     = document.getElementById('typePart');
+const vehicleRadio  = document.getElementById('typeVehicle');
+const partSec       = document.getElementById('partSection');
+const vehicleSec    = document.getElementById('vehicleSection');
+const partSel       = document.getElementById('partSelect');
+const vehicleSel    = document.getElementById('vehicleSelect');
+const fromSel       = document.getElementById('fromWarehouse');
+const toSel         = document.getElementById('toWarehouse');
+const qtyInput      = document.getElementById('qtyInput');
+const stockInfo     = document.getElementById('stockInfo');
+const afterPreview  = document.getElementById('afterPreview');
 const sameWarehouseAlert = document.getElementById('sameWarehouseAlert');
-const noStockAlert      = document.getElementById('noStockAlert');
+const noStockAlert  = document.getElementById('noStockAlert');
 const qtyExceedsAlert   = document.getElementById('qtyExceedsAlert');
-const submitBtn         = document.querySelector('button[type="submit"]');
+const submitBtn     = document.querySelector('button[type="submit"]');
 
 let fromStockVal = 0;
 let toStockVal   = 0;
@@ -205,19 +201,61 @@ function getItemType() { return vehicleRadio.checked ? 'vehicle' : 'spare_part';
 function getItemSel()  { return vehicleRadio.checked ? vehicleSel : partSel; }
 function getItemId()   { return getItemSel().value; }
 
+// ── Load items for selected From Warehouse + item type ─────────
+function loadItems(callback) {
+    const whId = fromSel.value;
+    const type = getItemType();
+    const sel  = getItemSel();
+    const noStockDiv = type === 'spare_part'
+        ? document.getElementById('partNoStock')
+        : document.getElementById('vehicleNoStock');
+
+    sel.innerHTML = '<option value="">Loading...</option>';
+    sel.disabled  = true;
+    noStockDiv.classList.add('d-none');
+
+    if (!whId) {
+        sel.innerHTML = '<option value="">— Select source warehouse first —</option>';
+        if (callback) callback();
+        return;
+    }
+
+    fetch(itemsUrl + '?warehouse_id=' + whId + '&item_type=' + type)
+        .then(r => r.json())
+        .then(items => {
+            if (!items.length) {
+                sel.innerHTML = '<option value="">— No items in stock —</option>';
+                sel.disabled  = true;
+                noStockDiv.classList.remove('d-none');
+                submitBtn.disabled = true;
+            } else {
+                let html = '<option value="">— Choose item —</option>';
+                items.forEach(i => {
+                    html += '<option value="' + i.id + '" data-stock="' + i.stock + '">'
+                         + i.label + '</option>';
+                });
+                sel.innerHTML = html;
+                sel.disabled  = false;
+                noStockDiv.classList.add('d-none');
+            }
+            if (callback) callback();
+            refreshStocks();
+        })
+        .catch(() => {
+            sel.innerHTML = '<option value="">Error loading items</option>';
+            if (callback) callback();
+        });
+}
+
 function toggleType() {
     const isVehicle = vehicleRadio.checked;
     partSec.style.display    = isVehicle ? 'none' : '';
     vehicleSec.style.display = isVehicle ? '' : 'none';
-    // TomSelect: enable active, disable inactive
-    if (partSel._tomSelect && vehicleSel._tomSelect) {
-        if (isVehicle) { partSel._tomSelect.disable(); vehicleSel._tomSelect.enable(); }
-        else           { vehicleSel._tomSelect.disable(); partSel._tomSelect.enable(); }
-    } else {
-        partSel.disabled    = isVehicle;
-        vehicleSel.disabled = !isVehicle;
-    }
-    refreshStocks();
+    partSel.disabled         = isVehicle;
+    vehicleSel.disabled      = !isVehicle;
+    document.getElementById('partNoStock').classList.add('d-none');
+    document.getElementById('vehicleNoStock').classList.add('d-none');
+    loadItems();
 }
 
 function checkSameWarehouse() {
@@ -260,7 +298,6 @@ function refreshStocks() {
             const el = document.getElementById('fromStock');
             el.textContent = d.stock;
             el.className   = 'fs-4 fw-bold ' + (d.stock <= 0 ? 'text-danger' : 'text-primary');
-            // Show no-stock alert
             noStockAlert.classList.toggle('d-none', d.stock > 0);
         });
 
@@ -277,9 +314,7 @@ function refreshStocks() {
 }
 
 function updateAfterPreview() {
-    const qty = parseInt(qtyInput.value || 0);
-
-    // Qty exceeds stock alert
+    const qty     = parseInt(qtyInput.value || 0);
     const exceeds = qty > fromStockVal && fromStockVal > 0;
     qtyExceedsAlert.classList.toggle('d-none', !exceeds);
     document.getElementById('maxQtyLabel').textContent = fromStockVal;
@@ -299,23 +334,24 @@ function updateAfterPreview() {
 }
 
 function updateSubmitState() {
-    const qty        = parseInt(qtyInput.value || 0);
-    const sameWh     = fromSel.value && toSel.value && fromSel.value === toSel.value;
-    const noStock    = fromStockVal <= 0 && getItemId() !== '';
-    const exceeds    = qty > fromStockVal && fromStockVal > 0;
-    const blocked    = sameWh || noStock || exceeds;
+    const qty     = parseInt(qtyInput.value || 0);
+    const sameWh  = fromSel.value && toSel.value && fromSel.value === toSel.value;
+    const noStock = fromStockVal <= 0 && getItemId() !== '';
+    const exceeds = qty > fromStockVal && fromStockVal > 0;
+    const noItems = getItemSel().disabled && getItemSel().value === '';
+    const blocked = sameWh || noStock || exceeds || noItems;
 
     submitBtn.disabled = blocked;
     submitBtn.title    = blocked
-        ? (sameWh ? 'Same warehouse selected' : (noStock ? 'No stock in source' : 'Quantity exceeds available stock'))
+        ? (sameWh ? 'Same warehouse selected'
+           : noItems ? 'No items in stock for this warehouse'
+           : noStock ? 'No stock in source'
+           : 'Quantity exceeds available stock')
         : '';
 }
 
-// Enforce max on qty input
 qtyInput.addEventListener('input', function () {
-    if (fromStockVal > 0 && parseInt(this.value) > fromStockVal) {
-        this.value = fromStockVal;
-    }
+    if (fromStockVal > 0 && parseInt(this.value) > fromStockVal) this.value = fromStockVal;
     updateAfterPreview();
 });
 
@@ -323,18 +359,17 @@ partRadio.addEventListener('change', toggleType);
 vehicleRadio.addEventListener('change', toggleType);
 partSel.addEventListener('change', refreshStocks);
 vehicleSel.addEventListener('change', refreshStocks);
-fromSel.addEventListener('change', refreshStocks);
+fromSel.addEventListener('change', function () { loadItems(); checkSameWarehouse(); });
 toSel.addEventListener('change', () => { checkSameWarehouse(); refreshStocks(); });
 qtyInput.addEventListener('change', updateAfterPreview);
 
 // Hook TomSelect onChange after global init (runs after @@stack scripts)
 document.addEventListener('DOMContentLoaded', function () {
-    if (partSel._tomSelect)    partSel._tomSelect.on('change', refreshStocks);
-    if (vehicleSel._tomSelect) vehicleSel._tomSelect.on('change', refreshStocks);
-    if (fromSel._tomSelect)    fromSel._tomSelect.on('change', refreshStocks);
-    if (toSel._tomSelect)      toSel._tomSelect.on('change', function () { checkSameWarehouse(); refreshStocks(); });
+    if (fromSel._tomSelect) fromSel._tomSelect.on('change', function() { loadItems(); checkSameWarehouse(); });
+    if (toSel._tomSelect)   toSel._tomSelect.on('change', function() { checkSameWarehouse(); refreshStocks(); });
 });
 
-toggleType(); // init
+// Init
+toggleType();
 </script>
 @endpush
