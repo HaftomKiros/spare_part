@@ -729,22 +729,25 @@
                 return;
             }
 
-            // Build confirmation line for this item (spare parts only have price range)
-            if (type === 'spare_part' && (priceMax > 0 || priceMin > 0)) {
-                // Get purchase unit price from selected batch
-                const selBatch = card.querySelector('.sel-batch');
-                const batchOpt = selBatch ? selBatch.options[selBatch.selectedIndex] : null;
-                const batchUnitPrice = parseFloat(batchOpt?.dataset?.unitPrice || 0);
+            // Build confirmation line for ALL sale items
+            // Get purchase unit price from selected batch
+            const selBatch = card.querySelector('.sel-batch');
+            const batchOpt = selBatch ? selBatch.options[selBatch.selectedIndex] : null;
+            const batchUnitPrice = parseFloat(batchOpt?.dataset?.unitPrice || 0);
 
-                confirmLines.push({
-                    name:           itemName,
-                    qty:            qty,
-                    price:          price,
-                    priceMin:       priceMin,
-                    priceMax:       priceMax,
-                    batchUnitPrice: batchUnitPrice,
-                });
-            }
+            // Get item name from the selected item option text (cleaner than dataset)
+            const selItem = card.querySelector('.sel-item');
+            const selItemOpt = selItem ? selItem.options[selItem.selectedIndex] : null;
+            const resolvedName = selItemOpt ? selItemOpt.text.split(' — ')[0] : (inpPr?.dataset.itemName || 'Item');
+
+            confirmLines.push({
+                name:           resolvedName,
+                qty:            qty,
+                price:          price,
+                priceMin:       priceMin,
+                priceMax:       priceMax,
+                batchUnitPrice: batchUnitPrice,
+            });
         });
 
         if (!valid) {
