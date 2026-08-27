@@ -65,6 +65,8 @@
             <th>Category</th>
             <th>Stock</th>
             <th>Reorder</th>
+            <th>Min Price</th>
+            <th>Max Price</th>
             <th>Status</th>
             <th class="text-end">Actions</th>
         </tr>
@@ -90,6 +92,20 @@
                 </span>
             </td>
             <td class="text-muted">{{ $part->reorder_level }}</td>
+            <td class="text-muted small">
+                @if($part->selling_price_min > 0)
+                    Br {{ number_format($part->selling_price_min, 2) }}
+                @else
+                    <span class="text-muted">—</span>
+                @endif
+            </td>
+            <td class="text-muted small">
+                @if($part->selling_price_max > 0)
+                    <span class="fw-semibold text-success">Br {{ number_format($part->selling_price_max, 2) }}</span>
+                @else
+                    <span class="text-muted">—</span>
+                @endif
+            </td>
             <td><span class="badge badge-status-{{ $part->status }}">{{ ucfirst($part->status) }}</span></td>
             <td class="text-end">
                 <a href="{{ route('catalog.spare-parts.show', $part) }}" class="btn btn-action btn-outline-secondary me-1"><i class="fa fa-eye"></i></a>
@@ -103,7 +119,7 @@
         </tr>
         @empty
         <tr>
-            <td colspan="7" class="text-center text-muted py-5">
+            <td colspan="9" class="text-center text-muted py-5">
                 <i class="fa fa-gears fs-2 d-block mb-2 opacity-25"></i>
                 No spare parts found.
                 <a href="{{ route('catalog.spare-parts.create') }}">Add one now.</a>
