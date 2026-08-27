@@ -75,18 +75,30 @@ class SaleReturnController extends Controller
         $sales  = $salesQuery->latest()->limit(50)->get();
         $number = SaleReturn::generateNumber();
 
-        // Pass already-returned amounts per item for the form
-        $returnedQtyBySaleItem = [];
-        if ($sale) {
-            $returnedQtyBySaleItem = DB::table('sale_return_items as sri')
-                ->join('sale_returns as sr', 'sri.sale_return_id', '=', 'sr.id')
-                ->where('sr.sale_id', $sale->id)
-                ->where('sr.status', 'approved')
-                ->selectRaw('sri.sale_item_id, SUM(sri.quantity) as returned_qty')
-                ->groupBy('sri.sale_item_id')
-                ->pluck('returned_qty', 'sale_item_id')
-                ->toArray();
-        }
+            // Pass already-returned amounts per item for the form
+            // Match by item_type + spare_part_id/vehicle_model_id since sale_return_items has no sale_item_id
+            $returnedQtyBySaleItem = [];
+            if ($sale) {
+                // Get returned qty grouped by item_type + item_id from this sale's approved returns
+                $returnedRows = DB::table('sale_return_items as sri')
+                    ->join('sale_returns as sr', 'sri.sale_return_id', '=', 'sr.id')
+                    ->where('sr.sale_id', $sale->id)
+                    ->where('sr.status', 'approved')
+                    ->selectRaw('sri.item_type, sri.spare_part_id, sri.vehicle_model_id, SUM(sri.quantity) as returned_qty')
+                    ->groupBy('sri.item_type', 'sri.spare_part_id', 'sri.vehicle_model_id')
+                    ->get();
+
+                // Map by sale_item id: match sale items against returned rows
+                foreach ($sale->items as $saleItem) {
+                    $returned = $returnedRows->first(function($r) use ($saleItem) {
+                        if ($saleItem->item_type === 'spare_part') {
+                            return $r->item_type === 'spare_part' && $r->spare_part_id == $saleItem->spare_part_id;
+                        }
+                        return $r->item_type === 'vehicle' && $r->vehicle_model_id == $saleItem->vehicle_model_id;
+                    });
+                    $returnedQtyBySaleItem[$saleItem->id] = $returned ? (int) $returned->returned_qty : 0;
+                }
+            }
 
         return view('sales.returns.create', compact('sale', 'sales', 'number', 'returnedQtyBySaleItem'));
     }
@@ -118,22 +130,30 @@ class SaleReturnController extends Controller
             }
 
             // Check per-item: don't return more than was sold minus already returned
-            $alreadyReturnedQty = DB::table('sale_return_items as sri')
+            // Match by item_type + spare_part_id/vehicle_model_id (no sale_item_id in sale_return_items)
+            $returnedRows = DB::table('sale_return_items as sri')
                 ->join('sale_returns as sr', 'sri.sale_return_id', '=', 'sr.id')
                 ->where('sr.sale_id', $sale->id)
                 ->where('sr.status', 'approved')
-                ->selectRaw('sri.sale_item_id, SUM(sri.quantity) as returned_qty')
-                ->groupBy('sri.sale_item_id')
-                ->pluck('returned_qty', 'sale_item_id')
-                ->toArray();
+                ->selectRaw('sri.item_type, sri.spare_part_id, sri.vehicle_model_id, SUM(sri.quantity) as returned_qty')
+                ->groupBy('sri.item_type', 'sri.spare_part_id', 'sri.vehicle_model_id')
+                ->get();
 
             foreach ($request->items as $row) {
-                $saleItemId  = (int) $row['sale_item_id'];
-                $returnQty   = (int) $row['quantity'];
-                $saleItem    = DB::table('sale_items')->where('id', $saleItemId)->first();
+                $returnQty  = (int) $row['quantity'];
+                $saleItemId = (int) $row['sale_item_id'];
+                $saleItem   = DB::table('sale_items')->where('id', $saleItemId)->first();
                 if (!$saleItem) continue;
-                $alreadyQty  = (int) ($alreadyReturnedQty[$saleItemId] ?? 0);
-                $available   = $saleItem->quantity - $alreadyQty;
+
+                $alreadyRow = $returnedRows->first(function($r) use ($saleItem) {
+                    if ($saleItem->item_type === 'spare_part') {
+                        return $r->item_type === 'spare_part' && $r->spare_part_id == $saleItem->spare_part_id;
+                    }
+                    return $r->item_type === 'vehicle' && $r->vehicle_model_id == $saleItem->vehicle_model_id;
+                });
+                $alreadyQty = $alreadyRow ? (int) $alreadyRow->returned_qty : 0;
+                $available  = $saleItem->quantity - $alreadyQty;
+
                 if ($returnQty > $available) {
                     DB::rollBack();
                     return back()->with('error', "Cannot return {$returnQty} units — only {$available} returnable (already returned: {$alreadyQty}).")->withInput();
