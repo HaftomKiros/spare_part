@@ -119,7 +119,11 @@
             <td class="text-end">
                 <a href="{{ route('sales.show',$sale) }}" class="btn btn-action btn-outline-secondary me-1" title="View"><i class="fa fa-eye"></i></a>
                 <a href="{{ route('sales.invoice',$sale) }}" class="btn btn-action btn-outline-primary me-1" title="Invoice"><i class="fa fa-print"></i></a>
+                @if($returned < $sale->total)
                 <a href="{{ route('sales.returns.create',['sale_id'=>$sale->id]) }}" class="btn btn-action btn-outline-warning" title="Return"><i class="fa fa-rotate-left"></i></a>
+                @else
+                <span class="btn btn-action btn-outline-secondary disabled" title="Fully returned" style="opacity:.5"><i class="fa fa-rotate-left"></i></span>
+                @endif
             </td>
         </tr>
         @empty

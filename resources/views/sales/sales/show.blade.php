@@ -8,12 +8,24 @@
 @include('partials.page-header',[
     'title'   => 'Sale: '.$sale->invoice_number,
     'subtitle'=> $sale->sale_date->format('M d, Y'),
-    'actions' => [
+    'actions' => array_filter([
         ['label'=>'Print Invoice','url'=>route('sales.invoice',$sale),'icon'=>'fa-print','class'=>'btn-outline-primary'],
         ['label'=>'Edit Sale','url'=>route('sales.edit',$sale),'icon'=>'fa-pen','class'=>'btn-outline-secondary'],
-        ['label'=>'New Return','url'=>route('sales.returns.create',['sale_id'=>$sale->id]),'icon'=>'fa-rotate-left','class'=>'btn-outline-warning'],
-    ],
+        !$fullyReturned ? ['label'=>'New Return','url'=>route('sales.returns.create',['sale_id'=>$sale->id]),'icon'=>'fa-rotate-left','class'=>'btn-outline-warning'] : null,
+    ]),
 ])
+
+@if($fullyReturned)
+<div class="alert alert-warning py-2 mb-3 small">
+    <i class="fa fa-rotate-left me-1"></i>
+    This sale has been <strong>fully returned</strong> (Br {{ number_format($totalReturned,2) }} of Br {{ number_format($sale->total,2) }}). No further returns are allowed.
+</div>
+@elseif($totalReturned > 0)
+<div class="alert alert-info py-2 mb-3 small">
+    <i class="fa fa-rotate-left me-1"></i>
+    Partial return: <strong>Br {{ number_format($totalReturned,2) }}</strong> returned of Br {{ number_format($sale->total,2) }}.
+</div>
+@endif
 
 {{-- Delete form (triggered by button below) --}}
 <form id="deleteSaleForm" method="POST" action="{{ route('sales.destroy', $sale) }}" style="display:none">

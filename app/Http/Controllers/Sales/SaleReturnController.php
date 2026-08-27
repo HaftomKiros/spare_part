@@ -55,6 +55,18 @@ class SaleReturnController extends Controller
         $saleId = $request->get('sale_id');
         $sale   = $saleId ? Sale::with('items.vehicleModel', 'items.sparePart.unit', 'customer')->findOrFail($saleId) : null;
 
+        // If a specific sale was requested, check if it's already fully returned
+        if ($sale) {
+            $alreadyReturned = SaleReturn::where('sale_id', $sale->id)
+                ->where('status', 'approved')
+                ->sum('total_amount');
+
+            if ($alreadyReturned >= $sale->total) {
+                return redirect()->route('sales.show', $sale)
+                    ->with('error', "Sale {$sale->invoice_number} has already been fully returned (Br " . number_format($alreadyReturned, 2) . " returned of Br " . number_format($sale->total, 2) . " total). A new return is not allowed.");
+            }
+        }
+
         $salesQuery = Sale::completed()->with('customer')
             ->whereIn('warehouse_id', $accessibleIds);
         if (! $user->seesAllUsers()) {
@@ -63,7 +75,20 @@ class SaleReturnController extends Controller
         $sales  = $salesQuery->latest()->limit(50)->get();
         $number = SaleReturn::generateNumber();
 
-        return view('sales.returns.create', compact('sale', 'sales', 'number'));
+        // Pass already-returned amounts per item for the form
+        $returnedQtyBySaleItem = [];
+        if ($sale) {
+            $returnedQtyBySaleItem = DB::table('sale_return_items as sri')
+                ->join('sale_returns as sr', 'sri.sale_return_id', '=', 'sr.id')
+                ->where('sr.sale_id', $sale->id)
+                ->where('sr.status', 'approved')
+                ->selectRaw('sri.sale_item_id, SUM(sri.quantity) as returned_qty')
+                ->groupBy('sri.sale_item_id')
+                ->pluck('returned_qty', 'sale_item_id')
+                ->toArray();
+        }
+
+        return view('sales.returns.create', compact('sale', 'sales', 'number', 'returnedQtyBySaleItem'));
     }
 
     public function store(Request $request)
@@ -84,6 +109,37 @@ class SaleReturnController extends Controller
         DB::beginTransaction();
         try {
             $sale        = Sale::findOrFail($request->sale_id);
+
+            // Check: has this sale already been fully returned?
+            $alreadyReturned = SaleReturn::where('sale_id', $sale->id)
+                ->where('status', 'approved')->sum('total_amount');
+            if ($alreadyReturned >= $sale->total) {
+                return back()->with('error', "Sale {$sale->invoice_number} has already been fully returned.")->withInput();
+            }
+
+            // Check per-item: don't return more than was sold minus already returned
+            $alreadyReturnedQty = DB::table('sale_return_items as sri')
+                ->join('sale_returns as sr', 'sri.sale_return_id', '=', 'sr.id')
+                ->where('sr.sale_id', $sale->id)
+                ->where('sr.status', 'approved')
+                ->selectRaw('sri.sale_item_id, SUM(sri.quantity) as returned_qty')
+                ->groupBy('sri.sale_item_id')
+                ->pluck('returned_qty', 'sale_item_id')
+                ->toArray();
+
+            foreach ($request->items as $row) {
+                $saleItemId  = (int) $row['sale_item_id'];
+                $returnQty   = (int) $row['quantity'];
+                $saleItem    = DB::table('sale_items')->where('id', $saleItemId)->first();
+                if (!$saleItem) continue;
+                $alreadyQty  = (int) ($alreadyReturnedQty[$saleItemId] ?? 0);
+                $available   = $saleItem->quantity - $alreadyQty;
+                if ($returnQty > $available) {
+                    DB::rollBack();
+                    return back()->with('error', "Cannot return {$returnQty} units — only {$available} returnable (already returned: {$alreadyQty}).")->withInput();
+                }
+            }
+
             $totalAmount = collect($request->items)
                 ->sum(fn($i) => $i['quantity'] * $i['unit_price']);
 

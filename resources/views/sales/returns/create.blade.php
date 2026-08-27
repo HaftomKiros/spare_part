@@ -63,8 +63,19 @@
     </thead>
     <tbody>
         @foreach($sale->items as $i => $item)
-        <tr class="return-row" data-index="{{ $i }}">
-            <td><input type="checkbox" class="form-check-input item-check" value="{{ $i }}"></td>
+        @php
+            $alreadyRetQty  = $returnedQtyBySaleItem[$item->id] ?? 0;
+            $returnableQty  = $item->quantity - $alreadyRetQty;
+            $fullyReturned  = $returnableQty <= 0;
+        @endphp
+        <tr class="return-row" data-index="{{ $i }}" {{ $fullyReturned ? 'style=opacity:.5' : '' }}>
+            <td>
+                @if(!$fullyReturned)
+                <input type="checkbox" class="form-check-input item-check" value="{{ $i }}">
+                @else
+                <input type="checkbox" class="form-check-input" disabled title="Already fully returned">
+                @endif
+            </td>
             <td>
                 {{-- Hidden inputs disabled by default — enabled by JS when checkbox is checked --}}
                 <input type="hidden" name="items[{{ $i }}][sale_item_id]" value="{{ $item->id }}" disabled class="row-input">
@@ -73,12 +84,19 @@
                 <input type="hidden" name="items[{{ $i }}][unit_price]" value="{{ $item->unit_price }}" disabled class="row-input">
                 <div class="fw-semibold small">{{ $item->item_name }}</div>
                 <div class="text-muted" style="font-size:.75rem">{{ $item->item_type === 'spare_part' ? $item->sparePart?->part_number : $item->vehicleModel?->vehicleType?->name }}</div>
+                @if($alreadyRetQty > 0)
+                    <div class="text-danger" style="font-size:.72rem"><i class="fa fa-rotate-left me-1"></i>{{ $alreadyRetQty }} already returned</div>
+                @endif
             </td>
             <td class="text-muted">{{ $item->quantity }}</td>
             <td class="text-muted">Br {{ number_format($item->unit_price,2) }}</td>
             <td>
-                <input type="number" name="items[{{ $i }}][quantity]" class="form-control form-control-sm return-qty row-input"
-                       value="{{ $item->quantity }}" min="1" max="{{ $item->quantity }}" style="width:80px" disabled>
+                @if($fullyReturned)
+                    <span class="badge bg-danger bg-opacity-15 text-danger small">Fully Returned</span>
+                @else
+                    <input type="number" name="items[{{ $i }}][quantity]" class="form-control form-control-sm return-qty row-input"
+                           value="{{ $returnableQty }}" min="1" max="{{ $returnableQty }}" style="width:80px" disabled>
+                @endif
             </td>
         </tr>
         @endforeach
