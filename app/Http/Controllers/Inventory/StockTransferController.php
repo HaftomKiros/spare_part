@@ -161,8 +161,8 @@ class StockTransferController extends Controller
             // ── 2. Find or create the transfer-stub Purchase for destination ─
             //    One stub purchase per transfer (grouped by transfer header).
             $stubPurchase = Purchase::create([
-                'purchase_number'   => 'TRF-' . $transfer->transfer_number,
-                'supplier_id'       => null,
+                'purchase_number'   => $transfer->transfer_number,  // already "TRF-2026-0001"
+                'supplier_id'       => null,                         // no supplier for transfers
                 'user_id'           => $userId,
                 'warehouse_id'      => $toWarehouse->id,
                 'purchase_date'     => now()->toDateString(),
