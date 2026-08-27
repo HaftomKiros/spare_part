@@ -231,14 +231,101 @@ class SaleController extends Controller
         return view('sales.sales.invoice', compact('sale', 'company'));
     }
 
+    public function edit(Sale $sale)
+    {
+        $customers = \App\Models\Customer::active()->orderBy('name')->get();
+        return view('sales.sales.edit', compact('sale', 'customers'));
+    }
+
+    public function update(Request $request, Sale $sale)
+    {
+        $request->validate([
+            'sale_date'      => 'required|date',
+            'customer_id'    => 'nullable|exists:customers,id',
+            'payment_method' => 'required|in:cash,bank_transfer,cheque,credit',
+            'paid_amount'    => 'required|numeric|min:0',
+            'discount'       => 'nullable|numeric|min:0',
+            'tax'            => 'nullable|numeric|min:0',
+            'notes'          => 'nullable|string|max:500',
+        ]);
+
+        $paid     = (float) $request->paid_amount;
+        $total    = (float) $sale->total;
+        $balance  = max(0, $total - $paid);
+        $payStatus = $balance <= 0 ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid');
+
+        // Adjust customer balance if customer changed or payment changed
+        if ($sale->customer_id && $sale->balance != $balance) {
+            $diff = $balance - $sale->balance;
+            if ($diff != 0) {
+                $sale->customer?->increment('balance', $diff);
+            }
+        }
+
+        $sale->update([
+            'sale_date'      => $request->sale_date,
+            'customer_id'    => $request->customer_id ?: null,
+            'payment_method' => $request->payment_method,
+            'paid_amount'    => $paid,
+            'balance'        => $balance,
+            'payment_status' => $payStatus,
+            'notes'          => $request->notes,
+        ]);
+
+        return redirect()->route('sales.show', $sale)
+            ->with('success', 'Sale updated successfully.');
+    }
+
     public function destroy(Sale $sale)
     {
-        if ($sale->status === 'completed') {
-            return back()->with('error', 'Cannot delete a completed sale. Cancel it first if needed.');
+        DB::beginTransaction();
+        try {
+            // Reverse stock for each sale item
+            $sale->load('items.vehicleModel', 'items.sparePart');
+            foreach ($sale->items as $item) {
+                if ($item->item_type === 'vehicle' && $item->vehicleModel) {
+                    $this->stockService->increaseVehicleStock(
+                        $item->vehicleModel, $item->quantity, 'return_in',
+                        auth()->id(), $item->unit_price,
+                        \App\Models\Sale::class, $sale->id,
+                        "Deleted Sale #{$sale->invoice_number}",
+                        $sale->warehouse_id
+                    );
+                } elseif ($item->item_type === 'spare_part' && $item->sparePart) {
+                    $this->stockService->increasePartStock(
+                        $item->sparePart, $item->quantity, 'return_in',
+                        auth()->id(), $item->unit_price,
+                        \App\Models\Sale::class, $sale->id,
+                        "Deleted Sale #{$sale->invoice_number}",
+                        $sale->warehouse_id
+                    );
+                }
+
+                // Reverse total_sold on the linked purchase_item
+                if ($item->purchase_item_id) {
+                    DB::table('purchase_items')
+                        ->where('id', $item->purchase_item_id)
+                        ->update([
+                            'total_sold' => DB::raw("GREATEST(0, total_sold - {$item->quantity})"),
+                            'updated_at' => now(),
+                        ]);
+                }
+            }
+
+            // Reverse customer balance if applicable
+            if ($sale->customer_id && $sale->balance > 0) {
+                $sale->customer?->decrement('balance', $sale->balance);
+            }
+
+            $sale->delete();
+
+            DB::commit();
+            return redirect()->route('sales.index')
+                ->with('success', "Sale #{$sale->invoice_number} deleted and stock reversed.");
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return back()->with('error', 'Failed to delete sale: ' . $e->getMessage());
         }
-        $sale->delete();
-        return redirect()->route('sales.index')
-            ->with('success', 'Sale deleted.');
     }
 
     /**

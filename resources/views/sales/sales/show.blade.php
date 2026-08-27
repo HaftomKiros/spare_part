@@ -10,9 +10,15 @@
     'subtitle'=> $sale->sale_date->format('M d, Y'),
     'actions' => [
         ['label'=>'Print Invoice','url'=>route('sales.invoice',$sale),'icon'=>'fa-print','class'=>'btn-outline-primary'],
+        ['label'=>'Edit Sale','url'=>route('sales.edit',$sale),'icon'=>'fa-pen','class'=>'btn-outline-secondary'],
         ['label'=>'New Return','url'=>route('sales.returns.create',['sale_id'=>$sale->id]),'icon'=>'fa-rotate-left','class'=>'btn-outline-warning'],
     ],
 ])
+
+{{-- Delete form (triggered by button below) --}}
+<form id="deleteSaleForm" method="POST" action="{{ route('sales.destroy', $sale) }}" style="display:none">
+@csrf @method('DELETE')
+</form>
 
 <div class="row g-3">
 <!-- Sale Info -->
@@ -28,6 +34,15 @@
     <tr><th class="text-muted fw-normal">Status</th><td><span class="badge bg-{{ $sale->status_badge }}">{{ ucfirst($sale->status) }}</span></td></tr>
     <tr><th class="text-muted fw-normal">By</th><td>{{ $sale->user->name }}</td></tr>
 </table>
+<div class="mt-3 d-flex gap-2">
+    <a href="{{ route('sales.edit', $sale) }}" class="btn btn-sm btn-outline-primary">
+        <i class="fa fa-pen me-1"></i>Edit
+    </a>
+    <button type="button" class="btn btn-sm btn-outline-danger"
+            onclick="if(confirm('Delete sale {{ $sale->invoice_number }}? This will reverse all stock changes.')) document.getElementById('deleteSaleForm').submit()">
+        <i class="fa fa-trash me-1"></i>Delete
+    </button>
+</div>
 </div>
 </div>
 <div class="card">

@@ -10,6 +10,11 @@
     'subtitle'=>$purchase->purchase_date->format('M d, Y'),
 ])
 
+{{-- Delete form --}}
+<form id="deletePurchaseForm" method="POST" action="{{ route('purchases.destroy', $purchase) }}" style="display:none">
+@csrf @method('DELETE')
+</form>
+
 <div class="row g-3">
 <!-- Info Cards -->
 <div class="col-12 col-md-4">
@@ -39,6 +44,15 @@
     <tr><th class="text-muted fw-normal">Notes</th><td>{{ $purchase->notes }}</td></tr>
     @endif
 </table>
+<div class="mt-3 d-flex gap-2">
+    <a href="{{ route('purchases.edit', $purchase) }}" class="btn btn-sm btn-outline-primary">
+        <i class="fa fa-pen me-1"></i>Edit
+    </a>
+    <button type="button" class="btn btn-sm btn-outline-danger"
+            onclick="if(confirm('Delete purchase {{ $purchase->purchase_number }}? This will reverse all stock changes.')) document.getElementById('deletePurchaseForm').submit()">
+        <i class="fa fa-trash me-1"></i>Delete
+    </button>
+</div>
 </div>
 </div>
 

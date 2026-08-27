@@ -233,14 +233,90 @@ class PurchaseController extends Controller
         }
     }
 
+    public function edit(Purchase $purchase)
+    {
+        $suppliers = Supplier::active()->orderBy('name')->get();
+        return view('purchases.purchases.edit', compact('purchase', 'suppliers'));
+    }
+
+    public function update(Request $request, Purchase $purchase)
+    {
+        $request->validate([
+            'purchase_date'  => 'required|date',
+            'due_date'       => 'nullable|date',
+            'paid_amount'    => 'required|numeric|min:0',
+            'notes'          => 'nullable|string|max:500',
+        ]);
+
+        $paid     = (float) $request->paid_amount;
+        $total    = (float) $purchase->total;
+        $balance  = max(0, $total - $paid);
+        $payStatus = $balance <= 0 ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid');
+
+        // Adjust supplier balance
+        if ($purchase->balance != $balance) {
+            $diff = $balance - $purchase->balance;
+            if ($diff > 0) {
+                $purchase->supplier->increment('balance', $diff);
+            } elseif ($diff < 0) {
+                $purchase->supplier->decrement('balance', abs($diff));
+            }
+        }
+
+        $purchase->update([
+            'purchase_date'  => $request->purchase_date,
+            'due_date'       => $request->due_date ?: null,
+            'paid_amount'    => $paid,
+            'balance'        => $balance,
+            'payment_status' => $payStatus,
+            'notes'          => $request->notes,
+        ]);
+
+        return redirect()->route('purchases.show', $purchase)
+            ->with('success', 'Purchase updated successfully.');
+    }
+
     public function destroy(Purchase $purchase)
     {
-        if ($purchase->status === 'received') {
-            return back()->with('error', 'Cannot delete a received purchase. The stock has already been updated.');
+        DB::beginTransaction();
+        try {
+            $purchase->load('items.vehicleModel', 'items.sparePart');
+
+            // Reverse stock for each purchased item
+            foreach ($purchase->items as $item) {
+                if ($item->item_type === 'vehicle' && $item->vehicleModel) {
+                    $this->stockService->decreaseVehicleStock(
+                        $item->vehicleModel, $item->quantity, 'adjustment_out',
+                        auth()->id(), $item->unit_price,
+                        \App\Models\Purchase::class, $purchase->id,
+                        "Deleted Purchase #{$purchase->purchase_number}",
+                        $purchase->warehouse_id
+                    );
+                } elseif ($item->item_type === 'spare_part' && $item->sparePart) {
+                    $this->stockService->decreasePartStock(
+                        $item->sparePart, $item->quantity, 'adjustment_out',
+                        auth()->id(), $item->unit_price,
+                        \App\Models\Purchase::class, $purchase->id,
+                        "Deleted Purchase #{$purchase->purchase_number}",
+                        $purchase->warehouse_id
+                    );
+                }
+            }
+
+            // Reverse supplier balance
+            if ($purchase->balance > 0) {
+                $purchase->supplier->decrement('balance', $purchase->balance);
+            }
+
+            $purchase->delete(); // cascades to purchase_items
+
+            DB::commit();
+            return redirect()->route('purchases.index')
+                ->with('success', "Purchase #{$purchase->purchase_number} deleted and stock reversed.");
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return back()->with('error', 'Failed to delete purchase: ' . $e->getMessage());
         }
-        $purchase->delete();
-        return redirect()->route('purchases.index')
-            ->with('success', 'Purchase order deleted.');
     }
 
     /**

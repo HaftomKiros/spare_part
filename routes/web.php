@@ -175,6 +175,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create',        [SaleController::class, 'create']) ->name('create') ->middleware('perm:sales.create');
         Route::post('/',             [SaleController::class, 'store'])  ->name('store')  ->middleware('perm:sales.create');
         Route::get('/{sale}',        [SaleController::class, 'show'])   ->name('show')   ->middleware('perm:sales.view');
+        Route::get('/{sale}/edit',   [SaleController::class, 'edit'])   ->name('edit')   ->middleware('perm:sales.edit');
+        Route::put('/{sale}',        [SaleController::class, 'update']) ->name('update') ->middleware('perm:sales.edit');
+        Route::patch('/{sale}',      [SaleController::class, 'update'])                  ->middleware('perm:sales.edit');
         Route::delete('/{sale}',     [SaleController::class, 'destroy'])->name('destroy')->middleware('perm:sales.delete');
         Route::get('/{sale}/invoice',[SaleController::class, 'invoice'])->name('invoice')->middleware('perm:sales.view');
     });
@@ -200,6 +203,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create',             [PurchaseController::class, 'create']) ->name('create') ->middleware('perm:purchases.create');
         Route::post('/',                  [PurchaseController::class, 'store'])  ->name('store')  ->middleware('perm:purchases.create');
         Route::get('/{purchase}',         [PurchaseController::class, 'show'])   ->name('show')   ->middleware('perm:purchases.view');
+        Route::get('/{purchase}/edit',    [PurchaseController::class, 'edit'])   ->name('edit')   ->middleware('perm:purchases.edit');
+        Route::put('/{purchase}',         [PurchaseController::class, 'update']) ->name('update') ->middleware('perm:purchases.edit');
+        Route::patch('/{purchase}',       [PurchaseController::class, 'update'])                  ->middleware('perm:purchases.edit');
         Route::delete('/{purchase}',      [PurchaseController::class, 'destroy'])->name('destroy')->middleware('perm:purchases.delete');
         Route::post('/{purchase}/receive',[PurchaseController::class, 'receive'])->name('receive')->middleware('perm:purchases.create');
     });
