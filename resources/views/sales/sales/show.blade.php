@@ -20,6 +20,8 @@
 @csrf @method('DELETE')
 </form>
 
+@include('partials.confirm-modal')
+
 <div class="row g-3">
 <!-- Sale Info -->
 <div class="col-12 col-md-4">
@@ -39,7 +41,7 @@
         <i class="fa fa-pen me-1"></i>Edit
     </a>
     <button type="button" class="btn btn-sm btn-outline-danger"
-            onclick="if(confirm('Delete sale {{ $sale->invoice_number }}? This will reverse all stock changes.')) document.getElementById('deleteSaleForm').submit()">
+            onclick="confirmModal('Delete sale {{ $sale->invoice_number }}? This will reverse all stock changes and cannot be undone.', function(){ document.getElementById(\'deleteSaleForm\').submit(); }, { title: \'Delete Sale\', icon: \'fa-trash\', iconColor: \'#ef4444\', confirmText: \'Delete\', confirmClass: \'danger\' })">
         <i class="fa fa-trash me-1"></i>Delete
     </button>
 </div>

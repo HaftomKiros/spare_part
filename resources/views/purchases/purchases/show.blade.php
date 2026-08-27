@@ -15,6 +15,8 @@
 @csrf @method('DELETE')
 </form>
 
+@include('partials.confirm-modal')
+
 <div class="row g-3">
 <!-- Info Cards -->
 <div class="col-12 col-md-4">
@@ -49,7 +51,7 @@
         <i class="fa fa-pen me-1"></i>Edit
     </a>
     <button type="button" class="btn btn-sm btn-outline-danger"
-            onclick="if(confirm('Delete purchase {{ $purchase->purchase_number }}? This will reverse all stock changes.')) document.getElementById('deletePurchaseForm').submit()">
+            onclick="confirmModal('Delete purchase {{ $purchase->purchase_number }}? This will reverse all stock changes and cannot be undone.', function(){ document.getElementById(\'deletePurchaseForm\').submit(); }, { title: 'Delete Purchase', icon: 'fa-trash', iconColor: \'#ef4444\', confirmText: \'Delete\', confirmClass: \'danger\' })">
         <i class="fa fa-trash me-1"></i>Delete
     </button>
 </div>
@@ -93,10 +95,10 @@
         </a>
         @endif
         @if($purchase->status !== 'received')
-        <form method="POST" action="{{ route('purchases.receive',$purchase) }}" class="d-inline">
+        <form id="receiveForm" method="POST" action="{{ route('purchases.receive',$purchase) }}" class="d-inline">
             @csrf
-            <button type="submit" class="btn btn-sm btn-success"
-                    onclick="return confirm('Mark as received and update stock?')">
+            <button type="button" class="btn btn-sm btn-success"
+                    onclick="confirmModal('Mark {{ $purchase->purchase_number }} as received and update stock?', function(){ document.getElementById(\'receiveForm\').submit(); }, { title: \'Mark Received\', icon: \'fa-check\', iconColor: \'#16a34a\', confirmText: \'Mark Received\', confirmClass: \'success\' })">
                 <i class="fa fa-check me-1"></i>Mark Received
             </button>
         </form>
