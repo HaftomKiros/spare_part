@@ -36,7 +36,7 @@ class CompanySetting extends Model
     public function getLogoUrlAttribute(): ?string
     {
         return $this->company_logo
-            ? asset('storage/' . $this->company_logo)
+            ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->company_logo)
             : null;
     }
 }

@@ -580,7 +580,7 @@
     <a href="{{ route('dashboard') }}" class="sb-brand">
         <div class="sb-logo">
             @if(!empty($company->company_logo))
-                <img src="{{ asset('storage/' . $company->company_logo) }}"
+                <img src="{{ $company->logo_url }}"
                      alt="{{ $company->company_name }}"
                      style="width:100%;height:100%;object-fit:cover">
             @else
