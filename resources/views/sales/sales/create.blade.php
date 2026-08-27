@@ -157,6 +157,42 @@
 </div>{{-- /row --}}
 </form>
 
+{{-- Sale Confirmation Modal --}}
+<div id="saleConfirmModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center">
+<div style="background:#fff;border-radius:16px;width:100%;max-width:480px;margin:16px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden">
+
+    {{-- Header --}}
+    <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:20px 24px 16px">
+        <div style="display:flex;align-items:center;gap:10px">
+            <div style="background:rgba(255,255,255,.2);border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center">
+                <i class="fa fa-receipt" style="color:#fff;font-size:1rem"></i>
+            </div>
+            <div>
+                <div style="color:#fff;font-weight:700;font-size:1rem">Confirm Sale</div>
+                <div style="color:rgba(255,255,255,.75);font-size:.8rem">Review items before completing</div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Body --}}
+    <div style="padding:20px 24px">
+        <div id="saleConfirmItems" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+
+    {{-- Footer --}}
+    <div style="padding:0 24px 20px;display:flex;gap:10px;justify-content:flex-end">
+        <button id="saleConfirmCancel" type="button"
+                style="padding:9px 22px;border-radius:8px;border:1.5px solid #e2e6f0;background:#fff;color:#64748b;font-weight:600;cursor:pointer;font-size:.9rem">
+            Cancel
+        </button>
+        <button id="saleConfirmOk" type="button"
+                style="padding:9px 22px;border-radius:8px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:600;cursor:pointer;font-size:.9rem">
+            <i class="fa fa-check me-1"></i>Complete Sale
+        </button>
+    </div>
+</div>
+</div>
+
 <style>
 .item-card {
     background: #f8f9ff;
@@ -694,14 +730,19 @@
             }
 
             // Build confirmation line for this item (spare parts only have price range)
-            if (type === 'spare_part' && priceMax > 0) {
+            if (type === 'spare_part' && (priceMax > 0 || priceMin > 0)) {
+                // Get purchase unit price from selected batch
+                const selBatch = card.querySelector('.sel-batch');
+                const batchOpt = selBatch ? selBatch.options[selBatch.selectedIndex] : null;
+                const batchUnitPrice = parseFloat(batchOpt?.dataset?.unitPrice || 0);
+
                 confirmLines.push({
-                    name:      itemName,
-                    qty:       qty,
-                    price:     price,
-                    priceMin:  priceMin,
-                    priceMax:  priceMax,
-                    buyPrice:  buyPrice,
+                    name:           itemName,
+                    qty:            qty,
+                    price:          price,
+                    priceMin:       priceMin,
+                    priceMax:       priceMax,
+                    batchUnitPrice: batchUnitPrice,
                 });
             }
         });
@@ -712,35 +753,84 @@
             return;
         }
 
-        // Show confirmation popup if there are items with price info
+        // Show confirmation modal if there are items with price info
         if (confirmLines.length > 0 && !this.dataset.confirmed) {
             e.preventDefault();
-            let msg = 'Please confirm the following sale items:\n\n';
-            confirmLines.forEach((item, i) => {
-                msg += (i + 1) + '. ' + item.name + '\n';
-                msg += '   Qty: ' + item.qty + '\n';
-                msg += '   Sell Price: Br ' + item.price.toFixed(2);
-                if (item.priceMin > 0 || item.priceMax > 0) {
-                    msg += ' (range: Br ' + item.priceMin.toFixed(2) + ' – Br ' + item.priceMax.toFixed(2) + ')';
-                }
-                if (item.buyPrice > 0) {
-                    const profit = (item.price - item.buyPrice) * item.qty;
-                    msg += '\n   Purchase Price: Br ' + item.buyPrice.toFixed(2);
-                    msg += '\n   Profit: Br ' + profit.toFixed(2);
-                }
-                msg += '\n\n';
+            const form = this;
+            showSaleConfirm(confirmLines, function() {
+                form.dataset.confirmed = '1';
+                form.submit();
             });
-            msg += 'Are you sure you want to complete this sale?';
-
-            if (confirm(msg)) {
-                this.dataset.confirmed = '1';
-                this.submit();
-            }
         }
     });
 
     function esc(str) {
         return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── Sale confirmation modal ────────────────────────────────────
+    function showSaleConfirm(items, onConfirm) {
+        const modal      = document.getElementById('saleConfirmModal');
+        const body       = document.getElementById('saleConfirmItems');
+        const btnOk      = document.getElementById('saleConfirmOk');
+        const btnCancel  = document.getElementById('saleConfirmCancel');
+
+        // Build item cards
+        body.innerHTML = items.map(function(item) {
+            const priceRange = (item.priceMin > 0 || item.priceMax > 0)
+                ? '<span style="color:#94a3b8;font-size:.78rem;margin-left:6px">range: Br '
+                  + item.priceMin.toFixed(2) + ' – Br ' + item.priceMax.toFixed(2) + '</span>'
+                : '';
+
+            // Get purchase price from the batch dropdown data-unit-price if available
+            const batchSel = document.querySelector('.sel-batch');
+            const purchasePrice = item.batchUnitPrice > 0
+                ? 'Br ' + parseFloat(item.batchUnitPrice).toFixed(2)
+                : '—';
+
+            return '<div style="background:#f8f9ff;border:1px solid #e2e6f0;border-radius:10px;padding:14px 16px">'
+                + '<div style="font-weight:700;color:#1e293b;margin-bottom:10px;font-size:.95rem">'
+                + '<i class="fa fa-gears me-2" style="color:#6366f1;font-size:.85rem"></i>' + item.name
+                + '</div>'
+                + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+
+                + '<div style="background:#fff;border:1px solid #e2e6f0;border-radius:8px;padding:10px;text-align:center">'
+                + '<div style="font-size:.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Purchase Price</div>'
+                + '<div style="font-weight:700;color:#475569;font-size:.95rem">Br ' + item.batchUnitPrice.toFixed(2) + '</div>'
+                + '</div>'
+
+                + '<div style="background:#fff;border:1px solid #e2e6f0;border-radius:8px;padding:10px;text-align:center">'
+                + '<div style="font-size:.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Sell Price</div>'
+                + '<div style="font-weight:700;color:#6366f1;font-size:.95rem">Br ' + item.price.toFixed(2) + '</div>'
+                + (priceRange ? '<div>' + priceRange + '</div>' : '')
+                + '</div>'
+
+                + '<div style="background:#fff;border:1px solid #e2e6f0;border-radius:8px;padding:10px;text-align:center">'
+                + '<div style="font-size:.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Qty</div>'
+                + '<div style="font-weight:700;color:#1e293b;font-size:.95rem">' + item.qty + '</div>'
+                + '</div>'
+
+                + '</div>'
+                + '</div>';
+        }).join('');
+
+        // Show modal
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+
+        function close() {
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+            btnOk.removeEventListener('click', onOk);
+            btnCancel.removeEventListener('click', close);
+            modal.removeEventListener('click', onBackdrop);
+        }
+        function onOk() { close(); onConfirm(); }
+        function onBackdrop(e) { if (e.target === modal) close(); }
+
+        btnOk.addEventListener('click', onOk);
+        btnCancel.addEventListener('click', close);
+        modal.addEventListener('click', onBackdrop);
     }
 
     document.getElementById('addItemBtn').addEventListener('click', function () {
