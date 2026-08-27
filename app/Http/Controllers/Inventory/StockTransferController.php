@@ -226,12 +226,27 @@ class StockTransferController extends Controller
                 ->where('sp.status', 'active')
                 ->orderBy('sp.name')
                 ->select('sp.id', 'sp.name', 'sp.part_number', 'u.abbreviation as unit', 'ws.current_stock')
-                ->get()
+                ->get();
+
+            // Only keep parts that have unsold purchase batches in this warehouse
+            $unsoldMap = DB::table('purchase_items as pi')
+                ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+                ->where('p.warehouse_id', $warehouseId)
+                ->where('p.status', 'received')
+                ->where('pi.item_type', 'spare_part')
+                ->whereRaw('pi.quantity > pi.total_sold')
+                ->selectRaw('pi.spare_part_id, SUM(pi.quantity - pi.total_sold) as unsold')
+                ->groupBy('pi.spare_part_id')
+                ->pluck('unsold', 'spare_part_id');
+
+            $items = $items
+                ->filter(fn($p) => isset($unsoldMap[$p->id]) && $unsoldMap[$p->id] > 0)
                 ->map(fn($p) => [
                     'id'    => $p->id,
-                    'label' => $p->name . ' (' . $p->part_number . ') — ' . $p->unit . ' — Stock: ' . $p->current_stock,
+                    'label' => $p->name . ' (' . $p->part_number . ') — ' . $p->unit . ' — Unsold: ' . (int)$unsoldMap[$p->id],
                     'stock' => $p->current_stock,
-                ]);
+                    'unsold'=> (int) $unsoldMap[$p->id],
+                ])->values();
         } else {
             $items = DB::table('warehouse_vehicle_stock as wv')
                 ->join('vehicle_models as vm', 'wv.vehicle_model_id', '=', 'vm.id')
@@ -241,12 +256,27 @@ class StockTransferController extends Controller
                 ->where('vm.status', 'active')
                 ->orderBy('vm.brand')
                 ->select('vm.id', 'vm.brand', 'vm.model_name', 'vm.model_code', 'vt.name as type_name', 'wv.current_stock')
-                ->get()
+                ->get();
+
+            // Only keep vehicles that have unsold purchase batches in this warehouse
+            $unsoldMap = DB::table('purchase_items as pi')
+                ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+                ->where('p.warehouse_id', $warehouseId)
+                ->where('p.status', 'received')
+                ->where('pi.item_type', 'vehicle')
+                ->whereRaw('pi.quantity > pi.total_sold')
+                ->selectRaw('pi.vehicle_model_id, SUM(pi.quantity - pi.total_sold) as unsold')
+                ->groupBy('pi.vehicle_model_id')
+                ->pluck('unsold', 'vehicle_model_id');
+
+            $items = $items
+                ->filter(fn($v) => isset($unsoldMap[$v->id]) && $unsoldMap[$v->id] > 0)
                 ->map(fn($v) => [
                     'id'    => $v->id,
-                    'label' => $v->brand . ' ' . $v->model_name . ($v->model_code ? ' (' . $v->model_code . ')' : '') . ' — ' . $v->type_name . ' — Stock: ' . $v->current_stock,
+                    'label' => $v->brand . ' ' . $v->model_name . ($v->model_code ? ' (' . $v->model_code . ')' : '') . ' — ' . $v->type_name . ' — Unsold: ' . (int)$unsoldMap[$v->id],
                     'stock' => $v->current_stock,
-                ]);
+                    'unsold'=> (int) $unsoldMap[$v->id],
+                ])->values();
         }
 
         return response()->json($items);

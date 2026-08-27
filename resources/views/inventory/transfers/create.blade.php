@@ -63,47 +63,30 @@
 
 <hr class="my-3">
 
-<!-- Item Type -->
-<div class="mb-3">
-    <label class="form-label fw-semibold">Item Type <span class="text-danger">*</span></label>
-    <div class="d-flex gap-3">
-        <div class="form-check">
-            <input class="form-check-input" type="radio" name="item_type" id="typePart" value="spare_part"
-                   {{ old('item_type', 'spare_part') === 'spare_part' ? 'checked' : '' }}>
-            <label class="form-check-label" for="typePart">
-                <i class="fa fa-gears me-1 text-success"></i>Spare Part
-            </label>
-        </div>
-        <div class="form-check">
-            <input class="form-check-input" type="radio" name="item_type" id="typeVehicle" value="vehicle"
-                   {{ old('item_type') === 'vehicle' ? 'checked' : '' }}>
-            <label class="form-check-label" for="typeVehicle">
-                <i class="fa fa-motorcycle me-1 text-primary"></i>Vehicle
-            </label>
-        </div>
+<!-- Item Type + Item selector -->
+<div class="row g-3 mb-3">
+    <div class="col-sm-3 col-md-2">
+        <label class="form-label fw-semibold">Type <span class="text-danger">*</span></label>
+        <select id="typeSelect" class="form-select">
+            <option value="">Select…</option>
+            <option value="spare_part" {{ old('item_type', 'spare_part') === 'spare_part' ? 'selected' : '' }}>Spare Part</option>
+            <option value="vehicle"    {{ old('item_type') === 'vehicle' ? 'selected' : '' }}>Vehicle</option>
+        </select>
+        <input type="hidden" name="item_type" id="itemTypeHidden" value="{{ old('item_type', 'spare_part') }}">
+    </div>
+    <div class="col-sm-9 col-md-10">
+        <label class="form-label fw-semibold">Item <span class="text-danger">*</span></label>
+        <select name="item_id" id="itemSelect" class="form-select @error('item_id') is-invalid @enderror" disabled>
+            <option value="">— Select type first —</option>
+        </select>
+        @error('item_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 </div>
 
-<!-- Item selector -->
-<div class="mb-3" id="partSection">
-    <label class="form-label fw-semibold">Spare Part <span class="text-danger">*</span></label>
-    <select name="item_id" id="partSelect" class="form-select @error('item_id') is-invalid @enderror">
-        <option value="">— Select source warehouse first —</option>
-    </select>
-    <div id="partNoStock" class="alert alert-warning py-2 small mt-2 d-none">
-        <i class="fa fa-triangle-exclamation me-1"></i>No spare parts with available stock in the selected warehouse.
-    </div>
-    @error('item_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-</div>
-
-<div class="mb-3" id="vehicleSection" style="display:none">
-    <label class="form-label fw-semibold">Vehicle Model <span class="text-danger">*</span></label>
-    <select name="item_id" id="vehicleSelect" class="form-select" disabled>
-        <option value="">— Select source warehouse first —</option>
-    </select>
-    <div id="vehicleNoStock" class="alert alert-warning py-2 small mt-2 d-none">
-        <i class="fa fa-triangle-exclamation me-1"></i>No vehicles with available stock in the selected warehouse.
-    </div>
+{{-- No items warning --}}
+<div id="noItemsAlert" class="alert alert-warning py-2 small d-none mb-3">
+    <i class="fa fa-triangle-exclamation me-1"></i>
+    No items of this type have unsold purchase batches in the selected warehouse.
 </div>
 
 <!-- Stock info boxes -->
@@ -176,47 +159,40 @@
 
 @push('scripts')
 <script>
-const stockUrl      = '{{ route("inventory.transfers.warehouse-stock") }}';
-const itemsUrl      = '{{ route("inventory.transfers.warehouse-items") }}';
-const partRadio     = document.getElementById('typePart');
-const vehicleRadio  = document.getElementById('typeVehicle');
-const partSec       = document.getElementById('partSection');
-const vehicleSec    = document.getElementById('vehicleSection');
-const partSel       = document.getElementById('partSelect');
-const vehicleSel    = document.getElementById('vehicleSelect');
-const fromSel       = document.getElementById('fromWarehouse');
-const toSel         = document.getElementById('toWarehouse');
-const qtyInput      = document.getElementById('qtyInput');
-const stockInfo     = document.getElementById('stockInfo');
-const afterPreview  = document.getElementById('afterPreview');
-const sameWarehouseAlert = document.getElementById('sameWarehouseAlert');
-const noStockAlert  = document.getElementById('noStockAlert');
-const qtyExceedsAlert   = document.getElementById('qtyExceedsAlert');
-const submitBtn     = document.querySelector('button[type="submit"]');
+const stockUrl         = '{{ route("inventory.transfers.warehouse-stock") }}';
+const itemsUrl         = '{{ route("inventory.transfers.warehouse-items") }}';
+const typeSelect       = document.getElementById('typeSelect');
+const itemTypeHidden   = document.getElementById('itemTypeHidden');
+const itemSel          = document.getElementById('itemSelect');
+const fromSel          = document.getElementById('fromWarehouse');
+const toSel            = document.getElementById('toWarehouse');
+const qtyInput         = document.getElementById('qtyInput');
+const stockInfo        = document.getElementById('stockInfo');
+const afterPreview     = document.getElementById('afterPreview');
+const sameWhAlert      = document.getElementById('sameWarehouseAlert');
+const noStockAlert     = document.getElementById('noStockAlert');
+const noItemsAlert     = document.getElementById('noItemsAlert');
+const qtyExceedsAlert  = document.getElementById('qtyExceedsAlert');
+const submitBtn        = document.querySelector('button[type="submit"]');
 
 let fromStockVal = 0;
-let toStockVal   = 0;
 
-function getItemType() { return vehicleRadio.checked ? 'vehicle' : 'spare_part'; }
-function getItemSel()  { return vehicleRadio.checked ? vehicleSel : partSel; }
-function getItemId()   { return getItemSel().value; }
+function getItemType() { return typeSelect.value || 'spare_part'; }
+function getItemId()   { return itemSel.value; }
 
-// ── Load items for selected From Warehouse + item type ─────────
-function loadItems(callback) {
+// ── Load items filtered by warehouse + unsold batches ─────────
+function loadItems() {
     const whId = fromSel.value;
     const type = getItemType();
-    const sel  = getItemSel();
-    const noStockDiv = type === 'spare_part'
-        ? document.getElementById('partNoStock')
-        : document.getElementById('vehicleNoStock');
 
-    sel.innerHTML = '<option value="">Loading...</option>';
-    sel.disabled  = true;
-    noStockDiv.classList.add('d-none');
+    itemTypeHidden.value = type;
+    itemSel.innerHTML    = '<option value="">Loading...</option>';
+    itemSel.disabled     = true;
+    noItemsAlert.classList.add('d-none');
 
-    if (!whId) {
-        sel.innerHTML = '<option value="">— Select source warehouse first —</option>';
-        if (callback) callback();
+    if (!whId || !type) {
+        itemSel.innerHTML = '<option value="">— Select warehouse and type —</option>';
+        updateSubmitState();
         return;
     }
 
@@ -224,90 +200,67 @@ function loadItems(callback) {
         .then(r => r.json())
         .then(items => {
             if (!items.length) {
-                sel.innerHTML = '<option value="">— No items in stock —</option>';
-                sel.disabled  = true;
-                noStockDiv.classList.remove('d-none');
-                submitBtn.disabled = true;
+                itemSel.innerHTML = '<option value="">— No items available —</option>';
+                itemSel.disabled  = true;
+                noItemsAlert.classList.remove('d-none');
             } else {
                 let html = '<option value="">— Choose item —</option>';
                 items.forEach(i => {
-                    html += '<option value="' + i.id + '" data-stock="' + i.stock + '">'
-                         + i.label + '</option>';
+                    html += '<option value="' + i.id + '" data-stock="' + i.stock + '">' + i.label + '</option>';
                 });
-                sel.innerHTML = html;
-                sel.disabled  = false;
-                noStockDiv.classList.add('d-none');
+                itemSel.innerHTML = html;
+                itemSel.disabled  = false;
+                noItemsAlert.classList.add('d-none');
             }
-            if (callback) callback();
-            refreshStocks();
+            resetStockDisplay();
+            updateSubmitState();
         })
         .catch(() => {
-            sel.innerHTML = '<option value="">Error loading items</option>';
-            if (callback) callback();
+            itemSel.innerHTML = '<option value="">Error loading items</option>';
+            updateSubmitState();
         });
 }
 
-function toggleType() {
-    const isVehicle = vehicleRadio.checked;
-    partSec.style.display    = isVehicle ? 'none' : '';
-    vehicleSec.style.display = isVehicle ? '' : 'none';
-    partSel.disabled         = isVehicle;
-    vehicleSel.disabled      = !isVehicle;
-    document.getElementById('partNoStock').classList.add('d-none');
-    document.getElementById('vehicleNoStock').classList.add('d-none');
-    loadItems();
+function resetStockDisplay() {
+    stockInfo.style.display    = 'none';
+    afterPreview.style.display = 'none';
+    noStockAlert.classList.add('d-none');
+    fromStockVal = 0;
 }
 
 function checkSameWarehouse() {
     const same = fromSel.value && toSel.value && fromSel.value === toSel.value;
-    sameWarehouseAlert.classList.toggle('d-none', !same);
+    sameWhAlert.classList.toggle('d-none', !same);
     return same;
 }
 
 function refreshStocks() {
-    if (checkSameWarehouse()) {
-        stockInfo.style.display    = 'none';
-        afterPreview.style.display = 'none';
-        noStockAlert.classList.add('d-none');
-        updateSubmitState();
-        return;
-    }
+    if (checkSameWarehouse()) { resetStockDisplay(); updateSubmitState(); return; }
 
     const itemId   = getItemId();
     const itemType = getItemType();
     const fromId   = fromSel.value;
     const toId     = toSel.value;
 
-    if (!itemId || !fromId || !toId) {
-        stockInfo.style.display    = 'none';
-        afterPreview.style.display = 'none';
-        noStockAlert.classList.add('d-none');
-        updateSubmitState();
-        return;
-    }
+    if (!itemId || !fromId || !toId) { resetStockDisplay(); updateSubmitState(); return; }
 
     stockInfo.style.display = '';
     document.getElementById('fromStock').textContent = '...';
     document.getElementById('toStock').textContent   = '...';
-    document.getElementById('fromWarehouseName').textContent = fromSel.options[fromSel.selectedIndex].text.replace(' (Default)', '');
-    document.getElementById('toWarehouseName').textContent   = toSel.options[toSel.selectedIndex].text.replace(' (Default)', '');
+    document.getElementById('fromWarehouseName').textContent = fromSel.options[fromSel.selectedIndex].text.replace(' (Default)','');
+    document.getElementById('toWarehouseName').textContent   = toSel.options[toSel.selectedIndex].text.replace(' (Default)','');
 
-    const fetchFrom = fetch(`${stockUrl}?warehouse_id=${fromId}&item_type=${itemType}&item_id=${itemId}`)
-        .then(r => r.json()).then(d => {
-            fromStockVal = d.stock;
-            const el = document.getElementById('fromStock');
-            el.textContent = d.stock;
-            el.className   = 'fs-4 fw-bold ' + (d.stock <= 0 ? 'text-danger' : 'text-primary');
-            noStockAlert.classList.toggle('d-none', d.stock > 0);
-        });
+    Promise.all([
+        fetch(`${stockUrl}?warehouse_id=${fromId}&item_type=${itemType}&item_id=${itemId}`).then(r=>r.json()),
+        fetch(`${stockUrl}?warehouse_id=${toId}&item_type=${itemType}&item_id=${itemId}`).then(r=>r.json()),
+    ]).then(([from, to]) => {
+        fromStockVal = from.stock;
+        const el = document.getElementById('fromStock');
+        el.textContent = from.stock;
+        el.className   = 'fs-4 fw-bold ' + (from.stock <= 0 ? 'text-danger' : 'text-primary');
+        noStockAlert.classList.toggle('d-none', from.stock > 0);
 
-    const fetchTo = fetch(`${stockUrl}?warehouse_id=${toId}&item_type=${itemType}&item_id=${itemId}`)
-        .then(r => r.json()).then(d => {
-            toStockVal = d.stock;
-            document.getElementById('toStock').textContent = d.stock;
-        });
-
-    Promise.all([fetchFrom, fetchTo]).then(() => {
+        document.getElementById('toStock').textContent = to.stock;
         updateAfterPreview();
         updateSubmitState();
     });
@@ -319,57 +272,52 @@ function updateAfterPreview() {
     qtyExceedsAlert.classList.toggle('d-none', !exceeds);
     document.getElementById('maxQtyLabel').textContent = fromStockVal;
 
-    if (!getItemId() || !fromSel.value || qty <= 0) {
-        afterPreview.style.display = 'none';
-        return;
-    }
+    if (!getItemId() || !fromSel.value || qty <= 0) { afterPreview.style.display = 'none'; return; }
 
     const remaining = fromStockVal - qty;
     afterPreview.style.display = '';
     document.getElementById('afterFromStock').textContent = remaining + ' unit(s)';
     document.getElementById('afterFromStock').className =
-        'fw-bold ' + (remaining < 0 ? 'text-danger' : (remaining === 0 ? 'text-warning' : 'text-success'));
-
+        'fw-bold ' + (remaining < 0 ? 'text-danger' : remaining === 0 ? 'text-warning' : 'text-success');
     updateSubmitState();
 }
 
 function updateSubmitState() {
-    const qty     = parseInt(qtyInput.value || 0);
-    const sameWh  = fromSel.value && toSel.value && fromSel.value === toSel.value;
-    const noStock = fromStockVal <= 0 && getItemId() !== '';
-    const exceeds = qty > fromStockVal && fromStockVal > 0;
-    const noItems = getItemSel().disabled && getItemSel().value === '';
-    const blocked = sameWh || noStock || exceeds || noItems;
+    const qty      = parseInt(qtyInput.value || 0);
+    const sameWh   = fromSel.value && toSel.value && fromSel.value === toSel.value;
+    const noItems  = itemSel.disabled;
+    const noStock  = fromStockVal <= 0 && getItemId() !== '';
+    const exceeds  = qty > fromStockVal && fromStockVal > 0;
+    const noType   = !typeSelect.value;
+    const blocked  = sameWh || noItems || noStock || exceeds || noType || !fromSel.value;
 
     submitBtn.disabled = blocked;
     submitBtn.title    = blocked
-        ? (sameWh ? 'Same warehouse selected'
-           : noItems ? 'No items in stock for this warehouse'
-           : noStock ? 'No stock in source'
-           : 'Quantity exceeds available stock')
-        : '';
+        ? (sameWh ? 'Same warehouse' : noType ? 'Select a type' : noItems ? 'No items available'
+           : noStock ? 'No stock in source' : 'Quantity exceeds stock') : '';
 }
 
-qtyInput.addEventListener('input', function () {
+// Events
+typeSelect.addEventListener('change', function() {
+    itemTypeHidden.value = this.value;
+    loadItems();
+});
+itemSel.addEventListener('change', refreshStocks);
+fromSel.addEventListener('change', function() { loadItems(); checkSameWarehouse(); });
+toSel.addEventListener('change', function()   { checkSameWarehouse(); refreshStocks(); });
+qtyInput.addEventListener('input', function() {
     if (fromStockVal > 0 && parseInt(this.value) > fromStockVal) this.value = fromStockVal;
     updateAfterPreview();
 });
-
-partRadio.addEventListener('change', toggleType);
-vehicleRadio.addEventListener('change', toggleType);
-partSel.addEventListener('change', refreshStocks);
-vehicleSel.addEventListener('change', refreshStocks);
-fromSel.addEventListener('change', function () { loadItems(); checkSameWarehouse(); });
-toSel.addEventListener('change', () => { checkSameWarehouse(); refreshStocks(); });
 qtyInput.addEventListener('change', updateAfterPreview);
 
-// Hook TomSelect onChange after global init (runs after @@stack scripts)
-document.addEventListener('DOMContentLoaded', function () {
+// TomSelect hooks
+document.addEventListener('DOMContentLoaded', function() {
     if (fromSel._tomSelect) fromSel._tomSelect.on('change', function() { loadItems(); checkSameWarehouse(); });
-    if (toSel._tomSelect)   toSel._tomSelect.on('change', function() { checkSameWarehouse(); refreshStocks(); });
+    if (toSel._tomSelect)   toSel._tomSelect.on('change', function()   { checkSameWarehouse(); refreshStocks(); });
 });
 
 // Init
-toggleType();
+updateSubmitState();
 </script>
 @endpush
