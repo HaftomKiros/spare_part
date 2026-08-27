@@ -75,32 +75,53 @@ class PurchaseController extends Controller
         $defaultWarehouse = $warehouses->firstWhere('is_default', true) ?? $warehouses->first();
 
         // Pre-encode JSON for JS (avoids PHP 8.5 parse issues with @json + arrow functions)
-        $vehicleTypesJson = json_encode($vehicleTypes->map(function ($vt) {
+
+        // Total unsold per spare part: SUM(quantity - total_sold) from purchase_items
+        $partUnsold = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('pi.item_type', 'spare_part')
+            ->where('p.status', 'received')
+            ->selectRaw('pi.spare_part_id, SUM(pi.quantity - pi.total_sold) as unsold')
+            ->groupBy('pi.spare_part_id')
+            ->pluck('unsold', 'spare_part_id');
+
+        // Total unsold per vehicle model
+        $vehicleUnsold = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('pi.item_type', 'vehicle')
+            ->where('p.status', 'received')
+            ->selectRaw('pi.vehicle_model_id, SUM(pi.quantity - pi.total_sold) as unsold')
+            ->groupBy('pi.vehicle_model_id')
+            ->pluck('unsold', 'vehicle_model_id');
+
+        $vehicleTypesJson = json_encode($vehicleTypes->map(function ($vt) use ($vehicleUnsold) {
             return [
                 'id'     => $vt->id,
                 'name'   => $vt->name,
-                'models' => $vt->activeVehicleModels->map(function ($m) {
+                'models' => $vt->activeVehicleModels->map(function ($m) use ($vehicleUnsold) {
                     return [
-                        'id'    => $m->id,
-                        'name'  => $m->brand . ' ' . $m->model_name . ($m->model_code ? ' (' . $m->model_code . ')' : ''),
-                        'price' => $m->buying_price,
-                        'stock' => $m->stock?->current_stock ?? 0,
+                        'id'     => $m->id,
+                        'name'   => $m->brand . ' ' . $m->model_name . ($m->model_code ? ' (' . $m->model_code . ')' : ''),
+                        'price'  => $m->buying_price,
+                        'stock'  => $m->stock?->current_stock ?? 0,
+                        'unsold' => (int) ($vehicleUnsold[$m->id] ?? 0),
                     ];
                 })->values(),
             ];
         })->values());
 
-        $categoriesJson = json_encode($categories->map(function ($cat) {
+        $categoriesJson = json_encode($categories->map(function ($cat) use ($partUnsold) {
             return [
                 'id'    => $cat->id,
                 'name'  => $cat->name,
-                'parts' => $cat->spareParts->map(function ($p) {
+                'parts' => $cat->spareParts->map(function ($p) use ($partUnsold) {
                     return [
-                        'id'    => $p->id,
-                        'name'  => $p->name . ' (' . $p->part_number . ')',
-                        'price' => $p->buying_price,
-                        'stock' => $p->current_stock,
-                        'unit'  => $p->unit->abbreviation,
+                        'id'     => $p->id,
+                        'name'   => $p->name . ' (' . $p->part_number . ')',
+                        'price'  => $p->buying_price,
+                        'stock'  => $p->current_stock,
+                        'unsold' => (int) ($partUnsold[$p->id] ?? 0),
+                        'unit'   => $p->unit->abbreviation,
                     ];
                 })->values(),
             ];

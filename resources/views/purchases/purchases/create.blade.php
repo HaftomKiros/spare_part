@@ -207,7 +207,7 @@
                 html += '<optgroup label="' + esc(vt.name) + '">';
                 vt.models.forEach(m => {
                     html += '<option value="' + m.id + '" data-price="' + m.price + '">'
-                         +  esc(m.name) + ' — Stock: ' + m.stock
+                         +  esc(m.name) + ' — Unsold: ' + m.unsold
                          + '</option>';
                 });
                 html += '</optgroup>';
@@ -219,7 +219,7 @@
                 html += '<optgroup label="' + esc(cat.name) + '">';
                 cat.parts.forEach(p => {
                     html += '<option value="' + p.id + '" data-price="' + p.price + '">'
-                         +  esc(p.name) + ' — Stock: ' + p.stock + (p.unit ? ' ' + p.unit : '')
+                         +  esc(p.name) + ' — Unsold: ' + p.unsold + (p.unit ? ' ' + p.unit : '')
                          + '</option>';
                 });
                 html += '</optgroup>';
