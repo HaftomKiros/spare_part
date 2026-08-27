@@ -3,62 +3,73 @@
 namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\Controller;
-use App\Models\Warehouse;
+use App\Models\Purchase;
+use App\Models\PurchaseItem;
 use App\Models\SparePart;
+use App\Models\StockTransfer;
 use App\Models\VehicleModel;
+use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class StockTransferController extends Controller
 {
+    // ── Index ──────────────────────────────────────────────────────────────
     public function index(Request $request)
     {
         $user          = auth()->user();
         $accessibleIds = $user->accessibleWarehouseIds();
 
-        // Show transfers where the user's warehouse appears as FROM or TO
-        // Also scope to transfers made by this user for non-admins
-        $query = DB::table('stock_movements as sm')
-            ->join('warehouses as w', 'sm.warehouse_id', '=', 'w.id')
-            ->join('users as u', 'sm.user_id', '=', 'u.id')
-            ->leftJoin('spare_parts as sp', 'sm.spare_part_id', '=', 'sp.id')
-            ->leftJoin('vehicle_models as vm', 'sm.vehicle_model_id', '=', 'vm.id')
-            ->whereIn('sm.movement_type', ['adjustment_in', 'adjustment_out'])
-            ->whereNotNull('sm.notes')
-            ->where('sm.notes', 'like', '%transfer%')
+        $query = StockTransfer::with(['fromWarehouse', 'toWarehouse', 'user'])
             ->where(function ($q) use ($accessibleIds) {
-                // Show if this warehouse is source OR destination
-                $q->whereIn('sm.warehouse_id', $accessibleIds);
+                $q->whereIn('from_warehouse_id', $accessibleIds)
+                  ->orWhereIn('to_warehouse_id', $accessibleIds);
             });
 
-        // Non-admins: only see transfers they initiated
         if (! $user->seesAllUsers()) {
-            $query->where('sm.user_id', $user->id);
+            $query->where('user_id', $user->id);
         }
 
-        if ($request->warehouse_id && in_array((int)$request->warehouse_id, $accessibleIds)) {
-            $query->where('sm.warehouse_id', $request->warehouse_id);
+        if ($request->warehouse_id && in_array((int) $request->warehouse_id, $accessibleIds)) {
+            $wid = (int) $request->warehouse_id;
+            $query->where(fn($q) => $q->where('from_warehouse_id', $wid)->orWhere('to_warehouse_id', $wid));
         }
         if ($request->date_from) {
-            $query->whereDate('sm.created_at', '>=', $request->date_from);
+            $query->whereDate('transferred_at', '>=', $request->date_from);
         }
         if ($request->date_to) {
-            $query->whereDate('sm.created_at', '<=', $request->date_to);
+            $query->whereDate('transferred_at', '<=', $request->date_to);
         }
 
-        $movements = $query
-            ->select('sm.*', 'w.name as warehouse_name', 'u.name as user_name',
-                     'sp.name as part_name', 'sp.part_number',
-                     'vm.brand', 'vm.model_name')
-            ->orderByDesc('sm.created_at')
-            ->paginate(20)
-            ->withQueryString();
+        // Eager-load item summary: aggregate transferred items per transfer
+        $transfers = $query->orderByDesc('transferred_at')->paginate(20)->withQueryString();
+
+        // Load item lines for each transfer (via the stub purchase_items)
+        $transferIds = $transfers->pluck('id');
+        $itemLines   = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->leftJoin('spare_parts as sp', 'pi.spare_part_id', '=', 'sp.id')
+            ->leftJoin('vehicle_models as vm', 'pi.vehicle_model_id', '=', 'vm.id')
+            ->whereNotNull('p.stock_transfer_id')
+            ->whereIn('p.stock_transfer_id', $transferIds)
+            ->select(
+                'p.stock_transfer_id',
+                'pi.item_type',
+                'pi.quantity',
+                'pi.unit_price',
+                'pi.total_sold',
+                'sp.name as part_name', 'sp.part_number',
+                'vm.brand', 'vm.model_name', 'vm.model_code'
+            )
+            ->get()
+            ->groupBy('stock_transfer_id');
 
         $warehouses = auth()->user()->accessibleWarehouses()->get();
 
-        return view('inventory.transfers.index', compact('movements', 'warehouses'));
+        return view('inventory.transfers.index', compact('transfers', 'itemLines', 'warehouses'));
     }
 
+    // ── Create ─────────────────────────────────────────────────────────────
     public function create()
     {
         $warehouses = auth()->user()->accessibleWarehouses()->get();
@@ -68,6 +79,7 @@ class StockTransferController extends Controller
         return view('inventory.transfers.create', compact('warehouses', 'parts', 'vehicles'));
     }
 
+    // ── Store — the new FIFO batch-cloning algorithm ───────────────────────
     public function store(Request $request)
     {
         $request->validate([
@@ -81,54 +93,159 @@ class StockTransferController extends Controller
             'to_warehouse_id.different' => 'Source and destination warehouse must be different.',
         ]);
 
-        // Check available stock in source warehouse
-        $table = $request->item_type === 'spare_part' ? 'warehouse_spare_part_stock' : 'warehouse_vehicle_stock';
-        $col   = $request->item_type === 'spare_part' ? 'spare_part_id' : 'vehicle_model_id';
-        $qty   = (int) $request->quantity;
+        $stockTable = $request->item_type === 'spare_part'
+            ? 'warehouse_spare_part_stock'
+            : 'warehouse_vehicle_stock';
+        $col = $request->item_type === 'spare_part' ? 'spare_part_id' : 'vehicle_model_id';
+        $qty = (int) $request->quantity;
 
-        $from = DB::table($table)
+        // ── Pre-flight: check physical stock in source ─────────────────────
+        $fromStock = DB::table($stockTable)
             ->where('warehouse_id', $request->from_warehouse_id)
             ->where($col, $request->item_id)
-            ->first();
+            ->value('current_stock') ?? 0;
 
-        $available = $from?->current_stock ?? 0;
-
-        if ($available <= 0) {
+        if ($fromStock <= 0) {
             return back()
-                ->with('error', 'Transfer not possible — the source warehouse has no stock for this item (0 units).')
+                ->with('error', 'Transfer not possible — the source warehouse has no stock for this item.')
+                ->withInput();
+        }
+        if ($qty > $fromStock) {
+            return back()
+                ->with('error', "Insufficient stock. Requested {$qty} but only {$fromStock} available.")
                 ->withInput();
         }
 
-        if ($qty > $available) {
+        // ── Pre-flight: check sellable batches cover the qty ───────────────
+        // Only non-transfer purchase_items are consumed from the source.
+        $sourceBatches = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('pi.item_type', $request->item_type)
+            ->where("pi.{$col}", $request->item_id)
+            ->where('p.warehouse_id', $request->from_warehouse_id)
+            ->where('p.status', 'received')
+            ->where('p.purchase_type', 'purchase')   // only real purchases, not transfer stubs
+            ->whereRaw('pi.quantity > pi.total_sold')
+            ->orderBy('p.purchase_date')
+            ->orderBy('pi.id')
+            ->select('pi.id', 'pi.quantity', 'pi.total_sold', 'pi.unit_price')
+            ->get();
+
+        $totalAvailableInBatches = $sourceBatches->sum(fn($b) => $b->quantity - $b->total_sold);
+        if ($totalAvailableInBatches < $qty) {
             return back()
-                ->with('error', "Insufficient stock. You requested {$qty} unit(s) but the source warehouse only has {$available} unit(s).")
+                ->with('error', "Only {$totalAvailableInBatches} unit(s) available across purchase batches (physical stock: {$fromStock}). Cannot transfer {$qty}.")
                 ->withInput();
         }
 
-        DB::transaction(function () use ($request, $table, $col, $qty, $from, $available) {
+        $fromWarehouse = Warehouse::findOrFail($request->from_warehouse_id);
+        $toWarehouse   = Warehouse::findOrFail($request->to_warehouse_id);
+
+        DB::transaction(function () use (
+            $request, $stockTable, $col, $qty, $fromStock,
+            $fromWarehouse, $toWarehouse, $sourceBatches
+        ) {
             $userId = auth()->id();
-            $notes  = $request->notes ? 'Stock transfer — ' . $request->notes : 'Stock transfer';
+            $notes  = $request->notes ?? null;
 
+            // ── 1. Create the stock_transfer header record ─────────────────
+            $transfer = StockTransfer::create([
+                'transfer_number'   => StockTransfer::generateNumber(),
+                'from_warehouse_id' => $fromWarehouse->id,
+                'to_warehouse_id'   => $toWarehouse->id,
+                'user_id'           => $userId,
+                'notes'             => $notes,
+                'transferred_at'    => now(),
+            ]);
+
+            // ── 2. Find or create the transfer-stub Purchase for destination ─
+            //    One stub purchase per transfer (grouped by transfer header).
+            $stubPurchase = Purchase::create([
+                'purchase_number'   => 'TRF-' . $transfer->transfer_number,
+                'supplier_id'       => null,
+                'user_id'           => $userId,
+                'warehouse_id'      => $toWarehouse->id,
+                'purchase_date'     => now()->toDateString(),
+                'due_date'          => null,
+                'subtotal'          => 0,  // will update below
+                'discount'          => 0,
+                'tax'               => 0,
+                'total'             => 0,  // will update below
+                'paid_amount'       => 0,
+                'balance'           => 0,
+                'payment_status'    => 'paid',
+                'status'            => 'received',
+                'notes'             => "Stock transfer from {$fromWarehouse->name} — {$transfer->transfer_number}",
+                'purchase_type'     => 'transfer',
+                'stock_transfer_id' => $transfer->id,
+            ]);
+
+            // ── 3. FIFO: consume source batches and clone to destination ────
+            $remaining       = $qty;
+            $stubSubtotal    = 0;
+            $toStockBefore   = DB::table($stockTable)
+                ->where('warehouse_id', $toWarehouse->id)
+                ->where($col, $request->item_id)
+                ->value('current_stock') ?? 0;
+
+            foreach ($sourceBatches as $batch) {
+                if ($remaining <= 0) break;
+
+                $available = $batch->quantity - $batch->total_sold;
+                $take      = min($remaining, $available);
+
+                // a) Mark sold on the source batch
+                DB::table('purchase_items')
+                    ->where('id', $batch->id)
+                    ->update([
+                        'total_sold' => $batch->total_sold + $take,
+                        'updated_at' => now(),
+                    ]);
+
+                // b) Clone batch to destination warehouse (stub purchase)
+                $lineTotal = round($take * $batch->unit_price, 2);
+                PurchaseItem::create([
+                    'purchase_id'             => $stubPurchase->id,
+                    'item_type'               => $request->item_type,
+                    'vehicle_model_id'        => $request->item_type === 'vehicle'    ? $request->item_id : null,
+                    'spare_part_id'           => $request->item_type === 'spare_part' ? $request->item_id : null,
+                    'quantity'                => $take,
+                    'total_sold'              => 0,
+                    'unit_price'              => $batch->unit_price, // preserve original cost basis
+                    'discount'                => 0,
+                    'total'                   => $lineTotal,
+                    'is_transfer'             => true,
+                    'source_purchase_item_id' => $batch->id,
+                ]);
+
+                $stubSubtotal += $lineTotal;
+                $remaining    -= $take;
+            }
+
+            // c) Update stub purchase totals
+            $stubPurchase->update(['subtotal' => $stubSubtotal, 'total' => $stubSubtotal]);
+
+            // ── 4. Update warehouse stock counters ─────────────────────────
             // Deduct from source
-            DB::table($table)
-                ->where('warehouse_id', $request->from_warehouse_id)
+            DB::table($stockTable)
+                ->where('warehouse_id', $fromWarehouse->id)
                 ->where($col, $request->item_id)
                 ->decrement('current_stock', $qty);
 
-            // Add to destination (create record if doesn't exist)
-            $to = DB::table($table)
-                ->where('warehouse_id', $request->to_warehouse_id)
+            // Add to destination (upsert)
+            $destRow = DB::table($stockTable)
+                ->where('warehouse_id', $toWarehouse->id)
                 ->where($col, $request->item_id)
                 ->first();
 
-            if ($to) {
-                DB::table($table)
-                    ->where('warehouse_id', $request->to_warehouse_id)
+            if ($destRow) {
+                DB::table($stockTable)
+                    ->where('warehouse_id', $toWarehouse->id)
                     ->where($col, $request->item_id)
                     ->increment('current_stock', $qty);
             } else {
-                DB::table($table)->insert([
-                    'warehouse_id'  => $request->to_warehouse_id,
+                DB::table($stockTable)->insert([
+                    'warehouse_id'  => $toWarehouse->id,
                     $col            => $request->item_id,
                     'current_stock' => $qty,
                     'reorder_level' => $request->item_type === 'spare_part' ? 5 : 2,
@@ -137,46 +254,41 @@ class StockTransferController extends Controller
                 ]);
             }
 
-            $toStock = $to ? $to->current_stock : 0;
-            $base = [
+            // ── 5. Log stock movements (transfer_out / transfer_in) ────────
+            $baseMovement = [
                 'item_type'        => $request->item_type,
                 'spare_part_id'    => $request->item_type === 'spare_part' ? $request->item_id : null,
                 'vehicle_model_id' => $request->item_type === 'vehicle'    ? $request->item_id : null,
                 'quantity'         => $qty,
-                'unit_cost'        => 0,
+                'unit_cost'        => round($stubSubtotal / $qty, 4), // weighted avg cost
+                'reference_type'   => StockTransfer::class,
+                'reference_id'     => $transfer->id,
                 'user_id'          => $userId,
-                'notes'            => $notes,
+                'notes'            => $notes ? "Transfer: {$notes}" : "Transfer #{$transfer->transfer_number}",
                 'created_at'       => now(),
                 'updated_at'       => now(),
             ];
 
-            // Log outward from source
-            DB::table('stock_movements')->insert(array_merge($base, [
-                'movement_type'   => 'adjustment_out',
-                'warehouse_id'    => $request->from_warehouse_id,
-                'quantity_before' => $available,
-                'quantity_after'  => $available - $qty,
+            DB::table('stock_movements')->insert(array_merge($baseMovement, [
+                'movement_type'   => 'transfer_out',
+                'warehouse_id'    => $fromWarehouse->id,
+                'quantity_before' => $fromStock,
+                'quantity_after'  => $fromStock - $qty,
             ]));
 
-            // Log inward to destination
-            DB::table('stock_movements')->insert(array_merge($base, [
-                'movement_type'   => 'adjustment_in',
-                'warehouse_id'    => $request->to_warehouse_id,
-                'quantity_before' => $toStock,
-                'quantity_after'  => $toStock + $qty,
+            DB::table('stock_movements')->insert(array_merge($baseMovement, [
+                'movement_type'   => 'transfer_in',
+                'warehouse_id'    => $toWarehouse->id,
+                'quantity_before' => $toStockBefore,
+                'quantity_after'  => $toStockBefore + $qty,
             ]));
         });
 
-        $fromName = Warehouse::find($request->from_warehouse_id)->name;
-        $toName   = Warehouse::find($request->to_warehouse_id)->name;
-
         return redirect()->route('inventory.transfers.index')
-            ->with('success', "Transferred {$qty} unit(s) from {$fromName} to {$toName} successfully.");
+            ->with('success', "Transferred {$qty} unit(s) from {$fromWarehouse->name} to {$toWarehouse->name} successfully.");
     }
 
-    /**
-     * AJAX: get stock for an item in a specific warehouse
-     */
+    // ── AJAX: get stock for an item in a specific warehouse ────────────────
     public function warehouseStock(Request $request)
     {
         $warehouseId = (int) $request->warehouse_id;
@@ -187,25 +299,18 @@ class StockTransferController extends Controller
             return response()->json(['stock' => 0]);
         }
 
-        if ($itemType === 'spare_part') {
-            $stock = DB::table('warehouse_spare_part_stock')
-                ->where('warehouse_id', $warehouseId)
-                ->where('spare_part_id', $itemId)
-                ->value('current_stock') ?? 0;
-        } else {
-            $stock = DB::table('warehouse_vehicle_stock')
-                ->where('warehouse_id', $warehouseId)
-                ->where('vehicle_model_id', $itemId)
-                ->value('current_stock') ?? 0;
-        }
+        $table = $itemType === 'spare_part' ? 'warehouse_spare_part_stock' : 'warehouse_vehicle_stock';
+        $col   = $itemType === 'spare_part' ? 'spare_part_id' : 'vehicle_model_id';
+
+        $stock = DB::table($table)
+            ->where('warehouse_id', $warehouseId)
+            ->where($col, $itemId)
+            ->value('current_stock') ?? 0;
 
         return response()->json(['stock' => (int) $stock]);
     }
 
-    /**
-     * AJAX: return parts/vehicles that have current_stock > 0 in a given warehouse.
-     * Used by the transfer form to filter the item dropdown.
-     */
+    // ── AJAX: items available for transfer from a warehouse ────────────────
     public function warehouseItems(Request $request): \Illuminate\Http\JsonResponse
     {
         $warehouseId = (int) $request->warehouse_id;
@@ -228,7 +333,9 @@ class StockTransferController extends Controller
                 ->select('sp.id', 'sp.name', 'sp.part_number', 'u.abbreviation as unit', 'ws.current_stock')
                 ->get();
 
-            // Only keep parts that have unsold purchase batches in this warehouse
+            // Unsold batches — only real purchase batches (not transfer stubs),
+            // because stubs at this warehouse may themselves become sources.
+            // We count all remaining batches (real + transfer) for accuracy.
             $unsoldMap = DB::table('purchase_items as pi')
                 ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
                 ->where('p.warehouse_id', $warehouseId)
@@ -243,7 +350,7 @@ class StockTransferController extends Controller
                 ->filter(fn($p) => isset($unsoldMap[$p->id]) && $unsoldMap[$p->id] > 0)
                 ->map(fn($p) => [
                     'id'    => $p->id,
-                    'label' => $p->name . ' (' . $p->part_number . ') — ' . $p->unit . ' — Unsold: ' . (int)$unsoldMap[$p->id],
+                    'label' => $p->name . ' (' . $p->part_number . ') — ' . $p->unit . ' — Available: ' . (int) $unsoldMap[$p->id],
                     'stock' => $p->current_stock,
                     'unsold'=> (int) $unsoldMap[$p->id],
                 ])->values();
@@ -258,7 +365,6 @@ class StockTransferController extends Controller
                 ->select('vm.id', 'vm.brand', 'vm.model_name', 'vm.model_code', 'vt.name as type_name', 'wv.current_stock')
                 ->get();
 
-            // Only keep vehicles that have unsold purchase batches in this warehouse
             $unsoldMap = DB::table('purchase_items as pi')
                 ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
                 ->where('p.warehouse_id', $warehouseId)
@@ -273,7 +379,8 @@ class StockTransferController extends Controller
                 ->filter(fn($v) => isset($unsoldMap[$v->id]) && $unsoldMap[$v->id] > 0)
                 ->map(fn($v) => [
                     'id'    => $v->id,
-                    'label' => $v->brand . ' ' . $v->model_name . ($v->model_code ? ' (' . $v->model_code . ')' : '') . ' — ' . $v->type_name . ' — Unsold: ' . (int)$unsoldMap[$v->id],
+                    'label' => $v->brand . ' ' . $v->model_name . ($v->model_code ? ' (' . $v->model_code . ')' : '')
+                               . ' — ' . $v->type_name . ' — Available: ' . (int) $unsoldMap[$v->id],
                     'stock' => $v->current_stock,
                     'unsold'=> (int) $unsoldMap[$v->id],
                 ])->values();

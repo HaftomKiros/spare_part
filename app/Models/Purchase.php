@@ -12,6 +12,7 @@ class Purchase extends Model
         'purchase_number', 'supplier_id', 'user_id', 'warehouse_id',
         'purchase_date', 'due_date', 'subtotal', 'discount', 'tax', 'total',
         'paid_amount', 'balance', 'payment_status', 'status', 'notes',
+        'purchase_type', 'stock_transfer_id',
     ];
 
     protected $casts = [
@@ -49,6 +50,11 @@ class Purchase extends Model
         return $this->hasMany(PurchaseItem::class);
     }
 
+    public function stockTransfer(): BelongsTo
+    {
+        return $this->belongsTo(StockTransfer::class);
+    }
+
     // ──────────────────────────────────────────
     // Scopes
     // ──────────────────────────────────────────
@@ -56,6 +62,12 @@ class Purchase extends Model
     public function scopeReceived($query)
     {
         return $query->where('status', 'received');
+    }
+
+    /** Exclude transfer-stub purchases from financial/purchase reports. */
+    public function scopeRealPurchases($query)
+    {
+        return $query->where('purchase_type', 'purchase');
     }
 
     // ──────────────────────────────────────────
@@ -68,6 +80,11 @@ class Purchase extends Model
         $last = static::whereYear('created_at', $year)->orderBy('id', 'desc')->first();
         $next = $last ? (int) substr($last->purchase_number, -4) + 1 : 1;
         return 'PO-' . $year . '-' . str_pad($next, 4, '0', STR_PAD_LEFT);
+    }
+
+    public function isTransfer(): bool
+    {
+        return $this->purchase_type === 'transfer';
     }
 
     public function getPaymentStatusBadgeAttribute(): string

@@ -74,6 +74,8 @@ class StockMovement extends Model
             'adjustment_in'  => 'Adjustment (+)',
             'adjustment_out' => 'Adjustment (-)',
             'opening'        => 'Opening Stock',
+            'transfer_in'    => 'Transfer (In)',
+            'transfer_out'   => 'Transfer (Out)',
             default          => ucfirst($this->movement_type),
         };
     }
@@ -81,14 +83,14 @@ class StockMovement extends Model
     public function getMovementTypeBadgeAttribute(): string
     {
         return match($this->movement_type) {
-            'purchase', 'return_in', 'adjustment_in', 'opening' => 'success',
-            'sale', 'return_out', 'adjustment_out'               => 'danger',
-            default                                               => 'secondary',
+            'purchase', 'return_in', 'adjustment_in', 'opening', 'transfer_in' => 'success',
+            'sale', 'return_out', 'adjustment_out', 'transfer_out'              => 'danger',
+            default                                                               => 'secondary',
         };
     }
 
     public function isInward(): bool
     {
-        return in_array($this->movement_type, ['purchase', 'return_in', 'adjustment_in', 'opening']);
+        return in_array($this->movement_type, ['purchase', 'return_in', 'adjustment_in', 'opening', 'transfer_in']);
     }
 }

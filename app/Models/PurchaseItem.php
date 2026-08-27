@@ -17,13 +17,17 @@ class PurchaseItem extends Model
         'unit_price',
         'discount',
         'total',
+        'is_transfer',
+        'source_purchase_item_id',
     ];
 
     protected $casts = [
-        'unit_price'  => 'decimal:2',
-        'discount'    => 'decimal:2',
-        'total'       => 'decimal:2',
-        'total_sold'  => 'integer',
+        'unit_price'               => 'decimal:2',
+        'discount'                 => 'decimal:2',
+        'total'                    => 'decimal:2',
+        'total_sold'               => 'integer',
+        'is_transfer'              => 'boolean',
+        'source_purchase_item_id'  => 'integer',
     ];
 
     // ──────────────────────────────────────────
@@ -43,6 +47,12 @@ class PurchaseItem extends Model
     public function sparePart(): BelongsTo
     {
         return $this->belongsTo(SparePart::class);
+    }
+
+    /** The original purchase batch this was cloned from during a transfer. */
+    public function sourcePurchaseItem(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseItem::class, 'source_purchase_item_id');
     }
 
     // ──────────────────────────────────────────

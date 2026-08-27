@@ -372,6 +372,11 @@ class StockService
      *
      * Returns the purchase_item_id of the first (oldest) batch consumed —
      * used to link the sale_item back to its source purchase.
+     *
+     * NOTE: Transfer-stub batches (is_transfer = true) are included in FIFO
+     * because they represent real stock at this warehouse. They are ordered
+     * after real purchases of the same date so genuine PO batches are
+     * consumed first.
      */
     private function incrementPurchaseItemSold(
         string $itemType,
@@ -383,7 +388,9 @@ class StockService
 
         $column = $itemType === 'vehicle' ? 'vehicle_model_id' : 'spare_part_id';
 
-        // Load purchase items oldest-first that still have remaining qty
+        // Load purchase items oldest-first that still have remaining qty.
+        // Transfer stubs (is_transfer=1) sort after real purchases on the same
+        // date so we consume genuine PO stock first, then transfer stock.
         $purchaseItems = DB::table('purchase_items as pi')
             ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
             ->where('pi.item_type', $itemType)
@@ -392,6 +399,7 @@ class StockService
             ->when($warehouseId, fn($q) => $q->where('p.warehouse_id', $warehouseId))
             ->whereRaw('pi.quantity > pi.total_sold')
             ->orderBy('p.purchase_date')
+            ->orderByRaw('pi.is_transfer ASC')  // real purchases (0) before transfer stubs (1)
             ->orderBy('pi.id')
             ->select('pi.id', 'pi.quantity', 'pi.total_sold')
             ->get();
@@ -442,6 +450,7 @@ class StockService
             ->where('pi.item_type', 'spare_part')
             ->whereIn('pi.spare_part_id', $partIds)
             ->where('p.status', 'received')
+            ->where('p.purchase_type', 'purchase')   // exclude transfer stubs — avoid double-counting
             ->when(!empty($warehouseIds), fn($q) => $q->whereIn('p.warehouse_id', $warehouseIds))
             ->whereRaw('pi.quantity > pi.total_sold')
             ->selectRaw('pi.spare_part_id, SUM((pi.quantity - pi.total_sold) * pi.unit_price) as stock_value')
@@ -471,6 +480,7 @@ class StockService
             ->where('pi.item_type', 'vehicle')
             ->whereIn('pi.vehicle_model_id', $vehicleIds)
             ->where('p.status', 'received')
+            ->where('p.purchase_type', 'purchase')   // exclude transfer stubs — avoid double-counting
             ->when(!empty($warehouseIds), fn($q) => $q->whereIn('p.warehouse_id', $warehouseIds))
             ->whereRaw('pi.quantity > pi.total_sold')
             ->selectRaw('pi.vehicle_model_id, SUM((pi.quantity - pi.total_sold) * pi.unit_price) as stock_value')
@@ -578,6 +588,7 @@ class StockService
             ->where('pi.item_type', 'spare_part')
             ->whereNotNull('pi.spare_part_id')
             ->where('p.status', 'received')
+            ->where('p.purchase_type', 'purchase')   // exclude transfer stubs — avoid double-counting
             ->whereRaw('pi.quantity > pi.total_sold');
 
         if (!empty($warehouseIds)) {
@@ -600,6 +611,7 @@ class StockService
             ->where('pi.item_type', 'vehicle')
             ->whereNotNull('pi.vehicle_model_id')
             ->where('p.status', 'received')
+            ->where('p.purchase_type', 'purchase')   // exclude transfer stubs — avoid double-counting
             ->whereRaw('pi.quantity > pi.total_sold');
 
         if (!empty($warehouseIds)) {
