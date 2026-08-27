@@ -130,6 +130,23 @@ class SaleController extends Controller
                         ->with('error', "Insufficient stock for '{$name}'. Available: {$available}, Requested: {$qty}.")
                         ->withInput();
                 }
+
+                // If a specific purchase batch was selected, validate it has enough remaining stock
+                if (!empty($row['purchase_item_id'])) {
+                    $pi = DB::table('purchase_items')->where('id', $row['purchase_item_id'])->first();
+                    if (!$pi) {
+                        return back()->with('error', 'Selected purchase batch not found.')->withInput();
+                    }
+                    $remaining = $pi->quantity - $pi->total_sold;
+                    if ($qty > $remaining) {
+                        $name = $row['item_type'] === 'spare_part'
+                            ? \App\Models\SparePart::find($row['item_id'])?->name
+                            : \App\Models\VehicleModel::find($row['item_id'])?->full_name;
+                        return back()
+                            ->with('error', "Quantity ({$qty}) exceeds remaining stock in selected purchase batch ({$remaining}) for '{$name}'.")
+                            ->withInput();
+                    }
+                }
             }
 
             $sale = Sale::create([

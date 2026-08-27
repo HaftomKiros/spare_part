@@ -288,10 +288,13 @@
         const batchBlock = card.querySelector('.batch-block');
         const selBatch   = card.querySelector('.sel-batch');
         const batchInfo  = card.querySelector('.batch-info');
+        const noBatch    = card.querySelector('.no-batch-warn');
 
         batchBlock.style.display = 'none';
-        selBatch.innerHTML = '<option value="">Loading...</option>';
-        batchInfo.textContent = '';
+        noBatch.style.display    = 'none';
+        selBatch.innerHTML       = '<option value="">Loading...</option>';
+        batchInfo.textContent    = '';
+        setCardInputsDisabled(card, false); // reset first
 
         const whId = getWarehouseId();
         if (!itemType || !itemId || !whId) return;
@@ -299,10 +302,11 @@
         fetch(PURCHASE_BATCHES_URL + '?item_type=' + itemType + '&item_id=' + itemId + '&warehouse_id=' + whId)
             .then(r => r.json())
             .then(batches => {
-                // No batches with remaining stock — hide the block entirely.
-                // The sale will proceed using warehouse stock (FIFO auto).
                 if (!batches.length) {
-                    batchBlock.style.display = 'none';
+                    // No available batches — disable inputs and show warning
+                    noBatch.style.display = 'block';
+                    setCardInputsDisabled(card, true);
+                    checkSubmitBtn();
                     return;
                 }
 
@@ -317,15 +321,36 @@
                 });
                 selBatch.innerHTML = html;
                 batchBlock.style.display = 'block';
+                setCardInputsDisabled(card, false);
 
                 // Auto-select first batch
                 selBatch.selectedIndex = 1;
                 selBatch.dispatchEvent(new Event('change'));
+                checkSubmitBtn();
             })
             .catch(() => {
-                selBatch.innerHTML = '<option value="">Error loading batches</option>';
-                batchBlock.style.display = 'block';
+                noBatch.style.display = 'block';
+                setCardInputsDisabled(card, true);
+                checkSubmitBtn();
             });
+    }
+
+    // Enable/disable price, qty, disc inputs on a card
+    function setCardInputsDisabled(card, disabled) {
+        ['inp-price', 'inp-qty', 'inp-disc'].forEach(cls => {
+            const el = card.querySelector('.' + cls);
+            if (el) el.disabled = disabled;
+        });
+    }
+
+    // Check if any card has no-batch warning → disable submit
+    function checkSubmitBtn() {
+        const submitBtn = document.querySelector('#saleForm button[type="submit"]');
+        if (!submitBtn) return;
+        const hasNoBatch = Array.from(container.querySelectorAll('.no-batch-warn'))
+            .some(el => el.style.display !== 'none');
+        submitBtn.disabled = hasNoBatch;
+        submitBtn.title    = hasNoBatch ? 'Cannot save: one or more items have no available purchase batch' : '';
     }
 
     function clearBatchBlock(card) {
@@ -337,6 +362,11 @@
         if (bi) bi.textContent = '';
         const hi = card.querySelector('.inp-purchase-item-id');
         if (hi) hi.value = '';
+        const nb = card.querySelector('.no-batch-warn');
+        if (nb) nb.style.display = 'none';
+        setCardInputsDisabled(card, false);
+        checkSubmitBtn();
+    }
     }
 
     // ── Create one item card ───────────────────────────────────────
@@ -391,6 +421,13 @@
                         '<div class="batch-info"></div>' +
                     '</div>' +
                 '</div>' +
+            '</div>' +
+
+            // No-batch warning (shown when item has no available batches)
+            '<div class="no-batch-warn alert alert-danger py-2 px-3 mb-2 small" style="display:none">' +
+                '<i class="fa fa-circle-xmark me-1"></i>' +
+                '<strong>No purchase batches available for this item.</strong> ' +
+                'All purchased stock has been fully sold. Please add a new purchase before selling.' +
             '</div>' +
 
             // Row 3: Price + Qty + Disc + Total
@@ -558,6 +595,7 @@
                 card.remove();
                 renumberCards();
                 recalcTotals();
+                checkSubmitBtn();
             } else {
                 alert('At least one item is required.');
             }
@@ -600,11 +638,17 @@
         let errors = [];
 
         container.querySelectorAll('.item-card').forEach(card => {
-            const type = card.querySelector('.inp-type').value;
-            const id   = card.querySelector('.inp-item-id').value;
-            const qty  = parseInt(card.querySelector('.inp-qty').value) || 0;
-            const max  = parseInt(card.querySelector('.inp-qty').max);
+            const type   = card.querySelector('.inp-type').value;
+            const id     = card.querySelector('.inp-item-id').value;
+            const qty    = parseInt(card.querySelector('.inp-qty').value) || 0;
+            const max    = parseInt(card.querySelector('.inp-qty').max);
+            const noBatch = card.querySelector('.no-batch-warn');
 
+            if (noBatch && noBatch.style.display !== 'none') {
+                valid = false;
+                errors.push('One or more items have no available purchase batch. Cannot complete this sale.');
+                return;
+            }
             if (!type || !id) {
                 valid = false;
                 card.querySelector('.sel-type').style.borderColor = '#dc2626';
