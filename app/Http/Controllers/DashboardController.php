@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\Purchase;
 use App\Models\Sale;
+use App\Models\SaleReturn;
 use App\Models\SparePart;
 use App\Models\Supplier;
 use App\Models\VehicleModel;
@@ -47,14 +48,32 @@ class DashboardController extends Controller
         };
 
         // ── Stat Cards ────────────────────────────────
+        // ── Returns (approved) ───────────────────────
+        // Returns are linked via sale_returns → sales (warehouse is on the sale)
+        $todayReturnsQuery = SaleReturn::where('status', 'approved')
+            ->whereDate('return_date', $today)
+            ->when($hasFilter, fn($q) => $q->whereHas('sale', fn($s) => $s->whereIn('warehouse_id', $warehouseIds)));
+        $monthReturnsQuery = SaleReturn::where('status', 'approved')
+            ->whereYear('return_date', now()->year)->whereMonth('return_date', now()->month)
+            ->when($hasFilter, fn($q) => $q->whereHas('sale', fn($s) => $s->whereIn('warehouse_id', $warehouseIds)));
+
+        $todayReturnsAmt  = $todayReturnsQuery->sum('total_amount');
+        $monthReturnsAmt  = $monthReturnsQuery->clone()->sum('total_amount');
+        $monthReturnsCount = $monthReturnsQuery->count();
+
         $stats = [
             'today_sales'       => Sale::whereDate('sale_date', $today)->where('status', 'completed')
-                                       ->when($hasFilter, fn($q) => $q->whereIn('warehouse_id', $warehouseIds))->sum('total'),
+                                       ->when($hasFilter, fn($q) => $q->whereIn('warehouse_id', $warehouseIds))->sum('total')
+                                       - $todayReturnsAmt,
             'today_sales_count' => Sale::whereDate('sale_date', $today)->where('status', 'completed')
                                        ->when($hasFilter, fn($q) => $q->whereIn('warehouse_id', $warehouseIds))->count(),
+            'today_returns'     => $todayReturnsAmt,
             'month_sales'       => Sale::whereYear('sale_date', now()->year)->whereMonth('sale_date', now()->month)
                                        ->where('status', 'completed')
-                                       ->when($hasFilter, fn($q) => $q->whereIn('warehouse_id', $warehouseIds))->sum('total'),
+                                       ->when($hasFilter, fn($q) => $q->whereIn('warehouse_id', $warehouseIds))->sum('total')
+                                       - $monthReturnsAmt,
+            'month_returns'     => $monthReturnsAmt,
+            'month_returns_count' => $monthReturnsCount,
             'month_purchases'   => Purchase::whereYear('purchase_date', now()->year)->whereMonth('purchase_date', now()->month)
                                             ->when($hasFilter, fn($q) => $q->whereIn('warehouse_id', $warehouseIds))->sum('total'),
             'total_vehicles'    => VehicleModel::active()->count(),
@@ -102,7 +121,13 @@ class DashboardController extends Controller
             }
             $profit += ($item->unit_price - $cost) * $item->quantity;
         }
-        $stats['month_profit'] = $profit;
+        $stats['month_profit'] = $profit - $monthReturnsAmt;
+
+        // ── Recent Returns ────────────────────────────
+        $recentReturns = SaleReturn::with('sale', 'customer', 'user')
+            ->where('status', 'approved')
+            ->when($hasFilter, fn($q) => $q->whereHas('sale', fn($s) => $s->whereIn('warehouse_id', $warehouseIds)))
+            ->latest()->limit(5)->get();
 
         // ── Charts: Sales last 7 days ────────────────
         $salesChart = Sale::selectRaw('DATE(sale_date) as date, SUM(total) as total, COUNT(*) as count')
@@ -171,7 +196,7 @@ class DashboardController extends Controller
             'stats', 'warehouses', 'warehouseIds', 'hasFilter', 'filterLabels',
             'chartLabels', 'chartData',
             'vehicleSales', 'partSales',
-            'recentSales', 'lowStockParts', 'lowStockVehicles',
+            'recentSales', 'recentReturns', 'lowStockParts', 'lowStockVehicles',
             'recentPurchases'
         ) + [
             // Legacy compatibility — prevents crash if cached view still references $warehouse

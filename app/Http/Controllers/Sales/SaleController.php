@@ -61,7 +61,25 @@ class SaleController extends Controller
             ->selectRaw('SUM(total) as grand_total, SUM(paid_amount) as grand_paid, SUM(balance) as grand_balance')
             ->first();
 
-        return view('sales.sales.index', compact('sales', 'totals'));
+        // Subtract approved returns from totals
+        $returnsTotal = \App\Models\SaleReturn::where('status', 'approved')
+            ->whereHas('sale', function($q) use ($accessibleIds, $user) {
+                $q->whereIn('warehouse_id', $accessibleIds);
+                if (! $user->seesAllUsers()) $q->where('user_id', $user->id);
+            })->sum('total_amount');
+
+        $totals->grand_total      = max(0, ($totals->grand_total ?? 0) - $returnsTotal);
+        $totals->total_returns    = $returnsTotal;
+
+        // Per-sale return amounts map (for row badges)
+        $saleIds        = $sales->pluck('id')->toArray();
+        $returnsBySale  = \App\Models\SaleReturn::where('status', 'approved')
+            ->whereIn('sale_id', $saleIds)
+            ->selectRaw('sale_id, SUM(total_amount) as returned')
+            ->groupBy('sale_id')
+            ->pluck('returned', 'sale_id');
+
+        return view('sales.sales.index', compact('sales', 'totals', 'returnsBySale'));
     }
 
     public function create(Request $request)

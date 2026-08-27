@@ -18,7 +18,7 @@
             <div class="stat-icon bg-primary-soft"><i class="fa fa-receipt"></i></div>
             <div class="stat-body">
                 <div class="stat-value">Br {{ number_format($totals->grand_total ?? 0,0) }}</div>
-                <div class="stat-label">Total Revenue</div>
+                <div class="stat-label">Net Revenue</div>
             </div>
         </div>
     </div>
@@ -40,6 +40,17 @@
             </div>
         </div>
     </div>
+    @if(($totals->total_returns ?? 0) > 0)
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#fee2e2"><i class="fa fa-rotate-left" style="color:#ef4444"></i></div>
+            <div class="stat-body">
+                <div class="stat-value text-danger">Br {{ number_format($totals->total_returns ?? 0,0) }}</div>
+                <div class="stat-label">Total Returns</div>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>
 
 <!-- Filters -->
@@ -80,16 +91,25 @@
 <div class="table-responsive">
 <table class="table">
     <thead>
-        <tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Items</th><th>Total</th><th>Paid</th><th>Balance</th><th>Payment</th><th>By</th><th class="text-end">Actions</th></tr>
+        <tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Total</th><th>Returned</th><th>Paid</th><th>Balance</th><th>Payment</th><th>By</th><th class="text-end">Actions</th></tr>
     </thead>
     <tbody>
         @forelse($sales as $sale)
+        @php $returned = $returnsBySale[$sale->id] ?? 0; @endphp
         <tr>
             <td><a href="{{ route('sales.show',$sale) }}" class="fw-semibold text-primary">{{ $sale->invoice_number }}</a></td>
             <td class="text-muted small">{{ $sale->customer_name }}</td>
             <td class="text-muted small">{{ $sale->sale_date->format('M d, Y') }}</td>
-            <td class="text-muted">—</td>
             <td class="fw-semibold">Br {{ number_format($sale->total,2) }}</td>
+            <td>
+                @if($returned > 0)
+                    <span class="badge bg-danger bg-opacity-15 text-danger" style="font-size:.75rem">
+                        <i class="fa fa-rotate-left me-1"></i>Br {{ number_format($returned,2) }}
+                    </span>
+                @else
+                    <span class="text-muted small">—</span>
+                @endif
+            </td>
             <td class="text-success">Br {{ number_format($sale->paid_amount,2) }}</td>
             <td class="{{ $sale->balance > 0 ? 'text-danger fw-semibold' : 'text-muted' }}">
                 {{ $sale->balance > 0 ? 'Br '.number_format($sale->balance,2) : '—' }}
@@ -113,4 +133,69 @@
 </div>
 @if($sales->hasPages())<div class="card-body border-top py-3">{{ $sales->links() }}</div>@endif
 </div>
+
+{{-- ── Returns History ──────────────────────────────────────── --}}
+@if(auth()->user()->hasPermission('sales.returns.view'))
+@php
+    $allReturns = \App\Models\SaleReturn::with('sale', 'customer', 'user')
+        ->where('status', 'approved')
+        ->whereHas('sale', fn($q) => $q->whereIn('warehouse_id', auth()->user()->accessibleWarehouseIds()))
+        ->when(!auth()->user()->seesAllUsers(), fn($q) => $q->where('user_id', auth()->id()))
+        ->latest()->limit(20)->get();
+@endphp
+@if($allReturns->count() > 0)
+<div class="card mt-4">
+    <div class="card-header">
+        <div class="d-flex align-items-center gap-2">
+            <div style="width:30px;height:30px;background:#fee2e2;border-radius:8px;display:flex;align-items:center;justify-content:center">
+                <i class="fa fa-rotate-left" style="color:#ef4444;font-size:.85rem"></i>
+            </div>
+            <span>Returns History</span>
+        </div>
+        <a href="{{ route('sales.returns.index') }}" class="btn btn-sm btn-outline-danger">View All Returns</a>
+    </div>
+    <div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Return #</th>
+                <th>Invoice</th>
+                <th>Customer</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Reason</th>
+                <th>By</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($allReturns as $ret)
+            <tr>
+                <td>
+                    <a href="{{ route('sales.returns.show', $ret) }}" class="fw-semibold text-danger text-decoration-none">
+                        {{ $ret->return_number }}
+                    </a>
+                </td>
+                <td>
+                    <a href="{{ route('sales.show', $ret->sale) }}" class="text-primary small">
+                        {{ $ret->sale->invoice_number }}
+                    </a>
+                </td>
+                <td class="text-muted small">{{ $ret->customer?->name ?? 'Walk-in' }}</td>
+                <td class="text-muted small">{{ $ret->return_date->format('M d, Y') }}</td>
+                <td>
+                    <span class="badge bg-warning text-dark" style="font-size:.72rem">{{ ucfirst($ret->return_type) }}</span>
+                </td>
+                <td class="fw-semibold text-danger">Br {{ number_format($ret->total_amount, 2) }}</td>
+                <td class="text-muted small">{{ Str::limit($ret->reason ?? '—', 40) }}</td>
+                <td class="text-muted small">{{ $ret->user->name }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+    </div>
+</div>
+@endif
+@endif
+
 @endsection

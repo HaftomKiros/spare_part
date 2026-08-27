@@ -64,10 +64,13 @@
             <div class="stat-value">
                 <span class="stat-currency">Br</span>{{ number_format($stats['today_sales'], 0) }}
             </div>
-            <div class="stat-label">Today's Sales</div>
+            <div class="stat-label">Today's Net Sales</div>
             <div class="stat-change {{ $stats['today_sales_count'] > 0 ? 'up' : 'neutral' }}">
                 <i class="fa fa-{{ $stats['today_sales_count'] > 0 ? 'arrow-up' : 'minus' }}"></i>
                 {{ $stats['today_sales_count'] }} invoice{{ $stats['today_sales_count'] != 1 ? 's' : '' }}
+                @if($stats['today_returns'] > 0)
+                    &nbsp;·&nbsp;<span class="text-danger">-Br {{ number_format($stats['today_returns'],0) }} returned</span>
+                @endif
             </div>
             <i class="fa-solid fa-receipt watermark"></i>
         </div>
@@ -80,10 +83,15 @@
             <div class="stat-value">
                 <span class="stat-currency">Br</span>{{ number_format($stats['month_sales'], 0) }}
             </div>
-            <div class="stat-label">Month Sales</div>
-            <div class="stat-change neutral">
-                <i class="fa fa-calendar"></i>
-                {{ now()->format('M Y') }}
+            <div class="stat-label">Month Net Sales</div>
+            <div class="stat-change {{ $stats['month_returns'] > 0 ? 'down' : 'neutral' }}">
+                @if($stats['month_returns'] > 0)
+                    <i class="fa fa-rotate-left"></i>
+                    -Br {{ number_format($stats['month_returns'],0) }} in {{ $stats['month_returns_count'] }} return{{ $stats['month_returns_count'] != 1 ? 's' : '' }}
+                @else
+                    <i class="fa fa-calendar"></i>
+                    {{ now()->format('M Y') }}
+                @endif
             </div>
             <i class="fa-solid fa-chart-line watermark"></i>
         </div>
@@ -446,6 +454,59 @@ if(auth()->user()->hasPermission('reports.profit'))
             </div>
             @endforeach
         </div>
+    </div>
+</div>
+@endif
+
+{{-- ── Recent Returns ──────────────────────────────────────────── --}}
+@if(auth()->user()->hasPermission('sales.returns.view') && isset($recentReturns) && $recentReturns->count() > 0)
+<div class="card mb-4">
+    <div class="card-header">
+        <div class="d-flex align-items-center gap-2">
+            <div style="width:30px;height:30px;background:#fee2e2;border-radius:8px;display:flex;align-items:center;justify-content:center">
+                <i class="fa fa-rotate-left" style="color:#ef4444;font-size:.85rem"></i>
+            </div>
+            <span>Recent Returns</span>
+        </div>
+        <a href="{{ route('sales.returns.index') }}" class="btn btn-sm btn-outline-danger">View All</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Return #</th>
+                    <th>Invoice</th>
+                    <th>Customer</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>By</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($recentReturns as $ret)
+                <tr>
+                    <td>
+                        <a href="{{ route('sales.returns.show', $ret) }}" class="fw-semibold text-danger text-decoration-none">
+                            {{ $ret->return_number }}
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{{ route('sales.show', $ret->sale) }}" class="text-primary small">
+                            {{ $ret->sale->invoice_number }}
+                        </a>
+                    </td>
+                    <td class="text-muted small">{{ $ret->customer?->name ?? 'Walk-in' }}</td>
+                    <td class="text-muted small">{{ $ret->return_date->format('M d, Y') }}</td>
+                    <td>
+                        <span class="badge bg-warning text-dark" style="font-size:.72rem">{{ ucfirst($ret->return_type) }}</span>
+                    </td>
+                    <td class="fw-semibold text-danger">Br {{ number_format($ret->total_amount, 2) }}</td>
+                    <td class="text-muted small">{{ $ret->user->name }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
     </div>
 </div>
 @endif
