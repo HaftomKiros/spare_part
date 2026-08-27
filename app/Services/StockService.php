@@ -303,7 +303,8 @@ class StockService
 
     /**
      * Process stock for a completed sale (deduct from warehouse).
-     * Also increments total_sold on matching purchase_items using FIFO order.
+     * Also increments total_sold on matching purchase_items using FIFO order
+     * and stamps the matched purchase_item_id onto the sale_item row.
      */
     public function processSaleStock(\App\Models\Sale $sale): void
     {
@@ -316,7 +317,9 @@ class StockService
                     "Sale #{$sale->invoice_number}",
                     $sale->warehouse_id
                 );
-                $this->incrementPurchaseItemSold('vehicle', $item->vehicle_model_id, $sale->warehouse_id, $item->quantity);
+                $purchaseItemId = $this->incrementPurchaseItemSold(
+                    'vehicle', $item->vehicle_model_id, $sale->warehouse_id, $item->quantity
+                );
             } elseif ($item->item_type === 'spare_part' && $item->sparePart) {
                 $this->decreasePartStock(
                     $item->sparePart, $item->quantity, 'sale',
@@ -325,7 +328,18 @@ class StockService
                     "Sale #{$sale->invoice_number}",
                     $sale->warehouse_id
                 );
-                $this->incrementPurchaseItemSold('spare_part', $item->spare_part_id, $sale->warehouse_id, $item->quantity);
+                $purchaseItemId = $this->incrementPurchaseItemSold(
+                    'spare_part', $item->spare_part_id, $sale->warehouse_id, $item->quantity
+                );
+            } else {
+                $purchaseItemId = null;
+            }
+
+            // Stamp the matched purchase_item_id onto the sale_item row
+            if (!empty($purchaseItemId)) {
+                DB::table('sale_items')
+                    ->where('id', $item->id)
+                    ->update(['purchase_item_id' => $purchaseItemId, 'updated_at' => now()]);
             }
         }
     }
@@ -333,18 +347,16 @@ class StockService
     /**
      * Distribute a sold quantity across purchase_items using FIFO.
      *
-     * Finds purchase items for the given item (part or vehicle) in the same
-     * warehouse, ordered oldest purchase first. For each purchase item that
-     * still has remaining stock (quantity - total_sold > 0), fills as much of
-     * the sold quantity as possible and moves on to the next batch.
+     * Returns the purchase_item_id of the first (oldest) batch consumed —
+     * used to link the sale_item back to its source purchase.
      */
     private function incrementPurchaseItemSold(
         string $itemType,
         int $itemId,
         ?int $warehouseId,
         int $qtySold
-    ): void {
-        if ($qtySold <= 0) return;
+    ): ?int {
+        if ($qtySold <= 0) return null;
 
         $column = $itemType === 'vehicle' ? 'vehicle_model_id' : 'spare_part_id';
 
@@ -361,7 +373,8 @@ class StockService
             ->select('pi.id', 'pi.quantity', 'pi.total_sold')
             ->get();
 
-        $remaining = $qtySold;
+        $remaining      = $qtySold;
+        $firstMatchedId = null;
 
         foreach ($purchaseItems as $pi) {
             if ($remaining <= 0) break;
@@ -376,8 +389,15 @@ class StockService
                     'updated_at' => now(),
                 ]);
 
+            // Remember the first (FIFO) batch — this is the PO linked to this sale line
+            if ($firstMatchedId === null) {
+                $firstMatchedId = $pi->id;
+            }
+
             $remaining -= $toAdd;
         }
+
+        return $firstMatchedId;
     }
 
     // ──────────────────────────────────────────────────────────────

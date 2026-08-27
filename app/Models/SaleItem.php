@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\PurchaseItem;
 
 class SaleItem extends Model
 {
@@ -12,6 +13,7 @@ class SaleItem extends Model
         'item_type',
         'vehicle_model_id',
         'spare_part_id',
+        'purchase_item_id',
         'quantity',
         'unit_price',
         'discount',
@@ -41,6 +43,11 @@ class SaleItem extends Model
     public function sparePart(): BelongsTo
     {
         return $this->belongsTo(SparePart::class);
+    }
+
+    public function purchaseItem(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseItem::class);
     }
 
     // ──────────────────────────────────────────
