@@ -54,7 +54,13 @@
         @forelse($returns as $ret)
         <tr>
             <td class="fw-semibold text-primary">{{ $ret->return_number }}</td>
-            <td><a href="{{ route('sales.show',$ret->sale) }}" class="text-muted">{{ $ret->sale->invoice_number }}</a></td>
+            <td>
+                @if($ret->sale)
+                    <a href="{{ route('sales.show',$ret->sale) }}" class="text-muted">{{ $ret->sale->invoice_number }}</a>
+                @else
+                    <span class="text-muted fst-italic">Sale deleted</span>
+                @endif
+            </td>
             <td>{{ $ret->customer?->name ?? 'Walk-in' }}</td>
             <td class="text-muted small">{{ $ret->return_date->format('M d, Y') }}</td>
             <td><span class="badge bg-warning text-dark">{{ ucfirst($ret->return_type) }}</span></td>

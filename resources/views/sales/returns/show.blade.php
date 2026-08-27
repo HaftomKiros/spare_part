@@ -15,7 +15,13 @@
 <table class="table table-sm table-borderless mb-0 small">
     <tr><th class="text-muted fw-normal">Return #</th><td class="fw-bold">{{ $return->return_number }}</td></tr>
     <tr><th class="text-muted fw-normal">Invoice</th>
-        <td><a href="{{ route('sales.show',$return->sale) }}" class="text-primary">{{ $return->sale->invoice_number }}</a></td>
+        <td>
+            @if($return->sale)
+                <a href="{{ route('sales.show',$return->sale) }}" class="text-primary">{{ $return->sale->invoice_number }}</a>
+            @else
+                <span class="text-muted fst-italic">Sale deleted</span>
+            @endif
+        </td>
     </tr>
     <tr><th class="text-muted fw-normal">Customer</th><td>{{ $return->customer?->name ?? 'Walk-in' }}</td></tr>
     <tr><th class="text-muted fw-normal">Date</th><td>{{ $return->return_date?->format('M d, Y') ?? 'N/A' }}</td></tr>

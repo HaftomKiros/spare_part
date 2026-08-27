@@ -492,9 +492,13 @@ if(auth()->user()->hasPermission('reports.profit'))
                         </a>
                     </td>
                     <td>
-                        <a href="{{ route('sales.show', $ret->sale) }}" class="text-primary small">
-                            {{ $ret->sale->invoice_number }}
-                        </a>
+                        @if($ret->sale)
+                            <a href="{{ route('sales.show', $ret->sale) }}" class="text-primary small">
+                                {{ $ret->sale->invoice_number }}
+                            </a>
+                        @else
+                            <span class="text-muted fst-italic small">Sale deleted</span>
+                        @endif
                     </td>
                     <td class="text-muted small">{{ $ret->customer?->name ?? 'Walk-in' }}</td>
                     <td class="text-muted small">{{ $ret->return_date->format('M d, Y') }}</td>
