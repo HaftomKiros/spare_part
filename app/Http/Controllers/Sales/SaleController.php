@@ -89,12 +89,13 @@ class SaleController extends Controller
             'total'          => 'required|numeric|min:0',
             'notes'          => 'nullable|string|max:500',
             'items'                  => 'required|array|min:1',
-            'items.*.item_type'      => 'required|in:vehicle,spare_part',
-            'items.*.item_id'        => 'required|integer',
-            'items.*.quantity'       => 'required|integer|min:1',
-            'items.*.unit_price'     => 'required|numeric|min:0',
-            'items.*.discount'       => 'nullable|numeric|min:0',
-            'items.*.total'          => 'required|numeric|min:0',
+            'items.*.item_type'        => 'required|in:vehicle,spare_part',
+            'items.*.item_id'          => 'required|integer',
+            'items.*.purchase_item_id' => 'nullable|integer|exists:purchase_items,id',
+            'items.*.quantity'         => 'required|integer|min:1',
+            'items.*.unit_price'       => 'required|numeric|min:0',
+            'items.*.discount'         => 'nullable|numeric|min:0',
+            'items.*.total'            => 'required|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -155,6 +156,7 @@ class SaleController extends Controller
                     'item_type'        => $row['item_type'],
                     'vehicle_model_id' => $row['item_type'] === 'vehicle'     ? $row['item_id'] : null,
                     'spare_part_id'    => $row['item_type'] === 'spare_part'  ? $row['item_id'] : null,
+                    'purchase_item_id' => !empty($row['purchase_item_id']) ? (int) $row['purchase_item_id'] : null,
                     'quantity'         => $row['quantity'],
                     'unit_price'       => $row['unit_price'],
                     'discount'         => $row['discount'] ?? 0,
@@ -298,6 +300,60 @@ class SaleController extends Controller
             'vehicles'   => array_values($vehicleTypes),
             'categories' => array_values($categories),
         ]);
+    }
+
+    /**
+     * AJAX: return available purchase batches (with remaining qty) for a given
+     * item + warehouse. Used by the sale form PO# dropdown.
+     *
+     * GET /sales/ajax/purchase-batches?item_type=spare_part&item_id=5&warehouse_id=1
+     */
+    public function purchaseBatches(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $itemType    = $request->item_type;
+        $itemId      = (int) $request->item_id;
+        $warehouseId = (int) $request->warehouse_id;
+
+        if (!$itemType || !$itemId) {
+            return response()->json([]);
+        }
+
+        // Validate warehouse access
+        if ($warehouseId && !in_array($warehouseId, auth()->user()->accessibleWarehouseIds())) {
+            return response()->json([]);
+        }
+
+        $column = $itemType === 'vehicle' ? 'vehicle_model_id' : 'spare_part_id';
+
+        $batches = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('pi.item_type', $itemType)
+            ->where("pi.{$column}", $itemId)
+            ->where('p.status', 'received')
+            ->when($warehouseId, fn($q) => $q->where('p.warehouse_id', $warehouseId))
+            ->whereRaw('pi.quantity > pi.total_sold')
+            ->orderBy('p.purchase_date')
+            ->orderBy('pi.id')
+            ->select(
+                'pi.id as purchase_item_id',
+                'p.purchase_number',
+                'p.purchase_date',
+                'pi.quantity',
+                'pi.total_sold',
+                'pi.unit_price'
+            )
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'purchase_item_id' => $row->purchase_item_id,
+                    'purchase_number'  => $row->purchase_number,
+                    'purchase_date'    => $row->purchase_date,
+                    'remaining'        => $row->quantity - $row->total_sold,
+                    'unit_price'       => $row->unit_price,
+                ];
+            });
+
+        return response()->json($batches);
     }
 
     /**

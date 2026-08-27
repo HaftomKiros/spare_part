@@ -305,6 +305,9 @@ class StockService
      * Process stock for a completed sale (deduct from warehouse).
      * Also increments total_sold on matching purchase_items using FIFO order
      * and stamps the matched purchase_item_id onto the sale_item row.
+     *
+     * If the sale_item already has a purchase_item_id set (user picked a
+     * specific batch on the form), we honour that instead of FIFO.
      */
     public function processSaleStock(\App\Models\Sale $sale): void
     {
@@ -317,9 +320,6 @@ class StockService
                     "Sale #{$sale->invoice_number}",
                     $sale->warehouse_id
                 );
-                $purchaseItemId = $this->incrementPurchaseItemSold(
-                    'vehicle', $item->vehicle_model_id, $sale->warehouse_id, $item->quantity
-                );
             } elseif ($item->item_type === 'spare_part' && $item->sparePart) {
                 $this->decreasePartStock(
                     $item->sparePart, $item->quantity, 'sale',
@@ -328,20 +328,43 @@ class StockService
                     "Sale #{$sale->invoice_number}",
                     $sale->warehouse_id
                 );
-                $purchaseItemId = $this->incrementPurchaseItemSold(
-                    'spare_part', $item->spare_part_id, $sale->warehouse_id, $item->quantity
-                );
             } else {
-                $purchaseItemId = null;
+                continue;
             }
 
-            // Stamp the matched purchase_item_id onto the sale_item row
-            if (!empty($purchaseItemId)) {
-                DB::table('sale_items')
-                    ->where('id', $item->id)
-                    ->update(['purchase_item_id' => $purchaseItemId, 'updated_at' => now()]);
+            // If user picked a specific batch, increment that batch directly.
+            // Otherwise fall back to FIFO auto-assign.
+            if ($item->purchase_item_id) {
+                $this->incrementSpecificPurchaseItem($item->purchase_item_id, $item->quantity);
+            } else {
+                $column         = $item->item_type === 'vehicle' ? 'vehicle_model_id' : 'spare_part_id';
+                $itemId         = $item->item_type === 'vehicle' ? $item->vehicle_model_id : $item->spare_part_id;
+                $purchaseItemId = $this->incrementPurchaseItemSold(
+                    $item->item_type, $itemId, $sale->warehouse_id, $item->quantity
+                );
+
+                // Stamp the FIFO-matched purchase_item_id onto the sale_item row
+                if ($purchaseItemId) {
+                    DB::table('sale_items')
+                        ->where('id', $item->id)
+                        ->update(['purchase_item_id' => $purchaseItemId, 'updated_at' => now()]);
+                }
             }
         }
+    }
+
+    /**
+     * Increment total_sold on a specific purchase_item by the given quantity.
+     * Used when the user explicitly picks a batch on the sale form.
+     */
+    private function incrementSpecificPurchaseItem(int $purchaseItemId, int $qty): void
+    {
+        DB::table('purchase_items')
+            ->where('id', $purchaseItemId)
+            ->update([
+                'total_sold' => DB::raw("total_sold + {$qty}"),
+                'updated_at' => now(),
+            ]);
     }
 
     /**

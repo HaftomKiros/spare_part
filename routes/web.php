@@ -165,8 +165,9 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('customers/{customer}',    [CustomerController::class, 'destroy'])->name('customers.destroy')->middleware('perm:sales.customers.delete');
 
         // AJAX — needs at least view or create permission
-        Route::get('ajax/search-items',    [SaleController::class, 'searchItems'])   ->name('ajax.search-items')   ->middleware('perm:sales.view,sales.create');
-        Route::get('ajax/warehouse-items', [SaleController::class, 'warehouseItems'])->name('ajax.warehouse-items')->middleware('perm:sales.view,sales.create');
+        Route::get('ajax/search-items',      [SaleController::class, 'searchItems'])    ->name('ajax.search-items')    ->middleware('perm:sales.view,sales.create');
+        Route::get('ajax/warehouse-items',   [SaleController::class, 'warehouseItems']) ->name('ajax.warehouse-items') ->middleware('perm:sales.view,sales.create');
+        Route::get('ajax/purchase-batches',  [SaleController::class, 'purchaseBatches'])->name('ajax.purchase-batches')->middleware('perm:sales.view,sales.create');
 
         // Main Sales
         Route::get('/',              [SaleController::class, 'index'])  ->name('index')  ->middleware('perm:sales.view');

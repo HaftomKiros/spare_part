@@ -10,7 +10,7 @@
 <form method="POST" action="{{ route('sales.store') }}" id="saleForm">
 @csrf
 
-{{-- Hidden totals (filled by JS before submit) --}}
+{{-- Hidden totals filled by JS before submit --}}
 <input type="hidden" name="subtotal" id="subtotalInput" value="0">
 <input type="hidden" name="tax"      id="taxAmountInput" value="0">
 <input type="hidden" name="total"    id="totalInput" value="0">
@@ -58,12 +58,11 @@
     </div>
     @if($warehouses->count() > 1)
     <div class="col-md-6">
-        <label class="form-label">Warehouse / Stock Location <span class="text-danger">*</span></label>
+        <label class="form-label">Warehouse <span class="text-danger">*</span></label>
         <select name="warehouse_id" id="warehouseSelect" class="form-select ts-select" required>
             <option value="">-- Select Warehouse --</option>
             @foreach($warehouses as $wh)
                 <option value="{{ $wh->id }}"
-                    data-city="{{ $wh->city ?? '' }}"
                     {{ $defaultWarehouse?->id == $wh->id ? 'selected' : '' }}>
                     {{ $wh->name }}{{ $wh->city ? ' ('.$wh->city.')' : '' }}
                 </option>
@@ -81,7 +80,7 @@
 </div>
 </div>
 
-{{-- Items Table --}}
+{{-- Items --}}
 <div class="card">
 <div class="card-header d-flex align-items-center justify-content-between">
     <span><i class="fa fa-list me-2" style="color:var(--brand-1)"></i>Sale Items</span>
@@ -89,23 +88,8 @@
         <i class="fa fa-plus me-1"></i>Add Item
     </button>
 </div>
-<div class="table-responsive">
-<table class="table mb-0" id="itemsTable">
-    <thead>
-        <tr>
-            <th style="width:120px">Type</th>
-            <th>Item</th>
-            <th style="width:120px">Price (Br)</th>
-            <th style="width:80px">Qty</th>
-            <th style="width:100px">Disc (Br)</th>
-            <th style="width:100px">Total (Br)</th>
-            <th style="width:40px"></th>
-        </tr>
-    </thead>
-    <tbody id="itemsContainer">
-        {{-- Rows injected by JS only --}}
-    </tbody>
-</table>
+<div class="card-body p-2" id="itemsContainer">
+    {{-- Cards injected by JS --}}
 </div>
 </div>
 
@@ -173,22 +157,49 @@
 </div>{{-- /row --}}
 </form>
 
+<style>
+.item-card {
+    background: #f8f9ff;
+    border: 1px solid #e2e6f0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    position: relative;
+}
+.item-card:last-child { margin-bottom: 0; }
+.item-card .item-num {
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--brand-1);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 10px;
+}
+.item-card .btn-remove-card {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    padding: 2px 8px;
+    font-size: .78rem;
+}
+.batch-block { margin-top: 8px; }
+.batch-info  { font-size: .78rem; color: #6b7280; margin-top: 4px; }
+</style>
+
 @endsection
 @push('scripts')
 <script>
-(function() {
+(function () {
     'use strict';
 
-    // AJAX URL to load warehouse-specific items
-    const WAREHOUSE_ITEMS_URL = '{{ route("sales.ajax.warehouse-items") }}';
-    const DEFAULT_WAREHOUSE   = '{{ $defaultWarehouse?->id }}';
+    const WAREHOUSE_ITEMS_URL   = '{{ route("sales.ajax.warehouse-items") }}';
+    const PURCHASE_BATCHES_URL  = '{{ route("sales.ajax.purchase-batches") }}';
+    const DEFAULT_WAREHOUSE     = '{{ $defaultWarehouse?->id }}';
 
-    // Current items data (loaded per warehouse)
-    let VEHICLES   = [];
-    let CATEGORIES = [];
+    let VEHICLES        = [];
+    let CATEGORIES      = [];
     let loadedWarehouse = null;
-
-    let rowCount = 0;
+    let rowCount        = 0;
 
     // DOM refs
     const container     = document.getElementById('itemsContainer');
@@ -203,52 +214,36 @@
     const taxInput      = document.getElementById('taxInput');
     const paidInput     = document.getElementById('paidInput');
 
-    // Get current warehouse ID
     function getWarehouseId() {
         const sel = document.getElementById('warehouseSelect');
-        if (!sel) return DEFAULT_WAREHOUSE;
-        // TomSelect stores value on the original select element
-        return sel.value || DEFAULT_WAREHOUSE;
+        return sel ? (sel.value || DEFAULT_WAREHOUSE) : DEFAULT_WAREHOUSE;
     }
 
-    // Load items for selected warehouse via AJAX
+    // ── Load warehouse items ───────────────────────────────────────
     function loadWarehouseItems(warehouseId, callback) {
-        if (!warehouseId) {
-            VEHICLES = []; CATEGORIES = [];
-            if (callback) callback();
-            return;
-        }
-        if (loadedWarehouse === warehouseId) {
-            if (callback) callback();
-            return;
-        }
-
-        // Show loading indicator on all item selects
-        container.querySelectorAll('.sel-item').forEach(function(sel) {
-            sel.innerHTML = '<option value="">Loading...</option>';
-        });
+        if (!warehouseId) { VEHICLES = []; CATEGORIES = []; if (callback) callback(); return; }
+        if (loadedWarehouse === warehouseId) { if (callback) callback(); return; }
 
         fetch(WAREHOUSE_ITEMS_URL + '?warehouse_id=' + warehouseId)
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
+            .then(r => r.json())
+            .then(data => {
                 VEHICLES        = data.vehicles   || [];
                 CATEGORIES      = data.categories || [];
                 loadedWarehouse = warehouseId;
 
-                // Rebuild all existing item dropdowns
-                container.querySelectorAll('.item-row').forEach(function(row) {
-                    const type     = row.querySelector('.inp-type').value;
-                    const selItem  = row.querySelector('.sel-item');
-                    const curVal   = row.querySelector('.inp-item-id').value;
+                // Rebuild existing item dropdowns
+                container.querySelectorAll('.item-card').forEach(card => {
+                    const type    = card.querySelector('.inp-type').value;
+                    const selItem = card.querySelector('.sel-item');
+                    const curVal  = card.querySelector('.inp-item-id').value;
                     if (type) {
-                        selItem.innerHTML = buildOptionsHtml(type);
+                        selItem.innerHTML = buildItemOptions(type);
                         selItem.disabled  = false;
-                        // Try to restore previous selection
                         if (curVal) selItem.value = curVal;
-                        // If item no longer in warehouse, reset
                         if (!selItem.value) {
-                            row.querySelector('.inp-item-id').value = '';
-                            row.querySelector('.inp-price').value   = '0.00';
+                            card.querySelector('.inp-item-id').value = '';
+                            card.querySelector('.inp-price').value   = '0.00';
+                            clearBatchBlock(card);
                         }
                     }
                 });
@@ -256,44 +251,31 @@
                 if (callback) callback();
                 recalcTotals();
             })
-            .catch(function() {
-                VEHICLES = []; CATEGORIES = [];
-                container.querySelectorAll('.sel-item').forEach(function(sel) {
-                    sel.innerHTML = '<option value="">Error loading items</option>';
-                });
-            });
+            .catch(() => { VEHICLES = []; CATEGORIES = []; });
     }
 
-    // Build item options HTML from loaded data
-    function buildOptionsHtml(type) {
-        let html = '<option value="">- Select item -</option>';
+    // ── Build item <option> HTML ───────────────────────────────────
+    function buildItemOptions(type) {
+        let html = '<option value="">— Select item —</option>';
         if (type === 'vehicle') {
-            if (!VEHICLES.length) {
-                html += '<option value="" disabled>No vehicles in this warehouse</option>';
-                return html;
-            }
-            VEHICLES.forEach(function(vt) {
+            if (!VEHICLES.length) return html + '<option disabled>No vehicles in warehouse</option>';
+            VEHICLES.forEach(vt => {
                 if (!vt.models.length) return;
-                html += '<optgroup label="' + vt.name + '">';
-                vt.models.forEach(function(m) {
+                html += '<optgroup label="' + esc(vt.name) + '">';
+                vt.models.forEach(m => {
                     html += '<option value="' + m.id + '" data-price="' + m.price + '" data-stock="' + m.stock + '">'
-                          + m.name + ' - Stock: ' + m.stock
-                          + '</option>';
+                         +  esc(m.name) + ' — Stock: ' + m.stock + '</option>';
                 });
                 html += '</optgroup>';
             });
-        } else if (type === 'spare_part') {
-            if (!CATEGORIES.length) {
-                html += '<option value="" disabled>No spare parts in this warehouse</option>';
-                return html;
-            }
-            CATEGORIES.forEach(function(cat) {
+        } else {
+            if (!CATEGORIES.length) return html + '<option disabled>No spare parts in warehouse</option>';
+            CATEGORIES.forEach(cat => {
                 if (!cat.parts.length) return;
-                html += '<optgroup label="' + cat.name + '">';
-                cat.parts.forEach(function(p) {
+                html += '<optgroup label="' + esc(cat.name) + '">';
+                cat.parts.forEach(p => {
                     html += '<option value="' + p.id + '" data-price="' + p.price + '" data-stock="' + p.stock + '">'
-                          + p.name + ' - Stock: ' + p.stock + ' ' + (p.unit || '')
-                          + '</option>';
+                         +  esc(p.name) + ' — Stock: ' + p.stock + (p.unit ? ' ' + p.unit : '') + '</option>';
                 });
                 html += '</optgroup>';
             });
@@ -301,86 +283,179 @@
         return html;
     }
 
-    // Create a new item row
-    function createRow() {
-        const idx = rowCount++;
-        const tr  = document.createElement('tr');
-        tr.className    = 'item-row';
-        tr.dataset.index = idx;
+    // ── Load purchase batches for selected item ────────────────────
+    function loadBatches(card, itemType, itemId) {
+        const batchBlock = card.querySelector('.batch-block');
+        const selBatch   = card.querySelector('.sel-batch');
+        const batchInfo  = card.querySelector('.batch-info');
 
-        tr.innerHTML =
-            '<td>' +
-                '<input type="hidden" name="items[' + idx + '][item_type]"  class="inp-type"    value="">' +
-                '<input type="hidden" name="items[' + idx + '][item_id]"    class="inp-item-id" value="">' +
-                '<input type="hidden" name="items[' + idx + '][total]"      class="inp-total"   value="0">' +
-                '<select class="form-select form-select-sm sel-type">' +
-                    '<option value="">Select...</option>' +
-                    '<option value="spare_part">Spare Part</option>' +
-                    '<option value="vehicle">Vehicle</option>' +
-                '</select>' +
-            '</td>' +
-            '<td>' +
-                '<select class="form-select form-select-sm sel-item" disabled>' +
-                    '<option value="">- Choose type first -</option>' +
-                '</select>' +
-            '</td>' +
-            '<td>' +
-                '<input type="number" name="items[' + idx + '][unit_price]"' +
-                       ' class="form-control form-control-sm inp-price"' +
-                       ' value="0.00" min="0" step="0.01">' +
-            '</td>' +
-            '<td>' +
-                '<input type="number" name="items[' + idx + '][quantity]"' +
-                       ' class="form-control form-control-sm inp-qty"' +
-                       ' value="1" min="1">' +
-            '</td>' +
-            '<td>' +
-                '<input type="number" name="items[' + idx + '][discount]"' +
-                       ' class="form-control form-control-sm inp-disc"' +
-                       ' value="0.00" min="0" step="0.01">' +
-            '</td>' +
-            '<td class="fw-semibold lbl-total" style="white-space:nowrap">0.00</td>' +
-            '<td>' +
-                '<button type="button" class="btn btn-sm btn-outline-danger btn-remove"' +
-                        ' title="Remove row" style="padding:3px 8px">' +
-                    '<i class="fa fa-times"></i>' +
-                '</button>' +
-            '</td>';
+        batchBlock.style.display = 'none';
+        selBatch.innerHTML = '<option value="">Loading...</option>';
+        batchInfo.textContent = '';
 
-        bindRow(tr);
-        return tr;
+        const whId = getWarehouseId();
+        if (!itemType || !itemId || !whId) return;
+
+        fetch(PURCHASE_BATCHES_URL + '?item_type=' + itemType + '&item_id=' + itemId + '&warehouse_id=' + whId)
+            .then(r => r.json())
+            .then(batches => {
+                if (!batches.length) {
+                    selBatch.innerHTML = '<option value="">No purchase batches found</option>';
+                    batchBlock.style.display = 'block';
+                    return;
+                }
+
+                let html = '<option value="">— Any (FIFO auto) —</option>';
+                batches.forEach(b => {
+                    html += '<option value="' + b.purchase_item_id + '"'
+                         +  ' data-remaining="' + b.remaining + '"'
+                         +  ' data-unit-price="' + b.unit_price + '">'
+                         +  esc(b.purchase_number) + ' — Remaining: ' + b.remaining
+                         +  ' (bought @ Br ' + parseFloat(b.unit_price).toFixed(2) + ')'
+                         +  '</option>';
+                });
+                selBatch.innerHTML = html;
+                batchBlock.style.display = 'block';
+
+                // Auto-select first batch
+                selBatch.selectedIndex = 1;
+                selBatch.dispatchEvent(new Event('change'));
+            })
+            .catch(() => {
+                selBatch.innerHTML = '<option value="">Error loading batches</option>';
+                batchBlock.style.display = 'block';
+            });
     }
 
-    // Bind events to a row
-    function bindRow(tr) {
-        const selType   = tr.querySelector('.sel-type');
-        const selItem   = tr.querySelector('.sel-item');
-        const inpType   = tr.querySelector('.inp-type');
-        const inpItemId = tr.querySelector('.inp-item-id');
-        const inpPrice  = tr.querySelector('.inp-price');
-        const inpQty    = tr.querySelector('.inp-qty');
-        const inpDisc   = tr.querySelector('.inp-disc');
-        const inpTotal  = tr.querySelector('.inp-total');
-        const lblTotal  = tr.querySelector('.lbl-total');
-        const btnRemove = tr.querySelector('.btn-remove');
+    function clearBatchBlock(card) {
+        const bb = card.querySelector('.batch-block');
+        if (bb) bb.style.display = 'none';
+        const sb = card.querySelector('.sel-batch');
+        if (sb) sb.innerHTML = '<option value="">—</option>';
+        const bi = card.querySelector('.batch-info');
+        if (bi) bi.textContent = '';
+        const hi = card.querySelector('.inp-purchase-item-id');
+        if (hi) hi.value = '';
+    }
+
+    // ── Create one item card ───────────────────────────────────────
+    function createCard() {
+        const idx = rowCount++;
+        const div = document.createElement('div');
+        div.className    = 'item-card';
+        div.dataset.index = idx;
+
+        div.innerHTML =
+            // Hidden inputs
+            '<input type="hidden" name="items[' + idx + '][item_type]"        class="inp-type"             value="">' +
+            '<input type="hidden" name="items[' + idx + '][item_id]"          class="inp-item-id"          value="">' +
+            '<input type="hidden" name="items[' + idx + '][total]"            class="inp-total"            value="0">' +
+            '<input type="hidden" name="items[' + idx + '][purchase_item_id]" class="inp-purchase-item-id" value="">' +
+
+            // Row number + remove button
+            '<div class="item-num">Item #' + (idx + 1) + '</div>' +
+            '<button type="button" class="btn btn-sm btn-outline-danger btn-remove-card" title="Remove">' +
+                '<i class="fa fa-times"></i>' +
+            '</button>' +
+
+            // Row 1: Type + Item
+            '<div class="row g-2 mb-2">' +
+                '<div class="col-sm-3 col-md-2">' +
+                    '<label class="form-label small mb-1">Type</label>' +
+                    '<select class="form-select form-select-sm sel-type">' +
+                        '<option value="">Select…</option>' +
+                        '<option value="spare_part">Spare Part</option>' +
+                        '<option value="vehicle">Vehicle</option>' +
+                    '</select>' +
+                '</div>' +
+                '<div class="col-sm-9 col-md-10">' +
+                    '<label class="form-label small mb-1">Item</label>' +
+                    '<select class="form-select form-select-sm sel-item" disabled>' +
+                        '<option value="">— Choose type first —</option>' +
+                    '</select>' +
+                    '<small class="stock-warn d-none mt-1"></small>' +
+                '</div>' +
+            '</div>' +
+
+            // Row 2: PO# batch (hidden until item selected)
+            '<div class="batch-block" style="display:none">' +
+                '<div class="row g-2 mb-2">' +
+                    '<div class="col-12">' +
+                        '<label class="form-label small mb-1">' +
+                            '<i class="fa fa-box me-1 text-primary"></i>Purchase Batch (PO#)' +
+                        '</label>' +
+                        '<select class="form-select form-select-sm sel-batch">' +
+                            '<option value="">—</option>' +
+                        '</select>' +
+                        '<div class="batch-info"></div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+
+            // Row 3: Price + Qty + Disc + Total
+            '<div class="row g-2 align-items-end">' +
+                '<div class="col-6 col-sm-3">' +
+                    '<label class="form-label small mb-1">Price (Br)</label>' +
+                    '<input type="number" name="items[' + idx + '][unit_price]"' +
+                           ' class="form-control form-control-sm inp-price" value="0.00" min="0" step="0.01">' +
+                '</div>' +
+                '<div class="col-6 col-sm-2">' +
+                    '<label class="form-label small mb-1">Qty</label>' +
+                    '<input type="number" name="items[' + idx + '][quantity]"' +
+                           ' class="form-control form-control-sm inp-qty" value="1" min="1">' +
+                '</div>' +
+                '<div class="col-6 col-sm-3">' +
+                    '<label class="form-label small mb-1">Discount (Br)</label>' +
+                    '<input type="number" name="items[' + idx + '][discount]"' +
+                           ' class="form-control form-control-sm inp-disc" value="0.00" min="0" step="0.01">' +
+                '</div>' +
+                '<div class="col-6 col-sm-4">' +
+                    '<label class="form-label small mb-1">Line Total</label>' +
+                    '<div class="form-control form-control-sm bg-light fw-semibold lbl-total" style="color:var(--brand-1)">Br 0.00</div>' +
+                '</div>' +
+            '</div>';
+
+        bindCard(div);
+        return div;
+    }
+
+    // ── Bind events to a card ──────────────────────────────────────
+    function bindCard(card) {
+        const selType      = card.querySelector('.sel-type');
+        const selItem      = card.querySelector('.sel-item');
+        const selBatch     = card.querySelector('.sel-batch');
+        const inpType      = card.querySelector('.inp-type');
+        const inpItemId    = card.querySelector('.inp-item-id');
+        const inpPurchItem = card.querySelector('.inp-purchase-item-id');
+        const inpPrice     = card.querySelector('.inp-price');
+        const inpQty       = card.querySelector('.inp-qty');
+        const inpDisc      = card.querySelector('.inp-disc');
+        const inpTotal     = card.querySelector('.inp-total');
+        const lblTotal     = card.querySelector('.lbl-total');
+        const stockWarn    = card.querySelector('.stock-warn');
+        const batchInfo    = card.querySelector('.batch-info');
+        const btnRemove    = card.querySelector('.btn-remove-card');
 
         function updateRowTotal() {
             const qty   = Math.max(0, parseFloat(inpQty.value)   || 0);
             const price = Math.max(0, parseFloat(inpPrice.value) || 0);
             const disc  = Math.max(0, parseFloat(inpDisc.value)  || 0);
             const total = Math.max(0, (qty * price) - disc);
-            lblTotal.textContent = total.toFixed(2);
+            lblTotal.textContent = 'Br ' + total.toFixed(2);
             inpTotal.value       = total.toFixed(2);
             recalcTotals();
         }
 
-        // Type changed -> populate item dropdown from warehouse data
-        selType.addEventListener('change', function() {
-            const type    = this.value;
-            const whId    = getWarehouseId();
+        // Type changed
+        selType.addEventListener('change', function () {
+            const type  = this.value;
+            const whId  = getWarehouseId();
             inpType.value   = type;
             inpItemId.value = '';
             inpPrice.value  = '0.00';
+            stockWarn.classList.add('d-none');
+            stockWarn.textContent = '';
+            clearBatchBlock(card);
 
             if (!whId) {
                 alert('Please select a warehouse first.');
@@ -388,49 +463,43 @@
                 inpType.value = '';
                 return;
             }
-
             if (type) {
-                loadWarehouseItems(whId, function() {
-                    selItem.innerHTML = buildOptionsHtml(type);
+                loadWarehouseItems(whId, function () {
+                    selItem.innerHTML = buildItemOptions(type);
                     selItem.disabled  = false;
                 });
             } else {
-                selItem.innerHTML = '<option value="">- Choose type first -</option>';
+                selItem.innerHTML = '<option value="">— Choose type first —</option>';
                 selItem.disabled  = true;
             }
             updateRowTotal();
         });
 
-        // Item changed -> fill price, set max qty, show stock warning
-        selItem.addEventListener('change', function() {
-            const opt   = this.options[this.selectedIndex];
+        // Item changed
+        selItem.addEventListener('change', function () {
+            const opt = this.options[this.selectedIndex];
             inpItemId.value = this.value;
-            // Remove old warning
-            var existingWarn = tr.querySelector('.stock-warn');
-            if (existingWarn) existingWarn.remove();
+            stockWarn.classList.add('d-none');
+            stockWarn.textContent = '';
+            clearBatchBlock(card);
 
-            if (this.value && opt.dataset.price) {
+            if (this.value && opt.dataset.price !== undefined) {
                 inpPrice.value = parseFloat(opt.dataset.price).toFixed(2);
-                var stock = parseInt(opt.dataset.stock) || 0;
+                const stock    = parseInt(opt.dataset.stock) || 0;
 
-                // Enforce max qty = available stock
                 inpQty.max = stock;
-                if (parseInt(inpQty.value) > stock) {
-                    inpQty.value = stock;
+                if (parseInt(inpQty.value) > stock) inpQty.value = stock;
+
+                if (stock <= 0) {
+                    stockWarn.className = 'stock-warn text-danger d-block mt-1';
+                    stockWarn.innerHTML = '<i class="fa fa-circle-xmark me-1"></i>Out of stock in this warehouse';
+                } else if (stock <= 5) {
+                    stockWarn.className = 'stock-warn text-warning d-block mt-1';
+                    stockWarn.innerHTML = '<i class="fa fa-triangle-exclamation me-1"></i>Only ' + stock + ' left in warehouse';
                 }
 
-                // Stock warning
-                if (stock <= 0) {
-                    var warn = document.createElement('small');
-                    warn.className = 'stock-warn text-danger d-block mt-1';
-                    warn.innerHTML = '<i class="fa fa-circle-xmark me-1"></i>Out of stock in this warehouse';
-                    selItem.parentNode.appendChild(warn);
-                } else if (stock <= 5) {
-                    var warn = document.createElement('small');
-                    warn.className = 'stock-warn text-warning d-block mt-1';
-                    warn.innerHTML = '<i class="fa fa-triangle-exclamation me-1"></i>Only ' + stock + ' left in warehouse';
-                    selItem.parentNode.appendChild(warn);
-                }
+                // Load purchase batches for this item
+                loadBatches(card, inpType.value, this.value);
             } else {
                 inpPrice.value = '0.00';
                 inpQty.removeAttribute('max');
@@ -438,21 +507,52 @@
             updateRowTotal();
         });
 
-        // Qty input: enforce max stock
-        inpQty.addEventListener('input', function() {
-            var maxStock = parseInt(this.max);
-            if (!isNaN(maxStock) && parseInt(this.value) > maxStock) {
-                this.value = maxStock;
-                // Flash red border briefly
-                this.style.borderColor = '#dc2626';
-                setTimeout(function() { inpQty.style.borderColor = ''; }, 1500);
+        // Batch selected
+        selBatch.addEventListener('change', function () {
+            const opt = this.options[this.selectedIndex];
+            inpPurchItem.value = this.value;
+
+            if (this.value && opt.dataset.remaining !== undefined) {
+                const remaining = parseInt(opt.dataset.remaining);
+                // Lock qty max to this batch's remaining
+                inpQty.max = remaining;
+                if (parseInt(inpQty.value) > remaining) inpQty.value = remaining;
+
+                batchInfo.innerHTML =
+                    '<i class="fa fa-circle-check me-1 text-success"></i>' +
+                    'Remaining in this batch: <strong>' + remaining + '</strong> units';
+            } else {
+                // "Any (FIFO auto)" — unlock and use warehouse stock max
+                inpPurchItem.value = '';
+                const whMax = parseInt(selItem.options[selItem.selectedIndex]?.dataset?.stock) || 0;
+                if (whMax) {
+                    inpQty.max = whMax;
+                    if (parseInt(inpQty.value) > whMax) inpQty.value = whMax;
+                } else {
+                    inpQty.removeAttribute('max');
+                }
+                batchInfo.innerHTML = '<span class="text-muted">FIFO: oldest batch will be assigned automatically</span>';
             }
             updateRowTotal();
         });
 
-        btnRemove.addEventListener('click', function() {
-            if (container.querySelectorAll('.item-row').length > 1) {
-                tr.remove();
+        // Qty input
+        inpQty.addEventListener('input', function () {
+            const max = parseInt(this.max);
+            if (!isNaN(max) && parseInt(this.value) > max) {
+                this.value = max;
+                this.style.borderColor = '#dc2626';
+                setTimeout(() => { inpQty.style.borderColor = ''; }, 1500);
+            }
+            updateRowTotal();
+        });
+
+        [inpPrice, inpDisc].forEach(el => el.addEventListener('input', updateRowTotal));
+
+        btnRemove.addEventListener('click', function () {
+            if (container.querySelectorAll('.item-card').length > 1) {
+                card.remove();
+                renumberCards();
                 recalcTotals();
             } else {
                 alert('At least one item is required.');
@@ -460,18 +560,25 @@
         });
     }
 
-    // Recalculate grand totals
+    // ── Renumber item cards after removal ─────────────────────────
+    function renumberCards() {
+        container.querySelectorAll('.item-card .item-num').forEach((el, i) => {
+            el.textContent = 'Item #' + (i + 1);
+        });
+    }
+
+    // ── Grand total recalc ─────────────────────────────────────────
     function recalcTotals() {
-        var subtotal = 0;
-        container.querySelectorAll('.inp-total').forEach(function(el) {
+        let subtotal = 0;
+        container.querySelectorAll('.inp-total').forEach(el => {
             subtotal += parseFloat(el.value) || 0;
         });
-        var discount = Math.max(0, parseFloat(discountInput.value) || 0);
-        var taxRate  = Math.max(0, parseFloat(taxInput.value)      || 0);
-        var taxAmt   = ((subtotal - discount) * taxRate) / 100;
-        var total    = Math.max(0, subtotal - discount + taxAmt);
-        var paid     = Math.max(0, parseFloat(paidInput.value) || 0);
-        var balance  = Math.max(0, total - paid);
+        const discount = Math.max(0, parseFloat(discountInput.value) || 0);
+        const taxRate  = Math.max(0, parseFloat(taxInput.value)      || 0);
+        const taxAmt   = ((subtotal - discount) * taxRate) / 100;
+        const total    = Math.max(0, subtotal - discount + taxAmt);
+        const paid     = Math.max(0, parseFloat(paidInput.value) || 0);
+        const balance  = Math.max(0, total - paid);
 
         subtotalEl.textContent = subtotal.toFixed(2);
         totalEl.textContent    = total.toFixed(2);
@@ -483,49 +590,46 @@
         balanceInput.value  = balance.toFixed(2);
     }
 
-    // Validate before submit
-    document.getElementById('saleForm').addEventListener('submit', function(e) {
-        var rows  = container.querySelectorAll('.item-row');
-        var valid = true;
-        var errors = [];
+    // ── Form submit validation ─────────────────────────────────────
+    document.getElementById('saleForm').addEventListener('submit', function (e) {
+        let valid  = true;
+        let errors = [];
 
-        rows.forEach(function(row) {
-            var type  = row.querySelector('.inp-type').value;
-            var id    = row.querySelector('.inp-item-id').value;
-            var qty   = parseInt(row.querySelector('.inp-qty').value) || 0;
-            var max   = parseInt(row.querySelector('.inp-qty').max);
+        container.querySelectorAll('.item-card').forEach(card => {
+            const type = card.querySelector('.inp-type').value;
+            const id   = card.querySelector('.inp-item-id').value;
+            const qty  = parseInt(card.querySelector('.inp-qty').value) || 0;
+            const max  = parseInt(card.querySelector('.inp-qty').max);
 
             if (!type || !id) {
                 valid = false;
-                row.querySelector('.sel-type').style.borderColor = '#dc2626';
-                row.querySelector('.sel-item').style.borderColor = '#dc2626';
+                card.querySelector('.sel-type').style.borderColor = '#dc2626';
+                card.querySelector('.sel-item').style.borderColor = '#dc2626';
                 errors.push('Please select a type and item for every row.');
             } else if (!isNaN(max) && qty > max) {
                 valid = false;
-                row.querySelector('.inp-qty').style.borderColor = '#dc2626';
-                errors.push('Quantity exceeds available stock (' + max + ' available). Please reduce the quantity.');
+                card.querySelector('.inp-qty').style.borderColor = '#dc2626';
+                errors.push('Quantity exceeds available stock for one or more items.');
             }
         });
 
-        if (!valid) {
-            e.preventDefault();
-            alert(errors[0]);
-        }
+        if (!valid) { e.preventDefault(); alert(errors[0]); }
     });
 
-    // Add Item button
-    document.getElementById('addItemBtn').addEventListener('click', function() {
-        var whId = getWarehouseId();
-        if (!whId) {
-            alert('Please select a warehouse first before adding items.');
-            return;
-        }
-        container.appendChild(createRow());
+    // ── Helpers ───────────────────────────────────────────────────
+    function esc(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── Wire up buttons ────────────────────────────────────────────
+    document.getElementById('addItemBtn').addEventListener('click', function () {
+        const whId = getWarehouseId();
+        if (!whId) { alert('Please select a warehouse first.'); return; }
+        container.appendChild(createCard());
         recalcTotals();
     });
 
-    // Pay Full button
-    document.getElementById('payFullBtn').addEventListener('click', function() {
+    document.getElementById('payFullBtn').addEventListener('click', function () {
         paidInput.value = totalInput.value;
         recalcTotals();
     });
@@ -534,51 +638,41 @@
     taxInput.addEventListener('input',      recalcTotals);
     paidInput.addEventListener('input',     recalcTotals);
 
-    // Warehouse change -> reload all items
-    function bindWarehouseChange() {
-        var whSel = document.getElementById('warehouseSelect');
+    // Warehouse change → reload items
+    (function bindWarehouseChange() {
+        const whSel = document.getElementById('warehouseSelect');
         if (!whSel) return;
 
         function onWarehouseChange() {
-            var whId = whSel.value;
-            loadedWarehouse = null; // force reload
-            if (whId) {
-                loadWarehouseItems(whId, function() {
-                    // Reset all existing rows item selection
-                    container.querySelectorAll('.item-row').forEach(function(row) {
-                        var type = row.querySelector('.inp-type').value;
-                        if (type) {
-                            row.querySelector('.sel-item').innerHTML = buildOptionsHtml(type);
-                            row.querySelector('.inp-item-id').value  = '';
-                            row.querySelector('.inp-price').value    = '0.00';
-                        }
-                    });
-                    recalcTotals();
+            loadedWarehouse = null;
+            const whId = whSel.value;
+            if (!whId) return;
+            loadWarehouseItems(whId, function () {
+                container.querySelectorAll('.item-card').forEach(card => {
+                    const type = card.querySelector('.inp-type').value;
+                    if (type) {
+                        card.querySelector('.sel-item').innerHTML = buildItemOptions(type);
+                        card.querySelector('.inp-item-id').value  = '';
+                        card.querySelector('.inp-price').value    = '0.00';
+                        clearBatchBlock(card);
+                    }
                 });
-            }
+                recalcTotals();
+            });
         }
 
-        // Plain select change
         whSel.addEventListener('change', onWarehouseChange);
+        // Also works with TomSelect
+        setTimeout(function () {
+            if (whSel._tomSelect) whSel._tomSelect.on('change', onWarehouseChange);
+        }, 500);
+    })();
 
-        // Also hook TomSelect onChange (fires after global init)
-        document.addEventListener('DOMContentLoaded', function() {
-            if (whSel._tomSelect) {
-                whSel._tomSelect.on('change', onWarehouseChange);
-            }
-        });
-    }
-
-    // Init
-    bindWarehouseChange();
-    container.appendChild(createRow());
+    // ── Init: first card + load default warehouse ──────────────────
+    container.appendChild(createCard());
     recalcTotals();
-
-    // Load items for default warehouse on page load
-    var defaultWh = getWarehouseId();
-    if (defaultWh) {
-        loadWarehouseItems(defaultWh, null);
-    }
+    const defaultWh = getWarehouseId();
+    if (defaultWh) loadWarehouseItems(defaultWh, null);
 
 })();
 </script>
