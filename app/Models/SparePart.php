@@ -16,6 +16,9 @@ class SparePart extends Model
         'oem_number',
         'name',
         'description',
+        'buying_price',
+        'selling_price_min',
+        'selling_price_max',
         'reorder_level',
         'current_stock',
         'location',
@@ -23,7 +26,11 @@ class SparePart extends Model
         'status',
     ];
 
-    protected $casts = [];
+    protected $casts = [
+        'buying_price'      => 'decimal:2',
+        'selling_price_min' => 'decimal:2',
+        'selling_price_max' => 'decimal:2',
+    ];
 
     // ──────────────────────────────────────────
     // Relationships

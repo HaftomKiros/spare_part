@@ -100,6 +100,29 @@
 </div>
 </div>
 
+<div class="card mb-3">
+<div class="card-header"><i class="fa fa-tag me-2 text-primary"></i>Pricing</div>
+<div class="card-body">
+    <div class="mb-3">
+        <label class="form-label">Buying Price (Br)</label>
+        <input type="number" name="buying_price" class="form-control"
+               value="{{ old('buying_price', $sparePart->buying_price) }}" min="0" step="0.01">
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Min Selling Price (Br)</label>
+        <input type="number" name="selling_price_min" class="form-control"
+               value="{{ old('selling_price_min', $sparePart->selling_price_min) }}" min="0" step="0.01">
+        <div class="form-text">Lowest price allowed when selling.</div>
+    </div>
+    <div>
+        <label class="form-label">Max Selling Price (Br)</label>
+        <input type="number" name="selling_price_max" class="form-control"
+               value="{{ old('selling_price_max', $sparePart->selling_price_max) }}" min="0" step="0.01">
+        <div class="form-text">Default price shown when selling.</div>
+    </div>
+</div>
+</div>
+
 <div class="card">
 <div class="card-header"><i class="fa fa-toggle-on me-2 text-primary"></i>Status</div>
 <div class="card-body">

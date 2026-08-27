@@ -269,8 +269,14 @@
                 if (!cat.parts.length) return;
                 html += '<optgroup label="' + esc(cat.name) + '">';
                 cat.parts.forEach(p => {
-                    html += '<option value="' + p.id + '" data-price="' + p.price
-                         +  '" data-stock="' + p.stock + '" data-reorder="' + (p.reorder||5) + '">'
+                    html += '<option value="' + p.id
+                         +  '" data-price="'     + p.price_max
+                         +  '" data-price-min="' + p.price_min
+                         +  '" data-price-max="' + p.price_max
+                         +  '" data-buy-price="' + p.buy_price
+                         +  '" data-stock="'     + p.stock
+                         +  '" data-reorder="'   + (p.reorder||5)
+                         +  '" data-name="'      + esc(p.name) + '">'
                          +  esc(p.name) + ' — Stock: ' + p.stock + (p.unit ? ' '+p.unit : '') + '</option>';
                 });
                 html += '</optgroup>';
@@ -533,12 +539,21 @@
             clearBatchArea(card);
 
             if (this.value) {
-                const opt     = this.options[this.selectedIndex];
-                const stock   = parseInt(opt.dataset.stock)   || 0;
-                const reorder = parseInt(opt.dataset.reorder) || 0;
+                const opt      = this.options[this.selectedIndex];
+                const stock    = parseInt(opt.dataset.stock)    || 0;
+                const reorder  = parseInt(opt.dataset.reorder)  || 0;
+                const priceMax = parseFloat(opt.dataset.priceMax || opt.dataset.price || 0);
+                const priceMin = parseFloat(opt.dataset.priceMin || 0);
 
-                inpPrice.value = parseFloat(opt.dataset.price || 0).toFixed(2);
-                inpQty.max     = stock;
+                // Default = max price, enforce min
+                inpPrice.value              = priceMax.toFixed(2);
+                inpPrice.min                = priceMin.toFixed(2);
+                inpPrice.dataset.priceMin   = priceMin;
+                inpPrice.dataset.priceMax   = priceMax;
+                inpPrice.dataset.buyPrice   = parseFloat(opt.dataset.buyPrice || 0);
+                inpPrice.dataset.itemName   = opt.dataset.name || opt.text;
+
+                inpQty.max = stock;
                 if (parseInt(inpQty.value) > stock) inpQty.value = stock;
 
                 if (stock <= 0) {
@@ -547,11 +562,18 @@
                 } else if (reorder > 0 && stock <= reorder) {
                     stockWarn.className = 'stock-warn text-warning d-block mt-1';
                     stockWarn.innerHTML = '<i class="fa fa-triangle-exclamation me-1"></i>Low stock in selected warehouse: ' + stock + ' remaining';
+                } else {
+                    stockWarn.className = 'stock-warn d-none';
                 }
 
                 loadBatches(card, card.querySelector('.inp-type').value, this.value);
             } else {
                 inpPrice.value = '0.00';
+                inpPrice.removeAttribute('min');
+                delete inpPrice.dataset.priceMin;
+                delete inpPrice.dataset.priceMax;
+                delete inpPrice.dataset.buyPrice;
+                delete inpPrice.dataset.itemName;
                 inpQty.removeAttribute('max');
                 setCardInputsDisabled(card, false);
             }
@@ -630,6 +652,7 @@
     document.getElementById('saleForm').addEventListener('submit', function (e) {
         let valid  = true;
         let errors = [];
+        let confirmLines = []; // items to show in confirmation popup
 
         container.querySelectorAll('.item-card').forEach(card => {
             const type    = card.querySelector('.inp-type').value;
@@ -638,6 +661,12 @@
             const max     = parseInt(card.querySelector('.inp-qty').max);
             const noStock = card.querySelector('.no-stock-warn');
             const noBatch = card.querySelector('.no-batch-warn');
+            const inpPr   = card.querySelector('.inp-price');
+            const price   = parseFloat(inpPr?.value || 0);
+            const priceMin = parseFloat(inpPr?.dataset.priceMin || 0);
+            const priceMax = parseFloat(inpPr?.dataset.priceMax || 0);
+            const buyPrice = parseFloat(inpPr?.dataset.buyPrice || 0);
+            const itemName = inpPr?.dataset.itemName || 'Item';
 
             if ((noStock && noStock.style.display !== 'none' && noStock.style.display !== '') ||
                 (noBatch && noBatch.style.display !== 'none' && noBatch.style.display !== '')) {
@@ -648,13 +677,66 @@
             if (!type || !id) {
                 valid = false;
                 errors.push('Please select a type and item for every row.');
-            } else if (!isNaN(max) && qty > max) {
+                return;
+            }
+            if (!isNaN(max) && qty > max) {
                 valid = false;
                 errors.push('Quantity exceeds available stock for one or more items.');
+                return;
+            }
+
+            // Price range validation
+            if (priceMin > 0 && price < priceMin) {
+                valid = false;
+                inpPr.style.borderColor = '#dc2626';
+                errors.push('"' + itemName + '": price Br ' + price.toFixed(2) + ' is below the minimum allowed price of Br ' + priceMin.toFixed(2) + '.');
+                return;
+            }
+
+            // Build confirmation line for this item (spare parts only have price range)
+            if (type === 'spare_part' && priceMax > 0) {
+                confirmLines.push({
+                    name:      itemName,
+                    qty:       qty,
+                    price:     price,
+                    priceMin:  priceMin,
+                    priceMax:  priceMax,
+                    buyPrice:  buyPrice,
+                });
             }
         });
 
-        if (!valid) { e.preventDefault(); alert(errors[0]); }
+        if (!valid) {
+            e.preventDefault();
+            alert(errors[0]);
+            return;
+        }
+
+        // Show confirmation popup if there are items with price info
+        if (confirmLines.length > 0 && !this.dataset.confirmed) {
+            e.preventDefault();
+            let msg = 'Please confirm the following sale items:\n\n';
+            confirmLines.forEach((item, i) => {
+                msg += (i + 1) + '. ' + item.name + '\n';
+                msg += '   Qty: ' + item.qty + '\n';
+                msg += '   Sell Price: Br ' + item.price.toFixed(2);
+                if (item.priceMin > 0 || item.priceMax > 0) {
+                    msg += ' (range: Br ' + item.priceMin.toFixed(2) + ' – Br ' + item.priceMax.toFixed(2) + ')';
+                }
+                if (item.buyPrice > 0) {
+                    const profit = (item.price - item.buyPrice) * item.qty;
+                    msg += '\n   Purchase Price: Br ' + item.buyPrice.toFixed(2);
+                    msg += '\n   Profit: Br ' + profit.toFixed(2);
+                }
+                msg += '\n\n';
+            });
+            msg += 'Are you sure you want to complete this sale?';
+
+            if (confirm(msg)) {
+                this.dataset.confirmed = '1';
+                this.submit();
+            }
+        }
     });
 
     function esc(str) {

@@ -247,7 +247,8 @@ class SaleController extends Controller
             ->where('ws.current_stock', '>', 0)
             ->where('sp.status', 'active')
             ->select(
-                'sp.id', 'sp.name', 'sp.part_number', 'sp.selling_price',
+                'sp.id', 'sp.name', 'sp.part_number', 'sp.buying_price',
+                'sp.selling_price_min', 'sp.selling_price_max',
                 'ws.current_stock', 'ws.reorder_level',
                 'pc.id as category_id', 'pc.name as category_name',
                 'u.abbreviation as unit'
@@ -271,7 +272,7 @@ class SaleController extends Controller
         $categories = [];
         foreach ($parts as $p) {
             $hasBatches = in_array($p->id, $partIdsWithBatches);
-            // Skip items with no batches entirely — they cannot be sold
+            // Only include parts that have unsold purchase batches
             if (!$hasBatches) continue;
 
             $catId = $p->category_id;
@@ -283,12 +284,15 @@ class SaleController extends Controller
                 ];
             }
             $categories[$catId]['parts'][] = [
-                'id'      => $p->id,
-                'name'    => $p->name . ' (' . $p->part_number . ')',
-                'price'   => $p->selling_price,
-                'stock'   => $p->current_stock,
-                'reorder' => $p->reorder_level,
-                'unit'    => $p->unit,
+                'id'        => $p->id,
+                'name'      => $p->name . ' (' . $p->part_number . ')',
+                'price'     => $p->selling_price_max,
+                'price_min' => $p->selling_price_min,
+                'price_max' => $p->selling_price_max,
+                'buy_price' => $p->buying_price,
+                'stock'     => $p->current_stock,
+                'reorder'   => $p->reorder_level,
+                'unit'      => $p->unit,
             ];
         }
 
