@@ -482,6 +482,65 @@
         if (sw) { sw.className = 'stock-warn d-none'; sw.textContent = ''; }
     }
 
+    // ── Sync batch availability across all cards ───────────────────
+    // Prevents two cards from claiming more than a batch actually has.
+    // After any batch selection or qty change, this rebuilds the effective
+    // "remaining" for every card that has a specific batch selected, deducting
+    // what sibling cards have already claimed from the same batch.
+    function syncBatchAvailability() {
+        // Build a map: purchase_item_id → total qty claimed by ALL cards
+        const claimedMap = {};
+        container.querySelectorAll('.item-card').forEach(function(c) {
+            const piId = c.querySelector('.inp-purchase-item-id')?.value;
+            const qty  = parseInt(c.querySelector('.inp-qty')?.value) || 0;
+            if (piId) {
+                claimedMap[piId] = (claimedMap[piId] || 0) + qty;
+            }
+        });
+
+        // For each card that has a specific batch selected, recompute effective remaining
+        container.querySelectorAll('.item-card').forEach(function(card) {
+            const selBatch  = card.querySelector('.sel-batch');
+            const inpPiId   = card.querySelector('.inp-purchase-item-id');
+            const inpQty    = card.querySelector('.inp-qty');
+            const batchInfo = card.querySelector('.batch-info');
+            if (!selBatch || !inpPiId || !inpQty || !batchInfo) return;
+
+            const piId = inpPiId.value;
+            if (!piId) return; // "Any (FIFO auto)" — nothing to enforce
+
+            const selOpt = selBatch.options[selBatch.selectedIndex];
+            if (!selOpt || selOpt.dataset.remaining === undefined) return;
+
+            const batchRemaining  = parseInt(selOpt.dataset.remaining); // total remaining in DB
+            const thisQty         = parseInt(inpQty.value) || 0;
+            const othersClaimed   = (claimedMap[piId] || 0) - thisQty;  // what sibling cards take
+            const effectiveMax    = Math.max(0, batchRemaining - othersClaimed);
+
+            // Update max so qty input is capped
+            inpQty.max = effectiveMax;
+            if (thisQty > effectiveMax) {
+                inpQty.value = effectiveMax;
+                inpQty.style.borderColor = '#dc2626';
+                setTimeout(function() { inpQty.style.borderColor = ''; }, 1500);
+            }
+
+            // Rewrite batch-info to show the adjusted remaining
+            if (effectiveMax <= 0) {
+                batchInfo.innerHTML = '<i class="fa fa-circle-xmark me-1 text-danger"></i>'
+                    + '<span class="text-danger">Batch fully claimed by other rows</span>';
+            } else if (othersClaimed > 0) {
+                batchInfo.innerHTML = '<i class="fa fa-circle-check me-1 text-success"></i>'
+                    + 'Available in this batch: <strong>' + effectiveMax + '</strong>'
+                    + ' <span class="text-muted">(of ' + batchRemaining + ' total; '
+                    + othersClaimed + ' claimed by other rows)</span>';
+            } else {
+                batchInfo.innerHTML = '<i class="fa fa-circle-check me-1 text-success"></i>'
+                    + 'Remaining in this batch: <strong>' + batchRemaining + '</strong>';
+            }
+        });
+    }
+
     function setCardInputsDisabled(card, disabled) {
         ['inp-price','inp-qty','inp-disc'].forEach(cls => {
             const el = card.querySelector('.' + cls);
@@ -680,6 +739,8 @@
                 else inpQty.removeAttribute('max');
                 batchInfo.innerHTML = '<span class="text-muted">FIFO: oldest batch assigned automatically</span>';
             }
+            // Re-sync all cards so sibling rows reflect the updated claim on this batch
+            syncBatchAvailability();
             updateRowTotal();
         });
 
@@ -690,6 +751,8 @@
                 this.style.borderColor = '#dc2626';
                 setTimeout(() => { inpQty.style.borderColor = ''; }, 1500);
             }
+            // Re-sync so sibling rows that share the same batch update their available count
+            syncBatchAvailability();
             updateRowTotal();
         });
 
@@ -723,6 +786,7 @@
                 card.remove();
                 renumberCards();
                 recalcTotals();
+                syncBatchAvailability();
                 checkSubmitBtn();
             } else {
                 alert('At least one item is required.');
@@ -778,6 +842,34 @@
     function validateAndBuildLines() {
         let errors = [];
         let confirmLines = [];
+
+        // Cross-row check: if two or more rows pick the same specific batch,
+        // ensure their combined quantity doesn't exceed that batch's remaining.
+        const batchClaimMap = {};  // purchase_item_id → { totalQty, batchRemaining }
+        container.querySelectorAll('.item-card').forEach(function(c) {
+            const piId = c.querySelector('.inp-purchase-item-id')?.value;
+            if (!piId) return;
+            const qty = parseInt(c.querySelector('.inp-qty')?.value) || 0;
+            const selBatch = c.querySelector('.sel-batch');
+            const selOpt   = selBatch ? selBatch.options[selBatch.selectedIndex] : null;
+            const batchRemaining = selOpt && selOpt.dataset.remaining !== undefined
+                ? parseInt(selOpt.dataset.remaining) : Infinity;
+            if (!batchClaimMap[piId]) {
+                batchClaimMap[piId] = { totalQty: 0, batchRemaining: batchRemaining };
+            }
+            batchClaimMap[piId].totalQty += qty;
+        });
+        for (const piId in batchClaimMap) {
+            const entry = batchClaimMap[piId];
+            if (entry.totalQty > entry.batchRemaining) {
+                errors.push(
+                    'Two or more rows are using the same purchase batch, and their combined quantity ('
+                    + entry.totalQty + ') exceeds what remains in that batch ('
+                    + entry.batchRemaining + '). Please select different batches or reduce the quantities.'
+                );
+            }
+        }
+        if (errors.length > 0) { showError(errors[0]); return null; }
 
         container.querySelectorAll('.item-card').forEach(card => {
             const type     = card.querySelector('.inp-type').value;

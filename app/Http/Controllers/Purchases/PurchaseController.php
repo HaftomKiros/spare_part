@@ -151,6 +151,24 @@ class PurchaseController extends Controller
             'items.*.total'          => 'required|numeric|min:0',
         ]);
 
+        // Reject duplicate item_type + item_id combinations across rows.
+        // Each item should appear only once — use quantity to buy more of the same item.
+        $seenItems = [];
+        foreach ($request->items as $index => $row) {
+            $key = $row['item_type'] . ':' . $row['item_id'];
+            if (isset($seenItems[$key])) {
+                $rowNum = $index + 1;
+                $dupNum = $seenItems[$key] + 1;
+                $name = $row['item_type'] === 'spare_part'
+                    ? \App\Models\SparePart::find($row['item_id'])?->name
+                    : \App\Models\VehicleModel::find($row['item_id'])?->full_name;
+                return back()
+                    ->with('error', "Item \"{$name}\" appears in both row #{$dupNum} and row #{$rowNum}. Each item can only appear once — increase the quantity instead.")
+                    ->withInput();
+            }
+            $seenItems[$key] = $index;
+        }
+
         DB::beginTransaction();
         try {
             $total   = (float) $request->total;

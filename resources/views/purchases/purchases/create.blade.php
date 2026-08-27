@@ -197,35 +197,71 @@
     const taxInput      = document.getElementById('taxInput');
     const paidInput     = document.getElementById('paidInput');
 
-    // ── Build item options ─────────────────────────────────────────
-    function buildOptionsHtml(type) {
+    // ── Build item options (excluding already-selected items in other cards) ──
+    // excludeCard: the card being built for (its own selection is NOT excluded)
+    function buildOptionsHtml(type, excludeCard) {
+        // Collect item IDs already claimed by OTHER cards of the same type
+        const taken = new Set();
+        container.querySelectorAll('.item-card').forEach(function(c) {
+            if (c === excludeCard) return;
+            if (c.querySelector('.inp-type').value === type) {
+                const id = c.querySelector('.inp-item-id').value;
+                if (id) taken.add(String(id));
+            }
+        });
+
         let html = '<option value="">— Select item —</option>';
         if (type === 'vehicle') {
             if (!VEHICLES.length) return html + '<option disabled>No vehicles available</option>';
             VEHICLES.forEach(vt => {
                 if (!vt.models.length) return;
-                html += '<optgroup label="' + esc(vt.name) + '">';
-                vt.models.forEach(m => {
-                    html += '<option value="' + m.id + '" data-price="' + m.price + '">'
-                         +  esc(m.name) + ' — Unsold: ' + m.unsold
-                         + '</option>';
-                });
-                html += '</optgroup>';
+                const opts = vt.models.map(m => {
+                    const disabled = taken.has(String(m.id)) ? ' disabled' : '';
+                    const label    = taken.has(String(m.id)) ? ' (already in another row)' : '';
+                    return '<option value="' + m.id + '" data-price="' + m.price + '"' + disabled + '>'
+                         + esc(m.name) + ' — Unsold: ' + m.unsold + label + '</option>';
+                }).join('');
+                html += '<optgroup label="' + esc(vt.name) + '">' + opts + '</optgroup>';
             });
         } else {
             if (!CATEGORIES.length) return html + '<option disabled>No spare parts available</option>';
             CATEGORIES.forEach(cat => {
                 if (!cat.parts.length) return;
-                html += '<optgroup label="' + esc(cat.name) + '">';
-                cat.parts.forEach(p => {
-                    html += '<option value="' + p.id + '" data-price="' + p.price + '">'
-                         +  esc(p.name) + ' — Unsold: ' + p.unsold + (p.unit ? ' ' + p.unit : '')
-                         + '</option>';
-                });
-                html += '</optgroup>';
+                const opts = cat.parts.map(p => {
+                    const disabled = taken.has(String(p.id)) ? ' disabled' : '';
+                    const label    = taken.has(String(p.id)) ? ' (already in another row)' : '';
+                    return '<option value="' + p.id + '" data-price="' + p.price + '"' + disabled + '>'
+                         + esc(p.name) + ' — Unsold: ' + p.unsold + (p.unit ? ' ' + p.unit : '') + label + '</option>';
+                }).join('');
+                html += '<optgroup label="' + esc(cat.name) + '">' + opts + '</optgroup>';
             });
         }
         return html;
+    }
+
+    // ── Rebuild item dropdowns across all cards that share the same type ──
+    // Called after any item selection change or card removal so every card
+    // instantly reflects what its siblings have already claimed.
+    function syncItemOptions() {
+        container.querySelectorAll('.item-card').forEach(function(card) {
+            const type    = card.querySelector('.inp-type').value;
+            const selItem = card.querySelector('.sel-item');
+            const curVal  = card.querySelector('.inp-item-id').value;
+            if (!type || selItem.disabled) return;
+
+            // Rebuild options, passing this card so its own selection isn't excluded
+            selItem.innerHTML = buildOptionsHtml(type, card);
+
+            // Restore the previously selected value for this card
+            if (curVal) {
+                for (let i = 0; i < selItem.options.length; i++) {
+                    if (selItem.options[i].value === curVal) {
+                        selItem.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+        });
     }
 
     // ── Create one item card ───────────────────────────────────────
@@ -321,12 +357,14 @@
             inpItemId.value = '';
             inpPrice.value  = '0.00';
             if (type) {
-                selItem.innerHTML = buildOptionsHtml(type);
+                selItem.innerHTML = buildOptionsHtml(type, card);
                 selItem.disabled  = false;
             } else {
                 selItem.innerHTML = '<option value="">— Choose type first —</option>';
                 selItem.disabled  = true;
             }
+            // Sync sibling cards so they reflect this card's type change
+            syncItemOptions();
             updateRowTotal();
         });
 
@@ -334,6 +372,8 @@
             inpItemId.value = this.value;
             const opt = this.options[this.selectedIndex];
             inpPrice.value = this.value ? parseFloat(opt.dataset.price || 0).toFixed(2) : '0.00';
+            // Sync sibling cards so they disable this item in their own dropdowns
+            syncItemOptions();
             updateRowTotal();
         });
 
@@ -343,6 +383,8 @@
             if (container.querySelectorAll('.item-card').length > 1) {
                 card.remove();
                 renumberCards();
+                // Free up this card's item so siblings can select it again
+                syncItemOptions();
                 recalcTotals();
             } else {
                 alert('At least one item is required.');
@@ -384,7 +426,9 @@
         let valid  = true;
         let errors = [];
 
-        container.querySelectorAll('.item-card').forEach(card => {
+        // Cross-row duplicate check
+        const seen = {}; // "type:id" → row index
+        container.querySelectorAll('.item-card').forEach((card, idx) => {
             const type = card.querySelector('.inp-type').value;
             const id   = card.querySelector('.inp-item-id').value;
             if (!type || !id) {
@@ -392,6 +436,15 @@
                 card.querySelector('.sel-type').style.borderColor = '#dc2626';
                 card.querySelector('.sel-item').style.borderColor = '#dc2626';
                 errors.push('Please select a type and item for every row.');
+                return;
+            }
+            const key = type + ':' + id;
+            if (seen[key] !== undefined) {
+                valid = false;
+                card.querySelector('.sel-item').style.borderColor = '#dc2626';
+                errors.push('Item in row #' + (idx + 1) + ' is already added in row #' + (seen[key] + 1) + '. Each item can only appear once — increase the quantity instead.');
+            } else {
+                seen[key] = idx;
             }
         });
 

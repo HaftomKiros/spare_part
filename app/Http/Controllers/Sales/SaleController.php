@@ -145,6 +145,37 @@ class SaleController extends Controller
 
             // Server-side stock check per warehouse
             $warehouseId = $request->warehouse_id ?: \App\Models\Warehouse::getDefault()?->id;
+
+            // Aggregate total quantity claimed per purchase_item_id across ALL rows in this
+            // submission. This prevents the same batch from being oversold when two rows pick
+            // the same PO batch (each individually looks valid, but together they exceed remaining).
+            $batchQtyMap = [];  // [ purchase_item_id => total qty claimed ]
+            foreach ($request->items as $row) {
+                if (!empty($row['purchase_item_id'])) {
+                    $piId = (int) $row['purchase_item_id'];
+                    $batchQtyMap[$piId] = ($batchQtyMap[$piId] ?? 0) + (int) $row['quantity'];
+                }
+            }
+            // Validate each batch against its aggregated claimed quantity
+            foreach ($batchQtyMap as $piId => $totalClaimed) {
+                $pi = DB::table('purchase_items')->where('id', $piId)->first();
+                if (!$pi) {
+                    $msg = 'Selected purchase batch not found.';
+                    if ($request->ajax() || $request->wantsJson()) {
+                        return response()->json(['message' => $msg], 422);
+                    }
+                    return back()->with('error', $msg)->withInput();
+                }
+                $remaining = $pi->quantity - $pi->total_sold;
+                if ($totalClaimed > $remaining) {
+                    $msg = "Combined quantity ({$totalClaimed}) across sale rows exceeds remaining stock ({$remaining}) in purchase batch for this item. Please use different batches or reduce the quantities.";
+                    if ($request->ajax() || $request->wantsJson()) {
+                        return response()->json(['message' => $msg], 422);
+                    }
+                    return back()->with('error', $msg)->withInput();
+                }
+            }
+
             foreach ($request->items as $row) {
                 $qty = (int) $row['quantity'];
                 if ($row['item_type'] === 'spare_part') {
@@ -168,29 +199,6 @@ class SaleController extends Controller
                         return response()->json(['message' => $msg], 422);
                     }
                     return back()->with('error', $msg)->withInput();
-                }
-
-                // If a specific purchase batch was selected, validate it has enough remaining stock
-                if (!empty($row['purchase_item_id'])) {
-                    $pi = DB::table('purchase_items')->where('id', $row['purchase_item_id'])->first();
-                    if (!$pi) {
-                        $msg = 'Selected purchase batch not found.';
-                        if ($request->ajax() || $request->wantsJson()) {
-                            return response()->json(['message' => $msg], 422);
-                        }
-                        return back()->with('error', $msg)->withInput();
-                    }
-                    $remaining = $pi->quantity - $pi->total_sold;
-                    if ($qty > $remaining) {
-                        $name = $row['item_type'] === 'spare_part'
-                            ? \App\Models\SparePart::find($row['item_id'])?->name
-                            : \App\Models\VehicleModel::find($row['item_id'])?->full_name;
-                        $msg = "Quantity ({$qty}) exceeds remaining stock in selected purchase batch ({$remaining}) for '{$name}'.";
-                        if ($request->ajax() || $request->wantsJson()) {
-                            return response()->json(['message' => $msg], 422);
-                        }
-                        return back()->with('error', $msg)->withInput();
-                    }
                 }
 
                 // Server-side price range validation
