@@ -394,6 +394,80 @@
         .sb-toggle { display: none; }
         body.sb-collapsed .sb-item::after { display: none; }
     }
+
+    /* ── Notification Bell Dropdown ──────────────────────────────── */
+    .notif-bell-btn {
+        width: 40px; height: 40px;
+        border-radius: 10px;
+        background: transparent;
+        border: 1px solid transparent;
+        transition: background .15s, border-color .15s;
+    }
+    .notif-bell-btn:hover, .notif-bell-btn:focus {
+        background: #f1f0fe;
+        border-color: #e0defb;
+    }
+    @keyframes bellRing {
+        0%,100% { transform: rotate(0); }
+        15%      { transform: rotate(12deg); }
+        30%      { transform: rotate(-10deg); }
+        45%      { transform: rotate(8deg); }
+        60%      { transform: rotate(-6deg); }
+        75%      { transform: rotate(4deg); }
+    }
+    .notif-bell-ring { animation: bellRing 2.4s ease infinite; transform-origin: 50% 0; }
+
+    .notif-panel {
+        width: 300px;
+        border-radius: 14px !important;
+        overflow: hidden;
+        margin-top: 6px !important;
+    }
+    .notif-header {
+        background: #f8f9ff;
+        border-bottom: 1px solid #e8e6fb;
+        min-height: 44px;
+    }
+    .notif-item {
+        border-bottom: 1px solid #f1f0fe;
+        transition: background .12s;
+    }
+    .notif-item:last-of-type { border-bottom: none; }
+    .notif-item:hover { background: #f8f9ff; }
+    .notif-item-danger:hover  { background: #fff5f5; }
+    .notif-item-warning:hover { background: #fffbeb; }
+    .notif-item-muted { opacity: .6; }
+
+    .notif-icon-wrap {
+        width: 36px; height: 36px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+        font-size: .95rem;
+    }
+    .notif-icon-danger  { background: #fee2e2; color: #dc2626; }
+    .notif-icon-warning { background: #fef3c7; color: #d97706; }
+
+    .notif-count-pill {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 24px; height: 22px;
+        border-radius: 20px;
+        font-size: .72rem; font-weight: 700;
+        padding: 0 7px;
+        flex-shrink: 0;
+    }
+    .notif-pill-danger  { background: #fee2e2; color: #dc2626; }
+    .notif-pill-warning { background: #fef3c7; color: #d97706; }
+    .notif-pill-muted   { background: #f1f5f9; color: #94a3b8; }
+
+    .notif-footer { border-top: 1px solid #f1f0fe; padding: 8px 12px; }
+    .notif-footer-btn {
+        background: #6366f1; color: #fff;
+        border-radius: 8px; font-size: .8rem; font-weight: 600;
+        border: none; padding: 7px 0;
+        transition: background .15s;
+    }
+    .notif-footer-btn:hover { background: #4f46e5; color: #fff; }
     </style>
 
     {{-- Loader CSS inline in <head> so it renders before app.css loads --}}
@@ -945,8 +1019,8 @@
                    data-tooltip="Low Stock">
                     <span class="sb-icon" style="color:#fbbf24"><i class="fa-solid fa-triangle-exclamation"></i></span>
                     <span class="sb-label">Low Stock</span>
-                    @if($lowCount > 0)
-                        <span class="sb-badge warn">{{ $lowCount }}</span>
+                    @if($totalStockAlerts > 0)
+                        <span class="sb-badge warn">{{ $totalStockAlerts }}</span>
                     @endif
                 </a>
                 @endif
@@ -1089,14 +1163,84 @@
             {{-- Page title on mobile --}}
             <span class="d-md-none fw-semibold text-dark" style="font-size:.9rem">@yield('title','Dashboard')</span>
 
-            {{-- Low stock bell --}}
-            @if(isset($lowCount) && $lowCount > 0)
-            <a href="{{ route('reports.low-stock') }}"
-               class="btn btn-icon position-relative text-muted" title="Low Stock Alert">
-                <i class="fa-solid fa-bell fs-5"></i>
-                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                      style="font-size:.6rem;padding:3px 5px">{{ $lowCount }}</span>
-            </a>
+            {{-- Stock alert notification bell --}}
+            @if($totalStockAlerts > 0)
+            <div class="dropdown notif-dropdown">
+                <button class="btn btn-icon position-relative notif-bell-btn"
+                        data-bs-toggle="dropdown" aria-expanded="false"
+                        title="Stock Alerts">
+
+                    {{-- Bell animates if there are out-of-stock items --}}
+                    <i class="fa-solid fa-bell fs-5 {{ $outCount > 0 ? 'notif-bell-ring' : '' }}"
+                       style="color: {{ $outCount > 0 ? '#ef4444' : '#f59e0b' }}"></i>
+
+                    {{-- Badge: red for out-of-stock, amber for low-only --}}
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill notif-badge
+                                 {{ $outCount > 0 ? 'bg-danger' : 'bg-warning text-dark' }}"
+                          style="font-size:.6rem;padding:3px 6px;min-width:18px">
+                        {{ $totalStockAlerts }}
+                    </span>
+                </button>
+
+                {{-- Dropdown panel --}}
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-0 notif-panel">
+
+                    {{-- Header --}}
+                    <div class="notif-header d-flex align-items-center justify-content-between px-3 py-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-bell" style="color:#6366f1;font-size:.9rem"></i>
+                            <span class="fw-bold" style="font-size:.88rem;color:#1e293b">Stock Alerts</span>
+                        </div>
+                        <a href="{{ route('reports.low-stock') }}"
+                           class="text-decoration-none fw-semibold"
+                           style="font-size:.75rem;color:#6366f1">View all</a>
+                    </div>
+
+                    {{-- Out of stock row --}}
+                    <a href="{{ route('reports.low-stock') }}"
+                       class="notif-item d-flex align-items-center gap-3 px-3 py-2 text-decoration-none
+                              {{ $outCount > 0 ? 'notif-item-danger' : 'notif-item-muted' }}">
+                        <div class="notif-icon-wrap notif-icon-danger">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold" style="font-size:.83rem;color:#1e293b">Out of Stock</div>
+                            <div style="font-size:.75rem;color:#64748b">
+                                {{ $outCount }} item{{ $outCount != 1 ? 's' : '' }} with zero inventory
+                            </div>
+                        </div>
+                        <span class="notif-count-pill {{ $outCount > 0 ? 'notif-pill-danger' : 'notif-pill-muted' }}">
+                            {{ $outCount }}
+                        </span>
+                    </a>
+
+                    {{-- Low stock row --}}
+                    <a href="{{ route('reports.low-stock') }}"
+                       class="notif-item d-flex align-items-center gap-3 px-3 py-2 text-decoration-none
+                              {{ $lowCount > 0 ? 'notif-item-warning' : 'notif-item-muted' }}">
+                        <div class="notif-icon-wrap notif-icon-warning">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold" style="font-size:.83rem;color:#1e293b">Low Stock</div>
+                            <div style="font-size:.75rem;color:#64748b">
+                                {{ $lowCount }} item{{ $lowCount != 1 ? 's' : '' }} below reorder level
+                            </div>
+                        </div>
+                        <span class="notif-count-pill {{ $lowCount > 0 ? 'notif-pill-warning' : 'notif-pill-muted' }}">
+                            {{ $lowCount }}
+                        </span>
+                    </a>
+
+                    {{-- Footer --}}
+                    <div class="notif-footer text-center py-2">
+                        <a href="{{ route('reports.low-stock') }}"
+                           class="btn btn-sm w-100 notif-footer-btn">
+                            <i class="fa-solid fa-arrow-right me-1"></i>Go to Low Stock Report
+                        </a>
+                    </div>
+                </div>
+            </div>
             @endif
 
             {{-- User avatar (desktop) --}}

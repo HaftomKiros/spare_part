@@ -92,7 +92,8 @@ class SparePart extends Model
 
     public function scopeLowStock($query)
     {
-        return $query->whereColumn('current_stock', '<=', 'reorder_level');
+        return $query->where('current_stock', '>', 0)
+                     ->whereColumn('current_stock', '<=', 'reorder_level');
     }
 
     public function scopeOutOfStock($query)
