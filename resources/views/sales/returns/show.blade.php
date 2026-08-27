@@ -5,7 +5,7 @@
     <li class="breadcrumb-item active">{{ $return->return_number }}</li>
 @endsection
 @section('content')
-@include('partials.page-header',['title'=>'Return: '.$return->return_number,'subtitle'=>$return->return_date->format('M d, Y')])
+@include('partials.page-header',['title'=>'Return: '.$return->return_number,'subtitle'=>$return->return_date?->format('M d, Y') ?? 'N/A'])
 
 <div class="row g-3">
 <div class="col-12 col-md-4">
@@ -18,7 +18,7 @@
         <td><a href="{{ route('sales.show',$return->sale) }}" class="text-primary">{{ $return->sale->invoice_number }}</a></td>
     </tr>
     <tr><th class="text-muted fw-normal">Customer</th><td>{{ $return->customer?->name ?? 'Walk-in' }}</td></tr>
-    <tr><th class="text-muted fw-normal">Date</th><td>{{ $return->return_date->format('M d, Y') }}</td></tr>
+    <tr><th class="text-muted fw-normal">Date</th><td>{{ $return->return_date?->format('M d, Y') ?? 'N/A' }}</td></tr>
     <tr><th class="text-muted fw-normal">Type</th><td><span class="badge bg-warning text-dark">{{ ucfirst($return->return_type) }}</span></td></tr>
     <tr><th class="text-muted fw-normal">Total</th><td class="fw-bold text-danger">Br {{ number_format($return->total_amount,2) }}</td></tr>
     <tr><th class="text-muted fw-normal">Status</th><td><span class="badge bg-{{ $return->status_badge }}">{{ ucfirst($return->status) }}</span></td></tr>
