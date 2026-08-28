@@ -161,8 +161,8 @@ class StockTransferController extends Controller
             // ── 2. Find or create the transfer-stub Purchase for destination ─
             //    One stub purchase per transfer (grouped by transfer header).
             $stubPurchase = Purchase::create([
-                'purchase_number'   => $transfer->transfer_number,  // already "TRF-2026-0001"
-                'supplier_id'       => null,                         // no supplier for transfers
+                'purchase_number'   => $transfer->transfer_number,
+                'supplier_id'       => null,   // set after FIFO loop (inherited from source)
                 'user_id'           => $userId,
                 'warehouse_id'      => $toWarehouse->id,
                 'purchase_date'     => now()->toDateString(),
@@ -183,10 +183,15 @@ class StockTransferController extends Controller
             // ── 3. FIFO: consume source batches and clone to destination ────
             $remaining       = $qty;
             $stubSubtotal    = 0;
+            $stubSupplierId  = null;   // inherit supplier from the first source batch's purchase
             $toStockBefore   = DB::table($stockTable)
                 ->where('warehouse_id', $toWarehouse->id)
                 ->where($col, $request->item_id)
                 ->value('current_stock') ?? 0;
+
+            // Track how much value is deducted per source purchase
+            // so we can reduce their subtotal/total/paid_amount accordingly
+            $sourcePurchaseDeductions = []; // [ purchase_id => amount ]
 
             foreach ($sourceBatches as $batch) {
                 if ($remaining <= 0) break;
@@ -211,19 +216,56 @@ class StockTransferController extends Controller
                     'spare_part_id'           => $request->item_type === 'spare_part' ? $request->item_id : null,
                     'quantity'                => $take,
                     'total_sold'              => 0,
-                    'unit_price'              => $batch->unit_price, // preserve original cost basis
+                    'unit_price'              => $batch->unit_price,
                     'discount'                => 0,
                     'total'                   => $lineTotal,
                     'is_transfer'             => true,
                     'source_purchase_item_id' => $batch->id,
                 ]);
 
+                // Track deduction per source purchase
+                $sourcePurchaseDeductions[$batch->purchase_id] =
+                    ($sourcePurchaseDeductions[$batch->purchase_id] ?? 0) + $lineTotal;
+
                 $stubSubtotal += $lineTotal;
                 $remaining    -= $take;
+
+                // Inherit supplier from first source batch
+                if ($stubSupplierId === null) {
+                    $stubSupplierId = DB::table('purchases')
+                        ->where('id', $batch->purchase_id)
+                        ->value('supplier_id');
+                }
             }
 
-            // c) Update stub purchase totals
-            $stubPurchase->update(['subtotal' => $stubSubtotal, 'total' => $stubSubtotal]);
+            // c) Reduce source purchase(s) subtotal/total/paid_amount by transferred value
+            foreach ($sourcePurchaseDeductions as $sourcePurchaseId => $deductAmount) {
+                $sourcePo = DB::table('purchases')->where('id', $sourcePurchaseId)->first();
+                if ($sourcePo) {
+                    $newSubtotal    = max(0, round($sourcePo->subtotal    - $deductAmount, 2));
+                    $newTotal       = max(0, round($sourcePo->total       - $deductAmount, 2));
+                    $newPaidAmount  = max(0, round($sourcePo->paid_amount - $deductAmount, 2));
+                    $newBalance     = max(0, round($sourcePo->balance     - $deductAmount, 2));
+                    DB::table('purchases')->where('id', $sourcePurchaseId)->update([
+                        'subtotal'       => $newSubtotal,
+                        'total'          => $newTotal,
+                        'paid_amount'    => $newPaidAmount,
+                        'balance'        => $newBalance,
+                        'payment_status' => $newTotal <= 0 || $newBalance <= 0 ? 'paid' : ($newPaidAmount > 0 ? 'partial' : 'unpaid'),
+                        'updated_at'     => now(),
+                    ]);
+                }
+            }
+
+            // d) Update stub purchase with totals, supplier, and paid amount
+            $stubPurchase->update([
+                'subtotal'       => $stubSubtotal,
+                'total'          => $stubSubtotal,
+                'paid_amount'    => $stubSubtotal,  // already paid to supplier via original PO
+                'balance'        => 0,
+                'payment_status' => 'paid',
+                'supplier_id'    => $stubSupplierId,  // same supplier as source
+            ]);
 
             // ── 4. Update warehouse stock counters ─────────────────────────
             // Deduct from source
