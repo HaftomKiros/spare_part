@@ -88,10 +88,15 @@
 <div class="table-responsive">
 <table class="table">
     <thead>
-        <tr><th>PO #</th><th>Supplier</th><th>Date</th><th>Due Date</th><th>Total</th><th>Paid</th><th>Balance</th><th>Payment</th><th>Status</th><th class="text-end">Actions</th></tr>
+        <tr><th>PO #</th><th>Supplier</th><th>Date</th><th>Due Date</th><th>Original Total</th><th>Transferred</th><th>Remaining Value</th><th>Paid</th><th>Balance</th><th>Payment</th><th>Status</th><th class="text-end">Actions</th></tr>
     </thead>
     <tbody>
         @forelse($purchases as $po)
+        @php
+            $transferred   = (float) ($transferredMap[$po->id] ?? 0);
+            $originalTotal = (float) $po->total;
+            $remaining     = max(0, $originalTotal - $transferred);
+        @endphp
         <tr>
             <td><a href="{{ route('purchases.show',$po) }}" class="fw-semibold text-primary">{{ $po->purchase_number }}</a></td>
             <td class="text-muted small">{{ $po->supplier?->name ?? '—' }}</td>
@@ -99,7 +104,21 @@
             <td class="{{ $po->due_date && $po->due_date->isPast() && $po->payment_status !== 'paid' ? 'text-danger fw-semibold' : 'text-muted' }} small">
                 {{ $po->due_date ? $po->due_date->format('M d, Y') : '—' }}
             </td>
-            <td class="fw-semibold">Br {{ number_format($po->total,2) }}</td>
+            <td class="fw-semibold">Br {{ number_format($originalTotal, 2) }}</td>
+            <td>
+                @if($transferred > 0)
+                    <span class="fw-semibold text-warning">
+                        <i class="fa fa-right-left me-1" style="font-size:.72rem"></i>Br {{ number_format($transferred, 2) }}
+                    </span>
+                @else
+                    <span class="text-muted">—</span>
+                @endif
+            </td>
+            <td>
+                <span class="fw-semibold {{ $remaining <= 0 ? 'text-danger' : 'text-success' }}">
+                    Br {{ number_format($remaining, 2) }}
+                </span>
+            </td>
             <td class="text-success">Br {{ number_format($po->paid_amount,2) }}</td>
             <td class="{{ $po->balance > 0 ? 'text-danger fw-semibold' : 'text-muted' }}">
                 {{ $po->balance > 0 ? 'Br '.number_format($po->balance,2) : '—' }}
@@ -120,7 +139,7 @@
             </td>
         </tr>
         @empty
-        <tr><td colspan="10" class="text-center text-muted py-5">
+        <tr><td colspan="12" class="text-center text-muted py-5">
             <i class="fa fa-boxes-stacked fs-2 d-block mb-2 opacity-25"></i>No purchases found.
             <a href="{{ route('purchases.create') }}">Create first purchase.</a>
         </td></tr>

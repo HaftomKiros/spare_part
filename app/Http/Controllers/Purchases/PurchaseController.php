@@ -53,6 +53,17 @@ class PurchaseController extends Controller
 
         $purchases = $query->latest()->paginate(20)->withQueryString();
 
+        // Load transferred value per purchase (sum of stub purchase totals linked back to each source PO)
+        $purchaseIds = $purchases->pluck('id');
+        $transferredMap = DB::table('purchase_items as src_pi')
+            ->join('purchase_items as dest_pi', 'dest_pi.source_purchase_item_id', '=', 'src_pi.id')
+            ->join('purchases as dest_p', 'dest_pi.purchase_id', '=', 'dest_p.id')
+            ->whereIn('src_pi.purchase_id', $purchaseIds)
+            ->where('dest_pi.is_transfer', 1)
+            ->selectRaw('src_pi.purchase_id, SUM(dest_pi.quantity * dest_pi.unit_price) as transferred_value')
+            ->groupBy('src_pi.purchase_id')
+            ->pluck('transferred_value', 'purchase_id');
+
         $totalsQuery = Purchase::whereIn('warehouse_id', $accessibleIds)
             ->where('purchase_type', 'purchase');  // exclude transfer-stub records
         if (! $user->seesAllUsers()) {
@@ -64,7 +75,7 @@ class PurchaseController extends Controller
             SUM(balance) as grand_balance
         ')->first();
 
-        return view('purchases.purchases.index', compact('purchases', 'totals'));
+        return view('purchases.purchases.index', compact('purchases', 'totals', 'transferredMap'));
     }
 
     public function create()

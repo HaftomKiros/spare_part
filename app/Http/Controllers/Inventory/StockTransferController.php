@@ -189,9 +189,8 @@ class StockTransferController extends Controller
                 ->where($col, $request->item_id)
                 ->value('current_stock') ?? 0;
 
-            // Track how much value is deducted per source purchase
-            // so we can reduce their subtotal/total/paid_amount accordingly
-            $sourcePurchaseDeductions = []; // [ purchase_id => amount ]
+            // Track how much value is deducted per source purchase — kept for supplier lookup
+            $sourcePurchaseDeductions = []; // [ purchase_id => amount ] (unused for PO modification)
 
             foreach ($sourceBatches as $batch) {
                 if ($remaining <= 0) break;
@@ -239,24 +238,9 @@ class StockTransferController extends Controller
                 }
             }
 
-            // c) Reduce source purchase(s) subtotal/total/paid_amount by transferred value
-            foreach ($sourcePurchaseDeductions as $sourcePurchaseId => $deductAmount) {
-                $sourcePo = DB::table('purchases')->where('id', $sourcePurchaseId)->first();
-                if ($sourcePo) {
-                    $newSubtotal    = max(0, round($sourcePo->subtotal    - $deductAmount, 2));
-                    $newTotal       = max(0, round($sourcePo->total       - $deductAmount, 2));
-                    $newPaidAmount  = max(0, round($sourcePo->paid_amount - $deductAmount, 2));
-                    $newBalance     = max(0, round($sourcePo->balance     - $deductAmount, 2));
-                    DB::table('purchases')->where('id', $sourcePurchaseId)->update([
-                        'subtotal'       => $newSubtotal,
-                        'total'          => $newTotal,
-                        'paid_amount'    => $newPaidAmount,
-                        'balance'        => $newBalance,
-                        'payment_status' => $newTotal <= 0 || $newBalance <= 0 ? 'paid' : ($newPaidAmount > 0 ? 'partial' : 'unpaid'),
-                        'updated_at'     => now(),
-                    ]);
-                }
-            }
+            // c) The source purchase financial records (subtotal/total/paid_amount) are NOT
+            //    modified — they correctly record what was paid to the supplier.
+            //    Transferred value is tracked via stock_transfers + purchase_items history.
 
             // d) Update stub purchase with totals, supplier, and paid amount
             $stubPurchase->update([
