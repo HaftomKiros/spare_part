@@ -185,20 +185,45 @@ class CurrentStockController extends Controller
             $ids      = $parts->getCollection()->pluck('id')->toArray();
             $wIds     = $warehouseId ? [$warehouseId] : [];
             $valueMap = \App\Services\StockService::partsStockValueMap($ids, $wIds);
-            $parts->getCollection()->each(function ($part) use ($valueMap) {
+
+            // Unsold qty map: SUM(quantity - total_sold) per spare_part_id
+            $unsoldQtyMap = DB::table('purchase_items as pi')
+                ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+                ->where('pi.item_type', 'spare_part')
+                ->whereIn('pi.spare_part_id', $ids)
+                ->where('p.status', 'received')
+                ->when(!empty($wIds), fn($q) => $q->whereIn('p.warehouse_id', $wIds))
+                ->selectRaw('pi.spare_part_id, SUM(pi.quantity - pi.total_sold) as unsold')
+                ->groupBy('pi.spare_part_id')
+                ->pluck('unsold', 'spare_part_id');
+
+            $parts->getCollection()->each(function ($part) use ($valueMap, $unsoldQtyMap) {
                 $id = is_object($part) && isset($part->id) ? $part->id : ($part['id'] ?? null);
-                $part->stock_value = $valueMap[$id] ?? ($part->stock_value ?? 0);
+                $part->stock_value   = $valueMap[$id] ?? ($part->stock_value ?? 0);
+                $part->unsold_qty    = (int) ($unsoldQtyMap[$id] ?? 0);
             });
         }
 
-        // Attach stock value to vehicles for the Stock Value column
+        // Attach stock value and unsold qty to vehicles
         if ($vehicles instanceof \Illuminate\Pagination\LengthAwarePaginator) {
             $vids      = $vehicles->getCollection()->map(fn($v) => isset($v->vehicleModel) ? $v->vehicleModel->id : ($v->id ?? null))->filter()->toArray();
             $wIds      = $warehouseId ? [$warehouseId] : [];
             $vValueMap = \App\Services\StockService::vehiclesStockValueMap($vids, $wIds);
-            $vehicles->getCollection()->each(function ($vs) use ($vValueMap) {
+
+            $vUnsoldMap = DB::table('purchase_items as pi')
+                ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+                ->where('pi.item_type', 'vehicle')
+                ->whereIn('pi.vehicle_model_id', $vids)
+                ->where('p.status', 'received')
+                ->when(!empty($wIds), fn($q) => $q->whereIn('p.warehouse_id', $wIds))
+                ->selectRaw('pi.vehicle_model_id, SUM(pi.quantity - pi.total_sold) as unsold')
+                ->groupBy('pi.vehicle_model_id')
+                ->pluck('unsold', 'vehicle_model_id');
+
+            $vehicles->getCollection()->each(function ($vs) use ($vValueMap, $vUnsoldMap) {
                 $vmId = isset($vs->vehicleModel) ? $vs->vehicleModel->id : ($vs->id ?? null);
                 $vs->stock_value = $vValueMap[$vmId] ?? ($vs->stock_value ?? 0);
+                $vs->unsold_qty  = (int) ($vUnsoldMap[$vmId] ?? 0);
             });
         }
 

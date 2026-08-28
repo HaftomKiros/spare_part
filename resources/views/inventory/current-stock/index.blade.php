@@ -139,15 +139,20 @@
             <th>Part</th>
             <th>Category</th>
             <th>Unit</th>
-            <th>Current Stock</th>
+            <th>Current Stock (Unsold)</th>
             <th>Reorder Level</th>
             <th>Status</th>
             <th>Stock Value</th>
-            <th class="text-end">Action</th>
         </tr>
     </thead>
     <tbody>
         @forelse($parts as $part)
+        @php
+            $unsoldQty = $part->unsold_qty ?? 0;
+            $reorder   = $part->reorder_level ?? 0;
+            $isOut = $unsoldQty <= 0;
+            $isLow = !$isOut && $unsoldQty <= $reorder;
+        @endphp
         <tr>
             <td>
                 @if($isWarehouseView)
@@ -163,17 +168,11 @@
             <td class="text-muted small">{{ $isWarehouseView ? $part->category_name : $part->category->name }}</td>
             <td class="text-muted small">{{ $isWarehouseView ? $part->unit_abbr : $part->unit->abbreviation }}</td>
             <td>
-                @php
-                    $isOut = $part->current_stock <= 0;
-                    $isLow = !$isOut && ($isWarehouseView
-                        ? $part->current_stock <= $part->reorder_level
-                        : $part->isLowStock());
-                @endphp
                 <span class="fw-bold fs-6 {{ $isOut ? 'text-danger' : ($isLow ? 'text-warning' : 'text-success') }}">
-                    {{ $part->current_stock }}
+                    {{ $unsoldQty }}
                 </span>
             </td>
-            <td class="text-muted">{{ $part->reorder_level }}</td>
+            <td class="text-muted">{{ $reorder }}</td>
             <td>
                 <span class="stock-pill {{ $isOut ? 'out' : ($isLow ? 'low' : 'in-stock') }}">
                     {{ $isOut ? 'Out of Stock' : ($isLow ? 'Low Stock' : 'In Stock') }}
@@ -183,14 +182,9 @@
                 @php $sv = $part->stock_value ?? 0; @endphp
                 {{ $sv > 0 ? 'Br '.number_format($sv, 2) : '—' }}
             </td>
-            <td class="text-end">
-                <a href="{{ route('inventory.stock-in.create') }}" class="btn btn-action btn-outline-success" title="Add Stock">
-                    <i class="fa fa-plus"></i>
-                </a>
-            </td>
         </tr>
         @empty
-        <tr><td colspan="8" class="text-center text-muted py-5">No parts found.</td></tr>
+        <tr><td colspan="7" class="text-center text-muted py-5">No parts found.</td></tr>
         @endforelse
     </tbody>
 </table>
@@ -209,11 +203,10 @@
         <tr>
             <th>Vehicle Model</th>
             <th>Type</th>
-            <th>Current Stock</th>
+            <th>Current Stock (Unsold)</th>
             <th>Reorder Level</th>
             <th>Status</th>
             <th>Stock Value</th>
-            <th class="text-end">Action</th>
         </tr>
     </thead>
     <tbody>
@@ -224,8 +217,10 @@
             $vmCode  = $isEloquent ? $vs->vehicleModel->model_code : $vs->model_code;
             $vmType  = $isEloquent ? $vs->vehicleModel->vehicleType->name : $vs->type_name;
             $vmStockValue = $vs->stock_value ?? 0;
-            $isOut   = $vs->current_stock <= 0;
-            $isLow   = !$isOut && $vs->current_stock <= $vs->reorder_level;
+            $unsoldQty = $vs->unsold_qty ?? 0;
+            $reorder   = $vs->reorder_level ?? 0;
+            $isOut   = $unsoldQty <= 0;
+            $isLow   = !$isOut && $unsoldQty <= $reorder;
         @endphp
         <tr>
             <td>
@@ -243,23 +238,19 @@
             </td>
             <td>
                 <span class="fw-bold fs-6 {{ $isOut ? 'text-danger' : ($isLow ? 'text-warning' : 'text-success') }}">
-                    {{ $vs->current_stock }}
+                    {{ $unsoldQty }}
                 </span>
             </td>
-            <td class="text-muted">{{ $vs->reorder_level }}</td>
+            <td class="text-muted">{{ $reorder }}</td>
             <td>
                 <span class="stock-pill {{ $isOut ? 'out' : ($isLow ? 'low' : 'in-stock') }}">
                     {{ $isOut ? 'Out of Stock' : ($isLow ? 'Low Stock' : 'In Stock') }}
                 </span>
             </td>
-            <td class="text-muted small">{{ $vmStockValue > 0 ? 'Br '.number_format($vmStockValue, 2) : '—' }}</td>            <td class="text-end">
-                <a href="{{ route('inventory.stock-in.create') }}" class="btn btn-action btn-outline-success" title="Add Stock">
-                    <i class="fa fa-plus"></i>
-                </a>
-            </td>
+            <td class="text-muted small">{{ $vmStockValue > 0 ? 'Br '.number_format($vmStockValue, 2) : '—' }}</td>
         </tr>
         @empty
-        <tr><td colspan="7" class="text-center text-muted py-5">No vehicles found.</td></tr>
+        <tr><td colspan="6" class="text-center text-muted py-5">No vehicles found.</td></tr>
         @endforelse
     </tbody>
 </table>
