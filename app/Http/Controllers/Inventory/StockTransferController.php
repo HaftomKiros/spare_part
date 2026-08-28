@@ -124,11 +124,11 @@ class StockTransferController extends Controller
             ->where("pi.{$col}", $request->item_id)
             ->where('p.warehouse_id', $request->from_warehouse_id)
             ->where('p.status', 'received')
-            ->where('p.purchase_type', 'purchase')   // only real purchases, not transfer stubs
-            ->whereRaw('pi.quantity > pi.total_sold')
+            ->whereRaw('(pi.quantity - pi.total_sold) > 0')  // has unsold remaining
+            ->orderBy('pi.is_transfer', 'asc')  // real purchases first, then transfer stubs
             ->orderBy('p.purchase_date')
             ->orderBy('pi.id')
-            ->select('pi.id', 'pi.quantity', 'pi.total_sold', 'pi.unit_price')
+            ->select('pi.id', 'pi.purchase_id', 'pi.quantity', 'pi.total_sold', 'pi.unit_price')
             ->get();
 
         $totalAvailableInBatches = $sourceBatches->sum(fn($b) => $b->quantity - $b->total_sold);
@@ -196,14 +196,15 @@ class StockTransferController extends Controller
             foreach ($sourceBatches as $batch) {
                 if ($remaining <= 0) break;
 
-                $available = $batch->quantity - $batch->total_sold;
+                $available = $batch->quantity - $batch->total_sold;  // unsold remaining in this batch
                 $take      = min($remaining, $available);
 
-                // a) Mark sold on the source batch
+                // a) Reduce source batch quantity by transferred amount (not a sale — don't touch total_sold)
                 DB::table('purchase_items')
                     ->where('id', $batch->id)
                     ->update([
-                        'total_sold' => $batch->total_sold + $take,
+                        'quantity'   => max(0, $batch->quantity - $take),
+                        'total'      => max(0, round(($batch->quantity - $take) * $batch->unit_price, 2)),
                         'updated_at' => now(),
                     ]);
 
