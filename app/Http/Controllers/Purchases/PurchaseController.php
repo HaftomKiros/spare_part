@@ -24,7 +24,8 @@ class PurchaseController extends Controller
         $accessibleIds = $user->accessibleWarehouseIds();
 
         $query = Purchase::with('supplier', 'user')
-            ->whereIn('warehouse_id', $accessibleIds);
+            ->whereIn('warehouse_id', $accessibleIds)
+            ->where('purchase_type', 'purchase');  // exclude transfer-stub records
 
         // Non-admins only see their own purchases within their warehouses
         if (! $user->seesAllUsers()) {
@@ -52,7 +53,8 @@ class PurchaseController extends Controller
 
         $purchases = $query->latest()->paginate(20)->withQueryString();
 
-        $totalsQuery = Purchase::whereIn('warehouse_id', $accessibleIds);
+        $totalsQuery = Purchase::whereIn('warehouse_id', $accessibleIds)
+            ->where('purchase_type', 'purchase');  // exclude transfer-stub records
         if (! $user->seesAllUsers()) {
             $totalsQuery->where('user_id', $user->id);
         }

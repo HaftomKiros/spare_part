@@ -28,7 +28,7 @@
     </div>
     <div class="col-md-4">
         <label class="form-label">Supplier</label>
-        <input type="text" class="form-control" value="{{ $purchase->supplier->name }}" disabled>
+        <input type="text" class="form-control" value="{{ $purchase->supplier?->name ?? 'Transfer (no supplier)' }}" disabled>
     </div>
     <div class="col-md-4">
         <label class="form-label">Warehouse</label>

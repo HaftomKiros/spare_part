@@ -55,7 +55,13 @@
 <table class="table table-sm table-borderless mb-0 small">
     <tr><th class="text-muted fw-normal">PO #</th><td class="fw-bold">{{ $purchase->purchase_number }}</td></tr>
     <tr><th class="text-muted fw-normal">Supplier</th>
-        <td><a href="{{ route('purchases.suppliers.show',$purchase->supplier) }}" class="text-primary">{{ $purchase->supplier->name }}</a></td>
+        <td>
+            @if($purchase->supplier)
+                <a href="{{ route('purchases.suppliers.show',$purchase->supplier) }}" class="text-primary">{{ $purchase->supplier->name }}</a>
+            @else
+                <span class="text-muted fst-italic">Transfer (no supplier)</span>
+            @endif
+        </td>
     </tr>
     <tr><th class="text-muted fw-normal">Warehouse</th>
         <td class="fw-semibold">{{ $purchase->warehouse?->name ?? '—' }}</td>

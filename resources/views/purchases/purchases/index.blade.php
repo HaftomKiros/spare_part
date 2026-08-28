@@ -94,7 +94,7 @@
         @forelse($purchases as $po)
         <tr>
             <td><a href="{{ route('purchases.show',$po) }}" class="fw-semibold text-primary">{{ $po->purchase_number }}</a></td>
-            <td class="text-muted small">{{ $po->supplier->name }}</td>
+            <td class="text-muted small">{{ $po->supplier?->name ?? '—' }}</td>
             <td class="text-muted small">{{ $po->purchase_date->format('M d, Y') }}</td>
             <td class="{{ $po->due_date && $po->due_date->isPast() && $po->payment_status !== 'paid' ? 'text-danger fw-semibold' : 'text-muted' }} small">
                 {{ $po->due_date ? $po->due_date->format('M d, Y') : '—' }}
