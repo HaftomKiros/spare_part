@@ -102,13 +102,28 @@
     <div class="d-flex justify-content-between mb-1 small"><span class="text-muted">Tax</span><span>+Br {{ number_format($purchase->tax,2) }}</span></div>
     @endif
     <hr class="my-2">
-    <div class="d-flex justify-content-between mb-1"><span class="fw-bold">Total</span><strong class="text-primary fs-5">Br {{ number_format($purchase->total,2) }}</strong></div>
+    <div class="d-flex justify-content-between mb-1"><span class="fw-bold">Total Paid to Supplier</span><strong class="text-primary fs-5">Br {{ number_format($purchase->total,2) }}</strong></div>
     <div class="d-flex justify-content-between mb-1 small"><span class="text-muted">Paid</span><span class="text-success">Br {{ number_format($purchase->paid_amount,2) }}</span></div>
     @if($purchase->balance > 0)
     <div class="d-flex justify-content-between mb-1 small"><span class="text-muted">Balance Owed</span><span class="text-danger fw-semibold">Br {{ number_format($purchase->balance,2) }}</span></div>
     @endif
     <div class="mt-2">
         <span class="badge bg-{{ $purchase->payment_status_badge }} w-100 py-2">{{ ucfirst($purchase->payment_status) }}</span>
+    </div>
+
+    @php
+        // Calculate remaining stock value = unsold qty × unit_price for each item
+        $remainingValue = $purchase->items->sum(fn($item) => max(0, $item->quantity - $item->total_sold) * $item->unit_price);
+        $soldValue      = $purchase->items->sum(fn($item) => $item->total_sold * $item->unit_price);
+    @endphp
+    <hr class="my-2">
+    <div class="d-flex justify-content-between mb-1 small">
+        <span class="text-muted">Sold / Transferred Value</span>
+        <span class="text-danger fw-semibold">-Br {{ number_format($soldValue, 2) }}</span>
+    </div>
+    <div class="d-flex justify-content-between mb-1">
+        <span class="fw-bold">Remaining Stock Value</span>
+        <strong class="{{ $remainingValue > 0 ? 'text-success' : 'text-muted' }}">Br {{ number_format($remainingValue, 2) }}</strong>
     </div>
 </div>
 </div>
@@ -175,8 +190,13 @@
     </tbody>
     <tfoot>
         <tr class="table-light">
-            <td colspan="8" class="text-end fw-bold">Grand Total</td>
+            <td colspan="8" class="text-end fw-bold">Original Total</td>
             <td class="fw-bold text-primary fs-6">Br {{ number_format($purchase->total,2) }}</td>
+        </tr>
+        @php $footerRemaining = $purchase->items->sum(fn($i) => max(0, $i->quantity - $i->total_sold) * $i->unit_price); @endphp
+        <tr class="table-light">
+            <td colspan="8" class="text-end fw-semibold text-success">Remaining Stock Value</td>
+            <td class="fw-bold text-success">Br {{ number_format($footerRemaining, 2) }}</td>
         </tr>
     </tfoot>
 </table>
