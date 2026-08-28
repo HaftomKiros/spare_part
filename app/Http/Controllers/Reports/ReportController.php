@@ -79,7 +79,7 @@ class ReportController extends Controller
             ->when(! $user->seesAllUsers(), fn($q) => $q->where('s.user_id', $user->id))
             ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
             ->selectRaw('
-                vm.id, vm.brand, vm.model_name, vm.model_code, vm.selling_price, vm.buying_price,
+                vm.id, vm.brand, vm.model_name, vm.model_code, vm.buying_price,
                 vt.name as type_name,
                 SUM(si.quantity) as qty_sold,
                 SUM(si.total) as revenue,
@@ -87,7 +87,7 @@ class ReportController extends Controller
                 SUM(si.total - (si.quantity * vm.buying_price)) as profit
             ')
             ->groupBy('vm.id', 'vm.brand', 'vm.model_name', 'vm.model_code',
-                      'vm.selling_price', 'vm.buying_price', 'vt.name')
+                      'vm.buying_price', 'vt.name')
             ->orderByDesc('qty_sold')->get();
 
         $totalRevenue = $vehicles->sum('revenue');
@@ -123,17 +123,19 @@ class ReportController extends Controller
             ->when(! $user->seesAllUsers(), fn($q) => $q->where('s.user_id', $user->id))
             ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
             ->selectRaw('
-                sp.id, sp.name, sp.part_number,
+                sp.id, sp.name, sp.part_number, sp.buying_price,
                 pc.name as category_name,
                 u.abbreviation as unit,
                 SUM(si.quantity) as qty_sold,
-                SUM(si.total) as revenue
+                SUM(si.total) as revenue,
+                SUM(si.quantity * sp.buying_price) as cost,
+                SUM(si.total - (si.quantity * sp.buying_price)) as profit
             ')
-            ->groupBy('sp.id', 'sp.name', 'sp.part_number', 'pc.name', 'u.abbreviation')
+            ->groupBy('sp.id', 'sp.name', 'sp.part_number', 'sp.buying_price', 'pc.name', 'u.abbreviation')
             ->orderByDesc('qty_sold')->get();
 
         $totalRevenue = $parts->sum('revenue');
-        $totalProfit  = 0; // cost basis removed from catalog; profit not calculable here
+        $totalProfit  = $parts->sum('profit');
         $totalQty     = $parts->sum('qty_sold');
 
         return view('reports.spare-parts', compact(
