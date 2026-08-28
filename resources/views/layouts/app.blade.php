@@ -795,7 +795,7 @@
                     <span class="sb-label">Stock Entry</span>
                 </a>
                 @endif
-                @if($canSeeAdjustments)
+                @if(false) {{-- Adjustments hidden --}}
                 <a href="{{ route('inventory.adjustments.index') }}"
                    class="sb-item {{ request()->routeIs('inventory.adjustments*') ? 'active' : '' }}"
                    data-tooltip="Adjustments">
