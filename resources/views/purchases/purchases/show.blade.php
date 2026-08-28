@@ -112,15 +112,38 @@
     </div>
 
     @php
-        // Calculate remaining stock value = unsold qty × unit_price for each item
-        $remainingValue = $purchase->items->sum(fn($item) => max(0, $item->quantity - $item->total_sold) * $item->unit_price);
-        $soldValue      = $purchase->items->sum(fn($item) => $item->total_sold * $item->unit_price);
+        // Compute transfer stats from $transferHistory (already loaded by controller)
+        // Group by item: source_purchase_item_id → transferred_qty, sold_at_dest
+        $transferByItem = $transferHistory->groupBy(fn($t) => $t->item_type . ':' . ($t->spare_part_id ?? $t->vehicle_model_id));
+
+        // Total transferred value and sold-at-destination from transfers
+        $totalTransferredValue = $transferHistory->sum(fn($t) => $t->transferred_qty * $t->unit_price);
+        $totalSoldAtDest       = $transferHistory->sum('sold_at_dest');
+        $totalSoldAtDestValue  = $transferHistory->sum(fn($t) => $t->sold_at_dest * $t->unit_price);
+
+        // Remaining = original total - transferred value - direct sales value
+        $directSoldValue   = $purchase->items->sum(fn($item) => $item->total_sold * $item->unit_price);
+        $remainingValue    = max(0, $purchase->total - $totalTransferredValue - $directSoldValue);
     @endphp
     <hr class="my-2">
+    @if($totalTransferredValue > 0)
     <div class="d-flex justify-content-between mb-1 small">
-        <span class="text-muted">Sold / Transferred Value</span>
-        <span class="text-danger fw-semibold">-Br {{ number_format($soldValue, 2) }}</span>
+        <span class="text-muted">Transferred to Other Warehouses</span>
+        <span class="text-warning fw-semibold">
+            <i class="fa fa-right-left me-1" style="font-size:.7rem"></i>Br {{ number_format($totalTransferredValue, 2) }}
+        </span>
     </div>
+    <div class="d-flex justify-content-between mb-1 small">
+        <span class="text-muted" style="padding-left:1rem">↳ Sold at Destination</span>
+        <span class="text-danger">Br {{ number_format($totalSoldAtDestValue, 2) }}</span>
+    </div>
+    @endif
+    @if($directSoldValue > 0)
+    <div class="d-flex justify-content-between mb-1 small">
+        <span class="text-muted">Sold Directly (this warehouse)</span>
+        <span class="text-danger fw-semibold">-Br {{ number_format($directSoldValue, 2) }}</span>
+    </div>
+    @endif
     <div class="d-flex justify-content-between mb-1">
         <span class="fw-bold">Remaining Stock Value</span>
         <strong class="{{ $remainingValue > 0 ? 'text-success' : 'text-muted' }}">Br {{ number_format($remainingValue, 2) }}</strong>
@@ -156,13 +179,18 @@
 </div>
 <div class="table-responsive">
 <table class="table">
-    <thead><tr><th>#</th><th>Item</th><th>Type</th><th>Unit Cost</th><th>Qty</th><th>Total Sold</th><th>Remaining</th><th>Disc</th><th>Total</th></tr></thead>
+    <thead><tr><th>#</th><th>Item</th><th>Type</th><th>Unit Cost</th><th>Orig Qty</th><th>Transferred</th><th>Sold (Direct)</th><th>Remaining</th><th>Disc</th><th>Total</th></tr></thead>
     <tbody>
         @foreach($purchase->items as $i => $item)
         @php
-            $remaining = max(0, $item->quantity - $item->total_sold);
-            $isFullySold = $remaining === 0 && $item->quantity > 0;
-            $isPartial   = $item->total_sold > 0 && $remaining > 0;
+            $itemKey = $item->item_type . ':' . ($item->item_type === 'spare_part' ? $item->spare_part_id : $item->vehicle_model_id);
+            $itemTransfers   = $transferByItem[$itemKey] ?? collect();
+            $transferredQty  = $itemTransfers->sum('transferred_qty');
+            $soldAtDestQty   = $itemTransfers->sum('sold_at_dest');
+            $origQty         = $item->quantity + $transferredQty;   // original = current + transferred
+            $remaining       = max(0, $item->quantity - $item->total_sold);
+            $isFullySold     = $remaining === 0 && $item->quantity > 0;
+            $isPartial       = $item->total_sold > 0 && $remaining > 0;
         @endphp
         <tr>
             <td class="text-muted">{{ $i+1 }}</td>
@@ -172,10 +200,22 @@
             </td>
             <td><span class="badge bg-{{ $item->item_type==='vehicle'?'primary':'success' }} bg-opacity-15 text-{{ $item->item_type==='vehicle'?'primary':'success' }}">{{ ucfirst(str_replace('_',' ',$item->item_type)) }}</span></td>
             <td>Br {{ number_format($item->unit_price,2) }}</td>
-            <td class="fw-semibold">{{ $item->quantity }}</td>
+            <td class="fw-semibold">{{ $origQty }}</td>
+            <td>
+                @if($transferredQty > 0)
+                    <span class="text-warning fw-semibold">
+                        <i class="fa fa-right-left me-1" style="font-size:.7rem"></i>{{ $transferredQty }}
+                    </span>
+                    @if($soldAtDestQty > 0)
+                        <div class="text-muted" style="font-size:.72rem">{{ $soldAtDestQty }} sold at dest</div>
+                    @endif
+                @else
+                    <span class="text-muted">—</span>
+                @endif
+            </td>
             <td>
                 <span class="fw-semibold {{ $item->total_sold > 0 ? 'text-danger' : 'text-muted' }}">
-                    {{ $item->total_sold }}
+                    {{ $item->total_sold > 0 ? $item->total_sold : '—' }}
                 </span>
             </td>
             <td>
@@ -184,19 +224,26 @@
                 </span>
             </td>
             <td>{{ $item->discount > 0 ? 'Br '.number_format($item->discount,2) : '—' }}</td>
-            <td class="fw-semibold">Br {{ number_format($item->total,2) }}</td>
+            <td class="fw-semibold">Br {{ number_format($origQty * $item->unit_price,2) }}</td>
         </tr>
         @endforeach
     </tbody>
     <tfoot>
         <tr class="table-light">
-            <td colspan="8" class="text-end fw-bold">Original Total</td>
+            <td colspan="9" class="text-end fw-bold">Original Total</td>
             <td class="fw-bold text-primary fs-6">Br {{ number_format($purchase->total,2) }}</td>
         </tr>
-        @php $footerRemaining = $purchase->items->sum(fn($i) => max(0, $i->quantity - $i->total_sold) * $i->unit_price); @endphp
+        @if($totalTransferredValue > 0)
         <tr class="table-light">
-            <td colspan="8" class="text-end fw-semibold text-success">Remaining Stock Value</td>
-            <td class="fw-bold text-success">Br {{ number_format($footerRemaining, 2) }}</td>
+            <td colspan="9" class="text-end fw-semibold text-warning">
+                <i class="fa fa-right-left me-1"></i>Transferred Value
+            </td>
+            <td class="fw-semibold text-warning">Br {{ number_format($totalTransferredValue, 2) }}</td>
+        </tr>
+        @endif
+        <tr class="table-light">
+            <td colspan="9" class="text-end fw-semibold text-success">Remaining Stock Value</td>
+            <td class="fw-bold text-success">Br {{ number_format($remainingValue, 2) }}</td>
         </tr>
     </tfoot>
 </table>
