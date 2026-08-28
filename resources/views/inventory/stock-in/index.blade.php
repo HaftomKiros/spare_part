@@ -8,7 +8,6 @@
 @include('partials.page-header', [
     'title'    => 'Stock Entry',
     'subtitle' => 'Record stock additions to inventory',
-    'actions'  => [['label' => 'New Entry', 'route' => 'inventory.stock-in.create', 'icon' => 'fa-plus', 'class' => 'btn-success']],
 ])
 
 <!-- Filters -->
