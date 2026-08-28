@@ -450,7 +450,6 @@ class StockService
             ->where('pi.item_type', 'spare_part')
             ->whereIn('pi.spare_part_id', $partIds)
             ->where('p.status', 'received')
-            ->where('p.purchase_type', 'purchase')   // exclude transfer stubs — avoid double-counting
             ->when(!empty($warehouseIds), fn($q) => $q->whereIn('p.warehouse_id', $warehouseIds))
             ->whereRaw('pi.quantity > pi.total_sold')
             ->selectRaw('pi.spare_part_id, SUM((pi.quantity - pi.total_sold) * pi.unit_price) as stock_value')
@@ -480,7 +479,6 @@ class StockService
             ->where('pi.item_type', 'vehicle')
             ->whereIn('pi.vehicle_model_id', $vehicleIds)
             ->where('p.status', 'received')
-            ->where('p.purchase_type', 'purchase')   // exclude transfer stubs — avoid double-counting
             ->when(!empty($warehouseIds), fn($q) => $q->whereIn('p.warehouse_id', $warehouseIds))
             ->whereRaw('pi.quantity > pi.total_sold')
             ->selectRaw('pi.vehicle_model_id, SUM((pi.quantity - pi.total_sold) * pi.unit_price) as stock_value')
@@ -588,7 +586,6 @@ class StockService
             ->where('pi.item_type', 'spare_part')
             ->whereNotNull('pi.spare_part_id')
             ->where('p.status', 'received')
-            ->where('p.purchase_type', 'purchase')   // exclude transfer stubs — avoid double-counting
             ->whereRaw('pi.quantity > pi.total_sold');
 
         if (!empty($warehouseIds)) {
@@ -611,7 +608,6 @@ class StockService
             ->where('pi.item_type', 'vehicle')
             ->whereNotNull('pi.vehicle_model_id')
             ->where('p.status', 'received')
-            ->where('p.purchase_type', 'purchase')   // exclude transfer stubs — avoid double-counting
             ->whereRaw('pi.quantity > pi.total_sold');
 
         if (!empty($warehouseIds)) {
