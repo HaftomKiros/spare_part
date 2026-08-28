@@ -26,13 +26,6 @@
     @endif
 </form>
 </div>
-    <div class="col-auto ms-auto mt-3">
-        <span class="badge bg-primary-subtle text-primary-emphasis"><i class="fa fa-warehouse me-1"></i>{{ $warehouses->find($warehouseId)?->name }}</span>
-    </div>
-    @endif
-</form>
-</div>
-
 <!-- Summary -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
