@@ -5,36 +5,47 @@
     <li class="breadcrumb-item active">Sales</li>
 @endsection
 @section('content')
-@include('partials.page-header',['title'=>'Sales Report','subtitle'=>'Revenue analysis for the selected period'])
 
-<!-- Date Filter -->
-<div class="card mb-4">
-<div class="card-body py-3">
-<form method="GET" class="row g-2 align-items-end">
-    <div class="col-auto"><label class="form-label small mb-1">From</label>
-        <input type="date" name="date_from" class="form-control form-control-sm" value="{{ $dateFrom }}">
+@include('partials.report-nav', ['active' => 'sales'])
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div>
+        <h5 class="fw-bold mb-0" style="color:#1e293b">Sales Report</h5>
+        <div class="text-muted small">Revenue analysis for the selected period</div>
     </div>
-    <div class="col-auto"><label class="form-label small mb-1">To</label>
-        <input type="date" name="date_to" class="form-control form-control-sm" value="{{ $dateTo }}">
-    </div>
-    @include('partials.warehouse-filter')
-    <div class="col-auto"><button type="submit" class="btn btn-sm btn-primary mt-3"><i class="fa fa-filter me-1"></i>Apply</button></div>
-    <div class="col-auto ms-auto text-muted small mt-3">
-        Showing: <strong>{{ \Carbon\Carbon::parse($dateFrom)->format('M d') }}</strong> — <strong>{{ \Carbon\Carbon::parse($dateTo)->format('M d, Y') }}</strong>
-        @if($warehouseId)
-            &nbsp;·&nbsp;<span class="badge bg-primary-subtle text-primary-emphasis"><i class="fa fa-warehouse me-1"></i>{{ $warehouses->find($warehouseId)?->name }}</span>
-        @endif
-    </div>
-</form>
-</div>
+    @if($warehouseId)
+    <span class="rpt-period-badge"><i class="fa fa-warehouse"></i>{{ $warehouses->find($warehouseId)?->name }}</span>
+    @endif
 </div>
 
-<!-- Summary Cards -->
+<div class="rpt-filter-card d-flex flex-wrap gap-3 align-items-end">
+    <form method="GET" class="d-flex flex-wrap gap-2 align-items-end w-100">
+        <div>
+            <label class="form-label">From</label>
+            <input type="date" name="date_from" class="form-control form-control-sm" value="{{ $dateFrom }}">
+        </div>
+        <div>
+            <label class="form-label">To</label>
+            <input type="date" name="date_to" class="form-control form-control-sm" value="{{ $dateTo }}">
+        </div>
+        @include('partials.warehouse-filter')
+        <div class="mt-auto">
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fa fa-filter me-1"></i>Apply</button>
+        </div>
+        <div class="mt-auto ms-auto">
+            <span class="rpt-period-badge">
+                <i class="fa fa-calendar-days"></i>
+                {{ \Carbon\Carbon::parse($dateFrom)->format('M d') }} — {{ \Carbon\Carbon::parse($dateTo)->format('M d, Y') }}
+            </span>
+        </div>
+    </form>
+</div>
+
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-2">
         <div class="stat-card">
             <div class="stat-icon bg-primary-soft"><i class="fa fa-receipt"></i></div>
-            <div class="stat-body"><div class="stat-value">{{ $summary->total_invoices }}</div><div class="stat-label">Invoices</div></div>
+            <div class="stat-body"><div class="stat-value">{{ number_format($summary->total_invoices) }}</div><div class="stat-label">Invoices</div></div>
         </div>
     </div>
     <div class="col-6 col-md-2">
@@ -69,33 +80,39 @@
     </div>
 </div>
 
-<!-- Chart -->
 <div class="card mb-4">
-<div class="card-header"><i class="fa fa-chart-bar me-2 text-primary"></i>Daily Sales</div>
+<div class="card-header d-flex align-items-center gap-2">
+    <i class="fa fa-chart-bar text-primary"></i><span>Daily Sales</span>
+    <span class="badge bg-primary-subtle text-primary-emphasis ms-auto" style="font-size:.72rem">{{ $daily->count() }} days</span>
+</div>
 <div class="card-body"><div class="chart-container"><canvas id="dailyChart"></canvas></div></div>
 </div>
 
-<!-- Table -->
 <div class="card">
-<div class="card-header"><i class="fa fa-list me-2 text-primary"></i>Sales List</div>
+<div class="card-header d-flex align-items-center gap-2">
+    <i class="fa fa-list text-primary"></i><span>Sales List</span>
+    <span class="badge bg-secondary-subtle text-secondary ms-auto" style="font-size:.72rem">{{ $sales->total() }} records</span>
+</div>
 <div class="table-responsive">
 <table class="table">
     <thead><tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th><th>Payment</th><th class="d-none d-lg-table-cell">Warehouse</th><th>By</th></tr></thead>
     <tbody>
         @forelse($sales as $s)
         <tr>
-            <td><a href="{{ route('sales.show',$s) }}" class="text-primary fw-medium">{{ $s->invoice_number }}</a></td>
-            <td class="text-muted">{{ $s->customer_name }}</td>
+            <td><a href="{{ route('sales.show',$s) }}" class="text-primary fw-semibold">{{ $s->invoice_number }}</a></td>
+            <td class="text-muted small">{{ $s->customer_name ?? 'Walk-in' }}</td>
             <td class="text-muted small">{{ $s->sale_date->format('M d, Y') }}</td>
             <td class="fw-semibold">Br {{ number_format($s->total,2) }}</td>
-            <td class="text-success">Br {{ number_format($s->paid_amount,2) }}</td>
-            <td class="{{ $s->balance > 0 ? 'text-danger' : 'text-muted' }}">{{ $s->balance > 0 ? 'Br '.number_format($s->balance,2) : '—' }}</td>
+            <td class="text-success small">Br {{ number_format($s->paid_amount,2) }}</td>
+            <td class="{{ $s->balance > 0 ? 'text-danger fw-semibold' : 'text-muted' }} small">{{ $s->balance > 0 ? 'Br '.number_format($s->balance,2) : '—' }}</td>
             <td><span class="badge bg-{{ $s->payment_status_badge }}">{{ ucfirst($s->payment_status) }}</span></td>
             <td class="small text-muted d-none d-lg-table-cell">{{ $s->warehouse?->name ?? '—' }}</td>
             <td class="small text-muted">{{ $s->user->name }}</td>
         </tr>
         @empty
-        <tr><td colspan="9" class="text-center text-muted py-4">No sales in this period.</td></tr>
+        <tr><td colspan="9" class="text-center text-muted py-5">
+            <i class="fa fa-chart-line fs-2 d-block mb-2 opacity-25"></i>No sales in this period.
+        </td></tr>
         @endforelse
     </tbody>
 </table>
@@ -111,12 +128,12 @@ if(ctx) {
         type:'bar',
         data:{
             labels: @json($daily->pluck('date')->map(fn($d)=>\Carbon\Carbon::parse($d)->format('M d'))),
-            datasets:[{label:'Sales (Br)',data:@json($daily->pluck('total')),backgroundColor:'rgba(79,70,229,.7)',borderRadius:6}]
+            datasets:[{label:'Sales (Br)',data:@json($daily->pluck('total')),backgroundColor:'rgba(99,102,241,.75)',borderRadius:6,borderSkipped:false}]
         },
         options:{
             responsive:true,maintainAspectRatio:false,
-            plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'Br '+parseFloat(ctx.raw).toLocaleString('en-US',{minimumFractionDigits:2})}}},
-            scales:{y:{beginAtZero:true,ticks:{callback:v=>'Br '+v.toLocaleString()}},x:{grid:{display:false}}}
+            plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'Br '+parseFloat(c.raw).toLocaleString('en-US',{minimumFractionDigits:2})}}},
+            scales:{y:{beginAtZero:true,ticks:{callback:v=>'Br '+v.toLocaleString()},grid:{color:'rgba(0,0,0,.04)'}},x:{grid:{display:false}}}
         }
     });
 }

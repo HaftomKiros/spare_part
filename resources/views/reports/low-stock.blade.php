@@ -5,21 +5,32 @@
     <li class="breadcrumb-item active">Low Stock</li>
 @endsection
 @section('content')
-@include('partials.page-header',['title'=>'Low Stock Alerts','subtitle'=>'Items that need immediate restocking'])
 
-<!-- Warehouse Filter -->
-<div class="card mb-4">
-<div class="card-body py-3">
-<form method="GET" class="row g-2 align-items-end">
+@include('partials.report-nav', ['active' => 'low-stock'])
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div>
+        <h5 class="fw-bold mb-0" style="color:#1e293b">Low Stock Alerts</h5>
+        <div class="text-muted small">Items that need immediate restocking</div>
+    </div>
+</div>
+
+<div class="rpt-filter-card">
+<form method="GET" class="d-flex flex-wrap gap-2 align-items-end">
     @include('partials.warehouse-filter')
-    <div class="col-auto"><button type="submit" class="btn btn-sm btn-primary mt-3"><i class="fa fa-filter me-1"></i>Apply</button></div>
+    <div class="mt-auto"><button type="submit" class="btn btn-sm btn-primary"><i class="fa fa-filter me-1"></i>Apply</button></div>
     @if($warehouseId)
+    <div class="mt-auto ms-auto">
+        <span class="rpt-period-badge"><i class="fa fa-warehouse"></i>{{ $warehouses->find($warehouseId)?->name }}</span>
+    </div>
+    @endif
+</form>
+</div>
     <div class="col-auto ms-auto mt-3">
         <span class="badge bg-primary-subtle text-primary-emphasis"><i class="fa fa-warehouse me-1"></i>{{ $warehouses->find($warehouseId)?->name }}</span>
     </div>
     @endif
 </form>
-</div>
 </div>
 
 <!-- Summary -->
