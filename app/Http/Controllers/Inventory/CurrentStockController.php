@@ -58,7 +58,7 @@ class CurrentStockController extends Controller
             }
 
             $parts = $partsQuery
-                ->selectRaw('sp.id, sp.name, sp.part_number, sp.buying_price, sp.selling_price, pc.name as category_name, u.abbreviation as unit_abbr, ws.current_stock, ws.reorder_level')
+                ->selectRaw('sp.id, sp.name, sp.part_number, sp.buying_price, pc.name as category_name, u.abbreviation as unit_abbr, ws.current_stock, ws.reorder_level')
                 ->orderBy('ws.current_stock')
                 ->paginate(20, ['*'], 'parts_page')
                 ->withQueryString();
@@ -88,7 +88,7 @@ class CurrentStockController extends Controller
             }
 
             $vehicles = $vehiclesQuery
-                ->selectRaw('vm.id, vm.brand, vm.model_name, vm.model_code, vm.buying_price, vm.selling_price, vt.name as type_name, wv.current_stock, wv.reorder_level')
+                ->selectRaw('vm.id, vm.brand, vm.model_name, vm.model_code, vm.buying_price, vt.name as type_name, wv.current_stock, wv.reorder_level')
                 ->orderBy('wv.current_stock')
                 ->paginate(20, ['*'], 'vehicles_page')
                 ->withQueryString();
