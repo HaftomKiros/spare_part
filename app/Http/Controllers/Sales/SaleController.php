@@ -580,6 +580,7 @@ class SaleController extends Controller
             ->select(
                 'pi.id as purchase_item_id',
                 'p.purchase_number',
+                'p.purchase_type',
                 'p.purchase_date',
                 'pi.quantity',
                 'pi.total_sold',
@@ -587,9 +588,13 @@ class SaleController extends Controller
             )
             ->get()
             ->map(function ($row) {
+                // For transfer stubs show a clear label so user knows it's transferred stock
+                $label = $row->purchase_type === 'transfer'
+                    ? 'Transfer: ' . $row->purchase_number
+                    : $row->purchase_number;
                 return [
                     'purchase_item_id' => $row->purchase_item_id,
-                    'purchase_number'  => $row->purchase_number,
+                    'purchase_number'  => $label,
                     'purchase_date'    => $row->purchase_date,
                     'remaining'        => $row->quantity - $row->total_sold,
                     'unit_price'       => $row->unit_price,
