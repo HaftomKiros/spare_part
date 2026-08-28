@@ -351,7 +351,7 @@ class StockTransferController extends Controller
                 ->map(fn($p) => [
                     'id'    => $p->id,
                     'label' => $p->name . ' (' . $p->part_number . ') — ' . $p->unit . ' — Available: ' . (int) $unsoldMap[$p->id],
-                    'stock' => $p->current_stock,
+                    'stock' => (int) $unsoldMap[$p->id],
                     'unsold'=> (int) $unsoldMap[$p->id],
                 ])->values();
         } else {
@@ -381,7 +381,7 @@ class StockTransferController extends Controller
                     'id'    => $v->id,
                     'label' => $v->brand . ' ' . $v->model_name . ($v->model_code ? ' (' . $v->model_code . ')' : '')
                                . ' — ' . $v->type_name . ' — Available: ' . (int) $unsoldMap[$v->id],
-                    'stock' => $v->current_stock,
+                    'stock' => (int) $unsoldMap[$v->id],
                     'unsold'=> (int) $unsoldMap[$v->id],
                 ])->values();
         }
