@@ -204,4 +204,84 @@
 </div>
 </div>
 </div>
+
+{{-- Transfer History --}}
+@if($transferHistory->count())
+<div class="row g-3 mt-0">
+<div class="col-12">
+<div class="card">
+<div class="card-header d-flex align-items-center gap-2">
+    <i class="fa fa-right-left text-warning me-1"></i>
+    <span>Transfer History</span>
+    <span class="badge bg-warning-subtle text-warning-emphasis ms-1">{{ $transferHistory->count() }} transfer{{ $transferHistory->count() != 1 ? 's' : '' }}</span>
+</div>
+<div class="table-responsive">
+<table class="table table-sm mb-0" style="font-size:.85rem">
+    <thead style="background:#f8f9ff">
+        <tr>
+            <th class="ps-3">Transfer #</th>
+            <th>Item</th>
+            <th>To Warehouse</th>
+            <th class="text-center">Qty Transferred</th>
+            <th class="text-center">Sold at Dest</th>
+            <th class="text-center">Still Available</th>
+            <th class="text-end">Value</th>
+            <th>By</th>
+            <th class="pe-3">Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach($transferHistory as $tr)
+        @php
+            $itemName = $tr->item_type === 'spare_part'
+                ? (\App\Models\SparePart::find($tr->spare_part_id)?->name ?? '—')
+                : (\App\Models\VehicleModel::find($tr->vehicle_model_id)?->full_name ?? '—');
+            $stillAvailable = $tr->transferred_qty - $tr->sold_at_dest;
+        @endphp
+        <tr>
+            <td class="ps-3">
+                <span class="fw-semibold" style="color:var(--brand-1)">{{ $tr->transfer_number }}</span>
+            </td>
+            <td class="fw-semibold small">{{ $itemName }}</td>
+            <td class="small">
+                <i class="fa fa-arrow-right text-warning me-1" style="font-size:.7rem"></i>{{ $tr->to_warehouse }}
+            </td>
+            <td class="text-center">
+                <span class="badge bg-warning-subtle text-warning-emphasis fw-bold">{{ $tr->transferred_qty }}</span>
+            </td>
+            <td class="text-center text-danger fw-semibold">{{ $tr->sold_at_dest }}</td>
+            <td class="text-center">
+                <span class="badge {{ $stillAvailable > 0 ? 'bg-success-subtle text-success-emphasis' : 'bg-danger-subtle text-danger-emphasis' }}">
+                    {{ $stillAvailable }}
+                </span>
+            </td>
+            <td class="text-end fw-semibold" style="color:var(--brand-1)">
+                Br {{ number_format($tr->transferred_qty * $tr->unit_price, 2) }}
+            </td>
+            <td class="text-muted small">{{ $tr->transferred_by }}</td>
+            <td class="text-muted small pe-3">
+                {{ \Carbon\Carbon::parse($tr->transferred_at)->format('M d, Y H:i') }}
+            </td>
+        </tr>
+        @endforeach
+    </tbody>
+    <tfoot style="background:#f8f9ff">
+        <tr>
+            <td colspan="3" class="text-end fw-bold ps-3 small">Total Transferred</td>
+            <td class="text-center fw-bold text-warning">{{ $transferHistory->sum('transferred_qty') }}</td>
+            <td class="text-center fw-bold text-danger">{{ $transferHistory->sum('sold_at_dest') }}</td>
+            <td class="text-center fw-bold text-success">{{ $transferHistory->sum('transferred_qty') - $transferHistory->sum('sold_at_dest') }}</td>
+            <td class="text-end fw-bold" style="color:var(--brand-1)">
+                Br {{ number_format($transferHistory->sum(fn($t) => $t->transferred_qty * $t->unit_price), 2) }}
+            </td>
+            <td colspan="2" class="pe-3"></td>
+        </tr>
+    </tfoot>
+</table>
+</div>
+</div>
+</div>
+</div>
+@endif
+
 @endsection

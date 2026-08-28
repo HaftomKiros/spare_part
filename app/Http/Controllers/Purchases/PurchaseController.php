@@ -230,7 +230,36 @@ class PurchaseController extends Controller
     public function show(Purchase $purchase)
     {
         $purchase->load('supplier', 'user', 'warehouse', 'items.vehicleModel.vehicleType', 'items.sparePart.category');
-        return view('purchases.purchases.show', compact('purchase'));
+
+        // Load transfers that consumed batches from this purchase
+        // Each source purchase_item links to a stock_transfer via the stub purchase
+        $transferHistory = DB::table('purchase_items as dest_pi')
+            ->join('purchases as dest_p',        'dest_pi.purchase_id',             '=', 'dest_p.id')
+            ->join('stock_transfers as st',       'dest_p.stock_transfer_id',        '=', 'st.id')
+            ->join('warehouses as to_wh',         'st.to_warehouse_id',              '=', 'to_wh.id')
+            ->join('warehouses as from_wh',       'st.from_warehouse_id',            '=', 'from_wh.id')
+            ->join('users as u',                  'st.user_id',                      '=', 'u.id')
+            ->join('purchase_items as src_pi',    'dest_pi.source_purchase_item_id', '=', 'src_pi.id')
+            ->where('src_pi.purchase_id', $purchase->id)   // only transfers FROM this purchase
+            ->where('dest_pi.is_transfer', 1)
+            ->select(
+                'st.transfer_number',
+                'st.transferred_at',
+                'from_wh.name as from_warehouse',
+                'to_wh.name as to_warehouse',
+                'dest_pi.quantity as transferred_qty',
+                'dest_pi.unit_price',
+                'dest_pi.total_sold as sold_at_dest',
+                'u.name as transferred_by',
+                // item info
+                'dest_pi.item_type',
+                'dest_pi.spare_part_id',
+                'dest_pi.vehicle_model_id'
+            )
+            ->orderByDesc('st.transferred_at')
+            ->get();
+
+        return view('purchases.purchases.show', compact('purchase', 'transferHistory'));
     }
 
     public function receive(Request $request, Purchase $purchase)
