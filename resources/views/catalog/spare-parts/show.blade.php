@@ -8,7 +8,7 @@
 @include('partials.page-header', [
     'title'    => $sparePart->name,
     'subtitle' => $sparePart->part_number . ($sparePart->oem_number ? ' · OEM: ' . $sparePart->oem_number : ''),
-    'actions'  => [['label' => 'Edit Part', 'route' => 'catalog.spare-parts.edit', 'icon' => 'fa-pen', 'class' => 'btn-outline-primary']],
+    'actions'  => [['label' => 'Edit Part', 'route' => 'catalog.spare-parts.edit', 'route_params' => $sparePart, 'icon' => 'fa-pen', 'class' => 'btn-outline-primary']],
 ])
 
 <div class="row g-3">

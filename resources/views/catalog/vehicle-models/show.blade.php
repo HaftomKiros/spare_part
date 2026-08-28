@@ -11,7 +11,7 @@
     'title'    => $vehicleModel->full_name,
     'subtitle' => $vehicleModel->vehicleType->name,
     'actions'  => [
-        ['label' => 'Edit Model', 'route' => 'catalog.vehicle-models.edit', 'icon' => 'fa-pen', 'class' => 'btn-outline-primary'],
+        ['label' => 'Edit Model', 'route' => 'catalog.vehicle-models.edit', 'route_params' => $vehicleModel, 'icon' => 'fa-pen', 'class' => 'btn-outline-primary'],
     ]
 ])
 

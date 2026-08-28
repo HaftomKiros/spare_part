@@ -19,7 +19,7 @@
     <div class="d-flex gap-2 flex-wrap">
         @foreach($actions as $action)
             @if(isset($action['route']))
-                <a href="{{ route($action['route']) }}" class="btn {{ $action['class'] ?? 'btn-primary' }}">
+                <a href="{{ route($action['route'], $action['route_params'] ?? []) }}" class="btn {{ $action['class'] ?? 'btn-primary' }}">
                     @if(!empty($action['icon']))<i class="fa {{ $action['icon'] }} me-1"></i>@endif
                     {{ $action['label'] }}
                 </a>
