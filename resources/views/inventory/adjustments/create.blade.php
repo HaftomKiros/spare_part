@@ -7,7 +7,7 @@
 @section('content')
 @include('partials.page-header', ['title' => 'New Stock Adjustment', 'subtitle' => $number])
 
-<form method="POST" action="{{ route('inventory.adjustments.store') }}">
+<form method="POST" action="{{ route('inventory.adjustments.store') }}" id="adjForm">
 @csrf
 <div class="row g-3">
 
@@ -29,7 +29,7 @@
     </div>
     <div class="col-md-4">
         <label class="form-label">Type <span class="text-danger">*</span></label>
-        <select name="adjustment_type" class="form-select ts-select @error('adjustment_type') is-invalid @enderror" required>
+        <select name="adjustment_type" id="adjTypeSelect" class="form-select ts-select @error('adjustment_type') is-invalid @enderror" required>
             <option value="">Select type...</option>
             <option value="increase" {{ old('adjustment_type') === 'increase' ? 'selected' : '' }}>Increase (+)</option>
             <option value="decrease" {{ old('adjustment_type') === 'decrease' ? 'selected' : '' }}>Decrease (-)</option>
@@ -38,10 +38,9 @@
     </div>
     <div class="col-md-6">
         <label class="form-label">Warehouse <span class="text-danger">*</span></label>
-        <select name="warehouse_id" class="form-select ts-select @error('warehouse_id') is-invalid @enderror">
+        <select name="warehouse_id" id="warehouseSelect" class="form-select ts-select @error('warehouse_id') is-invalid @enderror">
             @foreach($warehouses as $wh)
-                <option value="{{ $wh->id }}"
-                    {{ old('warehouse_id', $defaultWarehouse?->id) == $wh->id ? 'selected' : '' }}>
+                <option value="{{ $wh->id }}" {{ old('warehouse_id', $defaultWarehouse?->id) == $wh->id ? 'selected' : '' }}>
                     {{ $wh->name }}{{ $wh->is_default ? ' (Default)' : '' }}
                 </option>
             @endforeach
@@ -58,72 +57,16 @@
 </div>
 </div>
 
-<!-- Items Table -->
+<!-- Items Cards -->
 <div class="card">
 <div class="card-header d-flex align-items-center justify-content-between">
     <span><i class="fa fa-list me-2 text-primary"></i>Items to Adjust</span>
-    <button type="button" class="btn btn-sm btn-outline-primary" id="addAdjRow">
+    <button type="button" class="btn btn-sm btn-outline-primary" id="addAdjItem">
         <i class="fa fa-plus me-1"></i>Add Item
     </button>
 </div>
-<div class="table-responsive">
-<table class="table mb-0" id="adjItemsTable">
-    <thead>
-        <tr>
-            <th style="width:40%">Item</th>
-            <th>Type</th>
-            <th>Stock in Warehouse</th>
-            <th>Qty to Adjust</th>
-            <th>Notes</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody id="adjItemsBody">
-        <tr class="adj-row" data-index="0">
-            <td>
-                <select name="items[0][item_id]" class="form-select form-select-sm item-select" required>
-                    <option value="">Select item...</option>
-                    <optgroup label="-- Vehicles --">
-                        @foreach($vehicleTypes as $vt)
-                            @foreach($vt->activeVehicleModels as $vm)
-                                <option value="{{ $vm->id }}" data-type="vehicle" data-stock="{{ $vm->stock?->current_stock ?? 0 }}">
-                                    [V] {{ $vm->brand }} {{ $vm->model_name }} (Stock: {{ $vm->stock?->current_stock ?? 0 }})
-                                </option>
-                            @endforeach
-                        @endforeach
-                    </optgroup>
-                    @foreach($categories as $cat)
-                        <optgroup label="{{ $cat->name }}">
-                            @foreach($cat->spareParts as $part)
-                                <option value="{{ $part->id }}" data-type="spare_part" data-stock="{{ $part->current_stock }}">
-                                    [P] {{ $part->name }} ({{ $part->part_number }}) - Stock: {{ $part->current_stock }}
-                                </option>
-                            @endforeach
-                        </optgroup>
-                    @endforeach
-                </select>
-                <input type="hidden" name="items[0][item_type]" class="item-type-hidden" value="">
-            </td>
-            <td>
-                <span class="badge bg-secondary item-type-badge">-</span>
-            </td>
-            <td>
-                <span class="current-stock-display fw-semibold">-</span>
-            </td>
-            <td>
-                <input type="number" name="items[0][quantity]" class="form-control form-control-sm" min="1" value="1" required style="width:80px">
-            </td>
-            <td>
-                <input type="text" name="items[0][notes]" class="form-control form-control-sm" placeholder="Optional...">
-            </td>
-            <td>
-                <button type="button" class="btn btn-sm btn-outline-danger remove-adj-row" style="display:none">
-                    <i class="fa fa-times"></i>
-                </button>
-            </td>
-        </tr>
-    </tbody>
-</table>
+<div class="card-body p-2" id="adjItemsContainer">
+    {{-- Cards injected by JS --}}
 </div>
 </div>
 </div>
@@ -152,7 +95,7 @@
     </div>
     <hr>
     <div class="d-grid">
-        <button type="submit" class="btn btn-primary">
+        <button type="submit" class="btn btn-primary" id="saveAdjBtn">
             <i class="fa fa-save me-1"></i>Save Adjustment
         </button>
     </div>
@@ -164,101 +107,419 @@
 </div>
 </form>
 
+<style>
+.adj-card {
+    background: #f8f9ff;
+    border: 1px solid #e2e6f0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    position: relative;
+}
+.adj-card:last-child { margin-bottom: 0; }
+.adj-card .adj-num {
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--brand-1);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: 10px;
+}
+.adj-card .btn-remove-adj {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    padding: 2px 8px;
+    font-size: .78rem;
+}
+.stock-info-box {
+    background: #fff;
+    border: 1px solid #e2e6f0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    min-width: 130px;
+}
+.result-box {
+    background: #fff;
+    border: 1px solid #e2e6f0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    min-width: 130px;
+}
+</style>
+
 @endsection
 @push('scripts')
 <script>
-const warehouseStockUrl = '{{ route("inventory.stock-in.warehouse-stock") }}';
-let rowIndex = 1;
+(function() {
+'use strict';
 
-// -- Add row ---------------------------------------
-document.getElementById('addAdjRow').addEventListener('click', function () {
-    const tbody    = document.getElementById('adjItemsBody');
-    const template = tbody.querySelector('.adj-row').cloneNode(true);
+const WAREHOUSE_ITEMS_URL = '{{ route("sales.ajax.warehouse-items") }}';
+const WAREHOUSE_STOCK_URL = '{{ route("transfers.warehouse-stock") }}';
 
-    template.dataset.index = rowIndex;
-    template.querySelectorAll('[name]').forEach(el => {
-        el.name = el.name.replace(/\[\d+\]/, '[' + rowIndex + ']');
-        if (el.tagName === 'SELECT') el.selectedIndex = 0;
-        if (el.tagName === 'INPUT' && el.type !== 'hidden') el.value = el.type === 'number' ? 1 : '';
-    });
-    template.querySelector('.item-type-hidden').value = '';
-    template.querySelector('.item-type-badge').textContent = '-';
-    template.querySelector('.current-stock-display').textContent = '-';
-    template.querySelector('.remove-adj-row').style.display = '';
+let rowCount = 0;
+let loadedWarehouse  = null;
+let VEHICLES         = [];
+let CATEGORIES       = [];
 
-    tbody.appendChild(template);
-    bindRowEvents(template);
-    rowIndex++;
-});
+const container       = document.getElementById('adjItemsContainer');
+const warehouseSel    = document.getElementById('warehouseSelect');
+const adjTypeSel      = document.getElementById('adjTypeSelect');
 
-// -- Remove row ------------------------------------
-document.getElementById('adjItemsBody').addEventListener('click', function (e) {
-    if (e.target.closest('.remove-adj-row')) {
-        const rows = document.querySelectorAll('.adj-row');
-        if (rows.length > 1) e.target.closest('.adj-row').remove();
-    }
-});
+function getWarehouseId() {
+    return warehouseSel?._tomSelect ? warehouseSel._tomSelect.getValue() : warehouseSel?.value;
+}
 
-// -- Fetch per-warehouse stock for a row -----------
-function fetchRowStock(row) {
-    const sel         = row.querySelector('.item-select');
-    const itemId      = sel?.value;
-    const typeHidden  = row.querySelector('.item-type-hidden');
-    const itemType    = typeHidden?.value;
-    const warehouseId = document.querySelector('[name="warehouse_id"]')?.value;
-    const stockDisplay = row.querySelector('.current-stock-display');
+function getAdjType() {
+    return adjTypeSel?._tomSelect ? adjTypeSel._tomSelect.getValue() : adjTypeSel?.value;
+}
 
-    if (!itemId || !itemType || !warehouseId) {
-        if (stockDisplay) stockDisplay.textContent = '-';
-        return;
-    }
-
-    stockDisplay.textContent = '...';
-
-    fetch(`${warehouseStockUrl}?warehouse_id=${warehouseId}&item_type=${itemType}&item_id=${itemId}`)
+// ── Load warehouse items (same as sale form) ──────────────────
+function loadWarehouseItems(whId, cb) {
+    if (loadedWarehouse === whId && (VEHICLES.length || CATEGORIES.length)) { if (cb) cb(); return; }
+    fetch(WAREHOUSE_ITEMS_URL + '?warehouse_id=' + whId)
         .then(r => r.json())
         .then(data => {
-            stockDisplay.textContent = data.stock;
-            stockDisplay.className = 'current-stock-display fw-semibold ' +
-                (data.stock <= 0 ? 'text-danger' : (data.stock <= 5 ? 'text-warning' : 'text-success'));
+            VEHICLES   = data.vehicles || [];
+            CATEGORIES = data.categories || [];
+            loadedWarehouse = whId;
+            if (cb) cb();
         })
-        .catch(() => {
-            // Fallback to data-stock attribute
-            const opt = sel.options[sel.selectedIndex];
-            stockDisplay.textContent = opt?.dataset.stock ?? '-';
-        });
+        .catch(() => { if (cb) cb(); });
 }
 
-// -- Bind item select events -----------------------
-function bindRowEvents(row) {
-    const sel = row.querySelector('.item-select');
-    if (sel) {
-        sel.addEventListener('change', function () {
-            const opt  = this.options[this.selectedIndex];
-            const type = opt?.dataset.type || '';
-            row.querySelector('.item-type-hidden').value = type;
-            row.querySelector('.item-type-badge').textContent =
-                type === 'vehicle' ? 'Vehicle' : (type === 'spare_part' ? 'Part' : '-');
-            row.querySelector('.item-type-badge').className =
-                'badge ' + (type === 'vehicle' ? 'bg-primary' : (type === 'spare_part' ? 'bg-success' : 'bg-secondary')) + ' item-type-badge';
-            fetchRowStock(row);
+function buildItemOptions(type, excludeIds) {
+    excludeIds = excludeIds || [];
+    let html = '<option value="">— Select item —</option>';
+    if (type === 'vehicle') {
+        VEHICLES.forEach(function(vt) {
+            if (!vt.models || !vt.models.length) return;
+            html += '<optgroup label="' + esc(vt.name) + '">';
+            vt.models.forEach(function(m) {
+                const dis = excludeIds.includes(String(m.id)) ? ' disabled' : '';
+                html += '<option value="' + m.id + '" data-stock="' + m.stock + '"' + dis + '>'
+                      + esc(m.name) + ' — ' + m.stock + ' unsold</option>';
+            });
+            html += '</optgroup>';
+        });
+    } else {
+        CATEGORIES.forEach(function(cat) {
+            if (!cat.parts || !cat.parts.length) return;
+            html += '<optgroup label="' + esc(cat.name) + '">';
+            cat.parts.forEach(function(p) {
+                const dis = excludeIds.includes(String(p.id)) ? ' disabled' : '';
+                html += '<option value="' + p.id + '" data-stock="' + p.stock + '"' + dis + '>'
+                      + esc(p.name) + ' — ' + p.stock + ' unsold</option>';
+            });
+            html += '</optgroup>';
         });
     }
+    return html;
 }
 
-// Bind on page load
-document.querySelectorAll('.adj-row').forEach(bindRowEvents);
+function getSelectedItemIds(type, excludeCard) {
+    const ids = [];
+    container.querySelectorAll('.adj-card').forEach(function(c) {
+        if (c === excludeCard) return;
+        if (c.querySelector('.inp-type')?.value === type) {
+            const id = c.querySelector('.inp-item-id')?.value;
+            if (id) ids.push(String(id));
+        }
+    });
+    return ids;
+}
 
-// -- Warehouse change -> refresh ALL rows ----------
-const whSelect = document.querySelector('[name="warehouse_id"]');
-if (whSelect) {
-    whSelect.addEventListener('change', function () {
-        // Update sidebar label
-        const lbl = document.getElementById('selectedWarehouseName');
-        if (lbl) lbl.textContent = this.options[this.selectedIndex]?.text?.replace(' (Default)', '') || '-';
-        // Refresh stock for every row that has an item selected
-        document.querySelectorAll('.adj-row').forEach(row => fetchRowStock(row));
+function syncItemDropdowns() {
+    container.querySelectorAll('.adj-card').forEach(function(card) {
+        const type    = card.querySelector('.inp-type')?.value;
+        const selItem = card.querySelector('.sel-item');
+        const curVal  = card.querySelector('.inp-item-id')?.value;
+        if (!type || !selItem || selItem.disabled) return;
+        const excludeIds = getSelectedItemIds(type, card);
+        selItem.innerHTML = buildItemOptions(type, excludeIds);
+        if (curVal) {
+            for (let i = 0; i < selItem.options.length; i++) {
+                if (selItem.options[i].value === curVal) { selItem.selectedIndex = i; break; }
+            }
+        }
     });
 }
+
+// ── Create one item card ──────────────────────────────────────
+function createCard() {
+    const idx = rowCount++;
+    const div = document.createElement('div');
+    div.className     = 'adj-card';
+    div.dataset.index = idx;
+
+    div.innerHTML =
+        '<input type="hidden" name="items['+idx+'][item_type]" class="inp-type" value="">' +
+        '<input type="hidden" name="items['+idx+'][item_id]"   class="inp-item-id" value="">' +
+
+        '<div class="adj-num">Item #' + (idx + 1) + '</div>' +
+        '<button type="button" class="btn btn-sm btn-outline-danger btn-remove-adj" title="Remove">' +
+            '<i class="fa fa-times"></i>' +
+        '</button>' +
+
+        // Type + Item
+        '<div class="row g-2 mb-3">' +
+            '<div class="col-sm-3 col-md-2">' +
+                '<label class="form-label small mb-1">Type</label>' +
+                '<select class="form-select form-select-sm sel-type">' +
+                    '<option value="">Select…</option>' +
+                    '<option value="spare_part">Spare Part</option>' +
+                    '<option value="vehicle">Vehicle</option>' +
+                '</select>' +
+            '</div>' +
+            '<div class="col-sm-9 col-md-10">' +
+                '<label class="form-label small mb-1">Item</label>' +
+                '<select class="form-select form-select-sm sel-item" disabled>' +
+                    '<option value="">— Choose type first —</option>' +
+                '</select>' +
+            '</div>' +
+        '</div>' +
+
+        // Stock info + Qty + Result row
+        '<div class="row g-2 align-items-end">' +
+            '<div class="col-auto">' +
+                '<label class="form-label small mb-1">Current Unsold Stock</label>' +
+                '<div class="stock-info-box">' +
+                    '<div class="text-muted" style="font-size:.7rem">Unsold qty</div>' +
+                    '<div class="fw-bold fs-5 current-stock-lbl text-muted">—</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="col-auto">' +
+                '<label class="form-label small mb-1">Qty to Adjust</label>' +
+                '<input type="number" name="items['+idx+'][quantity]" class="form-control form-control-sm inp-qty" ' +
+                       'value="1" min="1" style="width:90px" disabled>' +
+            '</div>' +
+            '<div class="col-auto">' +
+                '<label class="form-label small mb-1">Result</label>' +
+                '<div class="result-box">' +
+                    '<div class="text-muted" style="font-size:.7rem">After adj.</div>' +
+                    '<div class="fw-bold fs-5 result-lbl text-muted">—</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="col">' +
+                '<label class="form-label small mb-1">Notes</label>' +
+                '<input type="text" name="items['+idx+'][notes]" class="form-control form-control-sm inp-notes" placeholder="Optional...">' +
+            '</div>' +
+        '</div>';
+
+    bindCard(div);
+    return div;
+}
+
+function bindCard(card) {
+    const selType   = card.querySelector('.sel-type');
+    const selItem   = card.querySelector('.sel-item');
+    const inpType   = card.querySelector('.inp-type');
+    const inpItemId = card.querySelector('.inp-item-id');
+    const inpQty    = card.querySelector('.inp-qty');
+    const stockLbl  = card.querySelector('.current-stock-lbl');
+    const resultLbl = card.querySelector('.result-lbl');
+    const btnRemove = card.querySelector('.btn-remove-adj');
+
+    function updateResult() {
+        const stock   = parseInt(stockLbl.dataset.stock ?? '-1');
+        const qty     = parseInt(inpQty.value) || 0;
+        const adjType = getAdjType();
+        if (stock < 0 || !adjType) { resultLbl.textContent = '—'; resultLbl.className = 'fw-bold fs-5 result-lbl text-muted'; return; }
+
+        let result;
+        if (adjType === 'increase') {
+            result = stock + qty;
+        } else {
+            result = stock - qty;
+            // Clamp qty so result never goes below 0
+            if (result < 0) {
+                inpQty.value = stock;
+                result = 0;
+            }
+        }
+        resultLbl.textContent = result;
+        resultLbl.className = 'fw-bold fs-5 result-lbl ' + (result <= 0 ? 'text-danger' : 'text-success');
+    }
+
+    function setStock(val) {
+        const n = parseInt(val);
+        stockLbl.dataset.stock = n;
+        stockLbl.textContent   = n;
+        stockLbl.className     = 'fw-bold fs-5 current-stock-lbl ' + (n <= 0 ? 'text-danger' : (n <= 5 ? 'text-warning' : 'text-success'));
+
+        // For decrease: cap qty at current stock, disable if stock is 0
+        const adjType = getAdjType();
+        if (adjType === 'decrease') {
+            if (n <= 0) {
+                inpQty.disabled = true;
+                inpQty.value    = 0;
+            } else {
+                inpQty.disabled = false;
+                inpQty.max      = n;
+                if (parseInt(inpQty.value) > n) inpQty.value = n;
+            }
+        } else {
+            inpQty.disabled = false;
+            inpQty.removeAttribute('max');
+        }
+        updateResult();
+    }
+
+    selType.addEventListener('change', function() {
+        const type = this.value;
+        inpType.value   = type;
+        inpItemId.value = '';
+        stockLbl.textContent = '—';
+        delete stockLbl.dataset.stock;
+        resultLbl.textContent = '—';
+        resultLbl.className = 'fw-bold fs-5 result-lbl text-muted';
+        inpQty.disabled = true;
+
+        const whId = getWarehouseId();
+        if (!whId || !type) { selItem.innerHTML = '<option value="">— Choose type first —</option>'; selItem.disabled = true; return; }
+
+        loadWarehouseItems(whId, function() {
+            selItem.innerHTML = buildItemOptions(type, getSelectedItemIds(type, card));
+            selItem.disabled  = false;
+        });
+        syncItemDropdowns();
+    });
+
+    selItem.addEventListener('change', function() {
+        inpItemId.value = this.value;
+        const opt = this.options[this.selectedIndex];
+        if (!this.value) { stockLbl.textContent = '—'; delete stockLbl.dataset.stock; inpQty.disabled = true; syncItemDropdowns(); return; }
+
+        const itemType = inpType.value;
+        const whId     = getWarehouseId();
+        stockLbl.textContent = '...';
+        inpQty.disabled = true;
+
+        fetch(WAREHOUSE_STOCK_URL + '?warehouse_id=' + whId + '&item_type=' + itemType + '&item_id=' + this.value)
+            .then(r => r.json())
+            .then(data => { setStock(data.stock ?? 0); })
+            .catch(() => { setStock(parseInt(opt?.dataset?.stock ?? 0)); });
+
+        syncItemDropdowns();
+    });
+
+    inpQty.addEventListener('input', function() {
+        const stock   = parseInt(stockLbl.dataset.stock ?? '-1');
+        const adjType = getAdjType();
+        if (adjType === 'decrease' && stock >= 0) {
+            if (parseInt(this.value) > stock) { this.value = stock; this.style.borderColor = '#dc2626'; setTimeout(() => { this.style.borderColor = ''; }, 1500); }
+            if (parseInt(this.value) < 1) this.value = 1;
+        }
+        updateResult();
+    });
+
+    btnRemove.addEventListener('click', function() {
+        if (container.querySelectorAll('.adj-card').length > 1) {
+            card.remove();
+            renumber();
+            syncItemDropdowns();
+        } else {
+            alert('At least one item is required.');
+        }
+    });
+}
+
+function renumber() {
+    container.querySelectorAll('.adj-card .adj-num').forEach(function(el, i) {
+        el.textContent = 'Item #' + (i + 1);
+    });
+}
+
+// ── Re-evaluate all qty limits when type changes ──────────────
+adjTypeSel.addEventListener('change', function() {
+    container.querySelectorAll('.adj-card').forEach(function(card) {
+        const stock   = parseInt(card.querySelector('.current-stock-lbl')?.dataset?.stock ?? '-1');
+        const inpQty  = card.querySelector('.inp-qty');
+        const result  = card.querySelector('.result-lbl');
+        const adjType = adjTypeSel.value;
+        if (stock < 0 || !inpQty) return;
+
+        if (adjType === 'decrease') {
+            if (stock <= 0) { inpQty.disabled = true; inpQty.value = 0; }
+            else { inpQty.disabled = false; inpQty.max = stock; if (parseInt(inpQty.value) > stock) inpQty.value = stock; }
+        } else {
+            inpQty.disabled = false;
+            inpQty.removeAttribute('max');
+        }
+
+        // Update result label
+        if (stock >= 0 && adjType) {
+            const qty = parseInt(inpQty.value) || 0;
+            const res = adjType === 'increase' ? stock + qty : Math.max(0, stock - qty);
+            result.textContent = res;
+            result.className = 'fw-bold fs-5 result-lbl ' + (res <= 0 ? 'text-danger' : 'text-success');
+        }
+    });
+});
+
+// ── Warehouse change ──────────────────────────────────────────
+warehouseSel.addEventListener('change', function() {
+    loadedWarehouse = null;
+    const lbl = document.getElementById('selectedWarehouseName');
+    if (lbl) lbl.textContent = this.options[this.selectedIndex]?.text?.replace(' (Default)', '') || '-';
+    // Rebuild all cards
+    container.querySelectorAll('.adj-card').forEach(function(card) {
+        const type = card.querySelector('.inp-type').value;
+        if (type) {
+            const selType = card.querySelector('.sel-type');
+            selType.dispatchEvent(new Event('change'));
+        }
+    });
+});
+
+// TomSelect hooks
+setTimeout(function() {
+    if (warehouseSel._tomSelect) warehouseSel._tomSelect.on('change', function(val) {
+        loadedWarehouse = null;
+        const lbl = document.getElementById('selectedWarehouseName');
+        const opt = warehouseSel.querySelector('option[value="'+val+'"]');
+        if (lbl && opt) lbl.textContent = opt.text.replace(' (Default)', '');
+        container.querySelectorAll('.adj-card').forEach(function(card) {
+            const type = card.querySelector('.inp-type').value;
+            if (type) card.querySelector('.sel-type').dispatchEvent(new Event('change'));
+        });
+    });
+    if (adjTypeSel._tomSelect) adjTypeSel._tomSelect.on('change', function() {
+        adjTypeSel.dispatchEvent(new Event('change'));
+    });
+}, 600);
+
+// ── Add button ────────────────────────────────────────────────
+document.getElementById('addAdjItem').addEventListener('click', function() {
+    const whId = getWarehouseId();
+    if (!whId) { alert('Please select a warehouse first.'); return; }
+    container.appendChild(createCard());
+});
+
+// ── Submit validation ─────────────────────────────────────────
+document.getElementById('adjForm').addEventListener('submit', function(e) {
+    let errors = [];
+    container.querySelectorAll('.adj-card').forEach(function(card, idx) {
+        const type = card.querySelector('.inp-type').value;
+        const id   = card.querySelector('.inp-item-id').value;
+        const qty  = parseInt(card.querySelector('.inp-qty').value) || 0;
+        const stock = parseInt(card.querySelector('.current-stock-lbl').dataset.stock ?? '-1');
+        const adjType = getAdjType();
+
+        if (!type || !id) { errors.push('Please select a type and item for row #' + (idx + 1) + '.'); return; }
+        if (qty < 1)       { errors.push('Quantity must be at least 1 for row #' + (idx + 1) + '.'); return; }
+        if (adjType === 'decrease' && stock >= 0 && qty > stock) {
+            errors.push('Row #' + (idx + 1) + ': cannot decrease by ' + qty + ' — only ' + stock + ' unsold in this warehouse.');
+        }
+    });
+    if (errors.length) { e.preventDefault(); alert(errors[0]); }
+});
+
+function esc(str) { return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Init ──────────────────────────────────────────────────────
+container.appendChild(createCard());
+
+})();
 </script>
 @endpush
