@@ -73,9 +73,9 @@
     <div class="card-header"><i class="fa fa-warehouse me-2 text-primary"></i>Stock Settings</div>
     <div class="card-body">
         <div class="mb-3">
-            <label class="form-label">Current Stock</label>
-            <input type="text" class="form-control" value="{{ $vehicleModel->stock?->current_stock ?? 0 }}" disabled readonly>
-            <div class="form-text">Use Inventory → Stock Entry to add stock.</div>
+            <label class="form-label">Current Stock (Unsold)</label>
+            <input type="text" class="form-control" value="{{ $unsoldStock }}" disabled readonly>
+            <div class="form-text">Total unsold across all purchase batches. Use Inventory → Stock Entry to add stock.</div>
         </div>
         <div>
             <label class="form-label">Reorder Level</label>

@@ -34,12 +34,12 @@
 <div class="card">
 <div class="card-header"><i class="fa fa-warehouse me-2 text-primary"></i>Stock Status</div>
 <div class="card-body text-center">
-    <div class="display-5 fw-bold {{ $sparePart->isOutOfStock() ? 'text-danger' : ($sparePart->isLowStock() ? 'text-warning' : 'text-success') }}">
-        {{ $sparePart->current_stock }}
+    <div class="display-5 fw-bold {{ $unsoldStock <= 0 ? 'text-danger' : ($unsoldStock <= $sparePart->reorder_level ? 'text-warning' : 'text-success') }}">
+        {{ $unsoldStock }}
     </div>
-    <div class="text-muted mb-2">{{ $sparePart->unit->name }}(s) in stock</div>
-    <span class="stock-pill {{ $sparePart->stock_status === 'out_of_stock' ? 'out' : ($sparePart->stock_status === 'low' ? 'low' : 'in-stock') }}">
-        {{ $sparePart->stock_status === 'out_of_stock' ? 'Out of Stock' : ($sparePart->stock_status === 'low' ? 'Low Stock' : 'In Stock') }}
+    <div class="text-muted mb-2">{{ $sparePart->unit->name }}(s) unsold</div>
+    <span class="stock-pill {{ $unsoldStock <= 0 ? 'out' : ($unsoldStock <= $sparePart->reorder_level ? 'low' : 'in-stock') }}">
+        {{ $unsoldStock <= 0 ? 'Out of Stock' : ($unsoldStock <= $sparePart->reorder_level ? 'Low Stock' : 'In Stock') }}
     </span>
     <div class="text-muted small mt-3">Reorder level: {{ $sparePart->reorder_level }}</div>
     <a href="{{ route('inventory.stock-in.index') }}" class="btn btn-sm btn-success mt-2 d-block">

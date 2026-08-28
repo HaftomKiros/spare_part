@@ -8,6 +8,7 @@ use App\Models\SparePart;
 use App\Models\Unit;
 use App\Models\VehicleModel;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SparePartController extends Controller
 {
@@ -91,7 +92,14 @@ class SparePartController extends Controller
     {
         $sparePart->load('category', 'unit', 'compatibleVehicles.vehicleType');
         $recentMovements = $sparePart->stockMovements()->with('user')->latest()->limit(10)->get();
-        return view('catalog.spare-parts.show', compact('sparePart', 'recentMovements'));
+        $unsoldStock = (int) \Illuminate\Support\Facades\DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('pi.item_type', 'spare_part')
+            ->where('pi.spare_part_id', $sparePart->id)
+            ->where('p.status', 'received')
+            ->selectRaw('COALESCE(SUM(pi.quantity - pi.total_sold), 0) as total_unsold')
+            ->value('total_unsold');
+        return view('catalog.spare-parts.show', compact('sparePart', 'recentMovements', 'unsoldStock'));
     }
 
     public function edit(SparePart $sparePart)
@@ -100,7 +108,14 @@ class SparePartController extends Controller
         $units      = Unit::orderBy('name')->get();
         $vehicles   = VehicleModel::active()->with('vehicleType')->orderBy('model_name')->get();
         $sparePart->load('compatibleVehicles');
-        return view('catalog.spare-parts.edit', compact('sparePart', 'categories', 'units', 'vehicles'));
+        $unsoldStock = (int) \Illuminate\Support\Facades\DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('pi.item_type', 'spare_part')
+            ->where('pi.spare_part_id', $sparePart->id)
+            ->where('p.status', 'received')
+            ->selectRaw('COALESCE(SUM(pi.quantity - pi.total_sold), 0) as total_unsold')
+            ->value('total_unsold');
+        return view('catalog.spare-parts.edit', compact('sparePart', 'categories', 'units', 'vehicles', 'unsoldStock'));
     }
 
     public function update(Request $request, SparePart $sparePart)

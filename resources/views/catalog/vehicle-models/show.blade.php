@@ -61,10 +61,10 @@
             </div>
         </div>
         <div class="col-6">
-            @php $stock = $vehicleModel->stock; $qty = $stock?->current_stock ?? 0; @endphp
-            <div class="p-3 rounded-3 {{ $qty <= 0 ? 'bg-danger' : ($vehicleModel->isLowStock() ? 'bg-warning' : 'bg-success') }} bg-opacity-10">
-                <div class="fw-bold fs-5 {{ $qty <= 0 ? 'text-danger' : ($vehicleModel->isLowStock() ? 'text-warning' : 'text-success') }}">{{ $qty }}</div>
-                <div class="small text-muted">In Stock</div>
+            @php $reorderLvl = $vehicleModel->stock?->reorder_level ?? 2; @endphp
+            <div class="p-3 rounded-3 {{ $unsoldStock <= 0 ? 'bg-danger' : ($unsoldStock <= $reorderLvl ? 'bg-warning' : 'bg-success') }} bg-opacity-10">
+                <div class="fw-bold fs-5 {{ $unsoldStock <= 0 ? 'text-danger' : ($unsoldStock <= $reorderLvl ? 'text-warning' : 'text-success') }}">{{ $unsoldStock }}</div>
+                <div class="small text-muted">Unsold</div>
             </div>
         </div>
     </div>

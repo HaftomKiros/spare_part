@@ -7,6 +7,7 @@ use App\Models\VehicleModel;
 use App\Models\VehicleType;
 use App\Models\VehicleStock;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class VehicleModelController extends Controller
 {
@@ -79,14 +80,28 @@ class VehicleModelController extends Controller
     {
         $vehicleModel->load('vehicleType', 'stock', 'spareParts.category');
         $recentMovements = $vehicleModel->stockMovements()->with('user')->latest()->limit(10)->get();
-        return view('catalog.vehicle-models.show', compact('vehicleModel', 'recentMovements'));
+        $unsoldStock = (int) \Illuminate\Support\Facades\DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('pi.item_type', 'vehicle')
+            ->where('pi.vehicle_model_id', $vehicleModel->id)
+            ->where('p.status', 'received')
+            ->selectRaw('COALESCE(SUM(pi.quantity - pi.total_sold), 0) as total_unsold')
+            ->value('total_unsold');
+        return view('catalog.vehicle-models.show', compact('vehicleModel', 'recentMovements', 'unsoldStock'));
     }
 
     public function edit(VehicleModel $vehicleModel)
     {
         $types = VehicleType::active()->get();
         $vehicleModel->load('stock');
-        return view('catalog.vehicle-models.edit', compact('vehicleModel', 'types'));
+        $unsoldStock = (int) \Illuminate\Support\Facades\DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('pi.item_type', 'vehicle')
+            ->where('pi.vehicle_model_id', $vehicleModel->id)
+            ->where('p.status', 'received')
+            ->selectRaw('COALESCE(SUM(pi.quantity - pi.total_sold), 0) as total_unsold')
+            ->value('total_unsold');
+        return view('catalog.vehicle-models.edit', compact('vehicleModel', 'types', 'unsoldStock'));
     }
 
     public function update(Request $request, VehicleModel $vehicleModel)
