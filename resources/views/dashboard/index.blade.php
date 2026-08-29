@@ -64,7 +64,7 @@
             <div class="stat-value">
                 <span class="stat-currency">Br</span>{{ number_format($stats['today_sales'], 0) }}
             </div>
-            <div class="stat-label">Today's Net Sales</div>
+            <div class="stat-label">Today's Sales Revenue</div>
             <div class="stat-change {{ $stats['today_sales_count'] > 0 ? 'up' : 'neutral' }}">
                 <i class="fa fa-{{ $stats['today_sales_count'] > 0 ? 'arrow-up' : 'minus' }}"></i>
                 {{ $stats['today_sales_count'] }} invoice{{ $stats['today_sales_count'] != 1 ? 's' : '' }}
