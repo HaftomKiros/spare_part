@@ -23,6 +23,7 @@ class ReportController extends Controller
         $dateFrom      = $request->date_from ?? now()->startOfMonth()->format('Y-m-d');
         $dateTo        = $request->date_to   ?? now()->format('Y-m-d');
         $warehouseId   = $request->warehouse_id ? (int) $request->warehouse_id : null;
+        $itemType      = in_array($request->item_type, ['spare_part', 'vehicle']) ? $request->item_type : null;
         $user          = auth()->user();
         $warehouses    = $user->accessibleWarehouses()->get();
         $accessibleIds = $user->accessibleWarehouseIds();
@@ -34,13 +35,18 @@ class ReportController extends Controller
             ->when(! $user->seesAllUsers(), fn($q2) => $q2->where('user_id', $user->id))
             ->when($warehouseId, fn($q2) => $q2->where('warehouse_id', $warehouseId));
 
-        $query   = Sale::completed()->with('customer', 'user')->whereBetween('sale_date', [$dateFrom, $dateTo]);
-        $scope($query);
-        $sales   = $query->latest('sale_date')->paginate(25)->withQueryString();
+        // Item type scope — only include sales that have at least one item of the selected type
+        $typeScope = fn($q) => $q->when($itemType, fn($q2) => $q2->whereHas('items', fn($q3) => $q3->where('item_type', $itemType)));
 
-        $summary = Sale::completed()->whereBetween('sale_date', [$dateFrom, $dateTo]);
-        $scope($summary);
-        $summary = $summary->selectRaw('
+        $query = Sale::completed()->with('customer', 'user')->whereBetween('sale_date', [$dateFrom, $dateTo]);
+        $scope($query);
+        $typeScope($query);
+        $sales = $query->latest('sale_date')->paginate(25)->withQueryString();
+
+        $summaryQ = Sale::completed()->whereBetween('sale_date', [$dateFrom, $dateTo]);
+        $scope($summaryQ);
+        $typeScope($summaryQ);
+        $summary = $summaryQ->selectRaw('
             COUNT(*) as total_invoices,
             SUM(total) as gross_revenue,
             SUM(discount) as total_discounts,
@@ -51,6 +57,7 @@ class ReportController extends Controller
 
         $daily = Sale::completed()->whereBetween('sale_date', [$dateFrom, $dateTo]);
         $scope($daily);
+        $typeScope($daily);
         $daily = $daily->selectRaw('DATE(sale_date) as date, SUM(total) as total, COUNT(*) as count')
             ->groupBy('date')->orderBy('date')->get();
 
@@ -63,6 +70,7 @@ class ReportController extends Controller
             ->whereIn('s.warehouse_id', $accessibleIds)
             ->when(! $user->seesAllUsers(), fn($q) => $q->where('s.user_id', $user->id))
             ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
+            ->when($itemType, fn($q) => $q->where('si.item_type', $itemType))
             ->selectRaw("
                 DATE(s.sale_date) as date,
                 SUM(
@@ -100,6 +108,7 @@ class ReportController extends Controller
         // ── Payment method breakdown ──────────────────────────────────────
         $paymentBase = Sale::completed()->whereBetween('sale_date', [$dateFrom, $dateTo]);
         $scope($paymentBase);
+        $typeScope($paymentBase);
         $paymentBreakdown = $paymentBase
             ->selectRaw('payment_method, COUNT(*) as count, SUM(total) as revenue, SUM(paid_amount) as collected, SUM(balance) as outstanding')
             ->groupBy('payment_method')
@@ -116,22 +125,28 @@ class ReportController extends Controller
         ];
 
         // Also attach per-day payment method data for chart
-        $dailyByMethod = DB::table('sales')
-            ->where('status', 'completed')
-            ->whereBetween('sale_date', [$dateFrom, $dateTo])
-            ->whereIn('warehouse_id', $accessibleIds)
-            ->when(! $user->seesAllUsers(), fn($q) => $q->where('user_id', $user->id))
-            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
-            ->selectRaw('DATE(sale_date) as date, payment_method, SUM(total) as revenue')
-            ->groupByRaw('DATE(sale_date), payment_method')
-            ->orderByRaw('DATE(sale_date)')
+        $dailyByMethod = DB::table('sales as s')
+            ->where('s.status', 'completed')
+            ->whereBetween('s.sale_date', [$dateFrom, $dateTo])
+            ->whereIn('s.warehouse_id', $accessibleIds)
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('s.user_id', $user->id))
+            ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
+            ->when($itemType, fn($q) => $q->whereExists(function ($sub) use ($itemType) {
+                $sub->select(DB::raw(1))
+                    ->from('sale_items')
+                    ->whereColumn('sale_items.sale_id', 's.id')
+                    ->where('sale_items.item_type', $itemType);
+            }))
+            ->selectRaw('DATE(s.sale_date) as date, s.payment_method, SUM(s.total) as revenue')
+            ->groupByRaw('DATE(s.sale_date), s.payment_method')
+            ->orderByRaw('DATE(s.sale_date)')
             ->get()
             ->groupBy('date');
 
         return view('reports.sales', compact(
             'sales', 'summary', 'daily', 'totalProfit',
             'paymentBreakdown', 'paymentMethods', 'dailyByMethod',
-            'dateFrom', 'dateTo', 'warehouses', 'warehouseId'
+            'itemType', 'dateFrom', 'dateTo', 'warehouses', 'warehouseId'
         ));
     }
 

@@ -28,6 +28,14 @@
             <label class="form-label">To</label>
             <input type="date" name="date_to" class="form-control form-control-sm" value="{{ $dateTo }}">
         </div>
+        <div>
+            <label class="form-label">Item Type</label>
+            <select name="item_type" class="form-select form-select-sm">
+                <option value="">All Types</option>
+                <option value="spare_part" {{ $itemType === 'spare_part' ? 'selected' : '' }}>Spare Parts</option>
+                <option value="vehicle"    {{ $itemType === 'vehicle'    ? 'selected' : '' }}>Vehicles</option>
+            </select>
+        </div>
         @include('partials.warehouse-filter')
         <div class="mt-auto">
             <button type="submit" class="btn btn-sm btn-primary"><i class="fa fa-filter me-1"></i>Apply</button>
