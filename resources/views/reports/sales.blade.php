@@ -239,7 +239,7 @@
 .col-filter:focus { outline:none; border-color:#6366f1; }
 th .th-inner { display:flex; align-items:center; gap:4px; }
 /* Items flat view */
-#items-flat-view { display:none; }
+#items-flat-view { }
 #items-flat-view .ifv-row:hover { background:#f1f5ff; }
 </style>
 <table class="table mb-0" id="invoice-table">
@@ -368,7 +368,7 @@ th .th-inner { display:flex; align-items:center; gap:4px; }
 @if($sales->hasPages())<div class="card-body border-top py-3">{{ $sales->links() }}</div>@endif
 
 {{-- ── Flat Items View ─────────────────────────────────────────────── --}}
-<div id="items-flat-view">
+<div class="table-responsive" id="items-flat-view" style="display:none">
 <table class="table mb-0">
     <thead>
         <tr>
@@ -446,7 +446,7 @@ function toggleItems(id) {
 function setView(view) {
     const isItems = view === 'items';
     document.getElementById('invoice-table').closest('.table-responsive').style.display = isItems ? 'none' : '';
-    document.getElementById('items-flat-view').style.display  = isItems ? '' : 'none';
+    document.getElementById('items-flat-view').style.display  = isItems ? 'block' : 'none';
     document.getElementById('export-items-btns').style.display = isItems ? '' : 'none';
     document.getElementById('btn-view-invoices').className = isItems ? 'btn btn-sm btn-outline-secondary' : 'btn btn-sm btn-primary';
     document.getElementById('btn-view-items').className    = isItems ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline-secondary';
