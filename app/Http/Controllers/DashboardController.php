@@ -156,6 +156,7 @@ class DashboardController extends Controller
             $returnedProfit += ($item->unit_price - $cost) * $item->quantity;
         }
 
+        // Sales gross profit only (revenue minus cost of goods, no expenses)
         $stats['month_profit'] = $profit - $returnedProfit;
 
         // ── Recent Returns ────────────────────────────
