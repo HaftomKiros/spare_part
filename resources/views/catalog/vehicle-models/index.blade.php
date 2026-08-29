@@ -80,7 +80,17 @@
             </td>
             <td class="text-muted">{{ $model->engine_cc ?? '—' }}</td>
             <td>Br {{ number_format($model->buying_price, 2) }}</td>
-            <td class="fw-semibold">Br {{ number_format($model->selling_price, 2) }}</td>
+            <td>
+                @if($model->selling_price_min > 0 || $model->selling_price_max > 0)
+                    <span class="small">
+                        <span class="text-muted">Br {{ number_format($model->selling_price_min, 2) }}</span>
+                        <span class="text-muted mx-1">—</span>
+                        <span class="fw-semibold text-success">Br {{ number_format($model->selling_price_max, 2) }}</span>
+                    </span>
+                @else
+                    <span class="text-muted">—</span>
+                @endif
+            </td>
             <td>
                 @php $stock = $model->stock; $qty = $stock?->current_stock ?? 0; @endphp
                 <span class="stock-pill {{ $qty <= 0 ? 'out' : ($stock?->isLow() ? 'low' : 'in-stock') }}">

@@ -65,8 +65,7 @@
             <th>Category</th>
             <th>Stock</th>
             <th>Reorder</th>
-            <th>Min Price</th>
-            <th>Max Price</th>
+            <th>Sell Price</th>
             <th>Status</th>
             <th class="text-end">Actions</th>
         </tr>
@@ -92,15 +91,10 @@
                 </span>
             </td>
             <td class="text-muted">{{ $part->reorder_level }}</td>
-            <td class="text-muted small">
-                @if($part->selling_price_min > 0)
-                    Br {{ number_format($part->selling_price_min, 2) }}
-                @else
-                    <span class="text-muted">—</span>
-                @endif
-            </td>
-            <td class="text-muted small">
-                @if($part->selling_price_max > 0)
+            <td class="small">
+                @if($part->selling_price_min > 0 || $part->selling_price_max > 0)
+                    <span class="text-muted">Br {{ number_format($part->selling_price_min, 2) }}</span>
+                    <span class="text-muted mx-1">—</span>
                     <span class="fw-semibold text-success">Br {{ number_format($part->selling_price_max, 2) }}</span>
                 @else
                     <span class="text-muted">—</span>
