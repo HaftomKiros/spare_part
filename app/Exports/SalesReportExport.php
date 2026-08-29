@@ -112,7 +112,7 @@ class SalesReportExport
         // ── Table rows ────────────────────────────────────────────────────
         foreach ($this->sales as $s) {
             $row++;
-            $itemCount = $s->items ? $s->items->count() : '—';
+            $itemCount = $s->relationLoaded('items') ? $s->items->count() : '—';
             $data = [
                 $s->invoice_number,
                 $s->customer_name ?? 'Walk-in',

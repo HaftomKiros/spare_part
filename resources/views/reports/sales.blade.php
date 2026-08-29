@@ -46,11 +46,11 @@
                 {{ \Carbon\Carbon::parse($dateFrom)->format('M d') }} — {{ \Carbon\Carbon::parse($dateTo)->format('M d, Y') }}
             </span>
             {{-- Export buttons --}}
-            <a href="{{ route('reports.sales.export.excel', array_filter(['date_from'=>$dateFrom,'date_to'=>$dateTo,'warehouse_id'=>$warehouseId,'item_type'=>$itemType])) }}"
+            <a href="{{ route('reports.sales.export.excel') }}?date_from={{ $dateFrom }}&date_to={{ $dateTo }}{{ $warehouseId ? '&warehouse_id='.$warehouseId : '' }}{{ $itemType ? '&item_type='.$itemType : '' }}"
                class="btn btn-sm btn-success" title="Export Excel">
                 <i class="fa fa-file-excel me-1"></i>Excel
             </a>
-            <a href="{{ route('reports.sales.export.pdf', array_filter(['date_from'=>$dateFrom,'date_to'=>$dateTo,'warehouse_id'=>$warehouseId,'item_type'=>$itemType])) }}"
+            <a href="{{ route('reports.sales.export.pdf') }}?date_from={{ $dateFrom }}&date_to={{ $dateTo }}{{ $warehouseId ? '&warehouse_id='.$warehouseId : '' }}{{ $itemType ? '&item_type='.$itemType : '' }}"
                class="btn btn-sm btn-danger" title="Export PDF" target="_blank">
                 <i class="fa fa-file-pdf me-1"></i>PDF
             </a>
