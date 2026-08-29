@@ -40,11 +40,20 @@
         <div class="mt-auto">
             <button type="submit" class="btn btn-sm btn-primary"><i class="fa fa-filter me-1"></i>Apply</button>
         </div>
-        <div class="mt-auto ms-auto">
+        <div class="mt-auto ms-auto d-flex align-items-center gap-2">
             <span class="rpt-period-badge">
                 <i class="fa fa-calendar-days"></i>
                 {{ \Carbon\Carbon::parse($dateFrom)->format('M d') }} — {{ \Carbon\Carbon::parse($dateTo)->format('M d, Y') }}
             </span>
+            {{-- Export buttons --}}
+            <a href="{{ route('reports.sales.export.excel', array_filter(['date_from'=>$dateFrom,'date_to'=>$dateTo,'warehouse_id'=>$warehouseId,'item_type'=>$itemType])) }}"
+               class="btn btn-sm btn-success" title="Export Excel">
+                <i class="fa fa-file-excel me-1"></i>Excel
+            </a>
+            <a href="{{ route('reports.sales.export.pdf', array_filter(['date_from'=>$dateFrom,'date_to'=>$dateTo,'warehouse_id'=>$warehouseId,'item_type'=>$itemType])) }}"
+               class="btn btn-sm btn-danger" title="Export PDF" target="_blank">
+                <i class="fa fa-file-pdf me-1"></i>PDF
+            </a>
         </div>
     </form>
 </div>
@@ -169,9 +178,24 @@
 </div>
 
 <div class="card">
-<div class="card-header d-flex align-items-center gap-2">
+<div class="card-header d-flex align-items-center gap-2 flex-wrap">
     <i class="fa fa-list text-primary"></i><span>Sales List</span>
-    <span class="badge bg-secondary-subtle text-secondary ms-auto" style="font-size:.72rem">{{ $sales->total() }} records</span>
+    <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:.72rem">{{ $sales->total() }} records</span>
+    {{-- Item type toggle tabs --}}
+    <div class="ms-auto d-flex gap-1">
+        <a href="{{ request()->fullUrlWithQuery(['item_type' => '']) }}"
+           class="btn btn-sm {{ !$itemType ? 'btn-primary' : 'btn-outline-secondary' }}">
+            <i class="fa fa-layer-group me-1"></i>All
+        </a>
+        <a href="{{ request()->fullUrlWithQuery(['item_type' => 'vehicle']) }}"
+           class="btn btn-sm {{ $itemType === 'vehicle' ? 'btn-warning' : 'btn-outline-secondary' }}">
+            <i class="fa fa-motorcycle me-1"></i>Vehicles
+        </a>
+        <a href="{{ request()->fullUrlWithQuery(['item_type' => 'spare_part']) }}"
+           class="btn btn-sm {{ $itemType === 'spare_part' ? 'btn-info' : 'btn-outline-secondary' }}">
+            <i class="fa fa-gears me-1"></i>Spare Parts
+        </a>
+    </div>
 </div>
 <div class="table-responsive">
 <table class="table">

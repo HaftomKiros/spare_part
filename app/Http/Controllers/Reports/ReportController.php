@@ -172,6 +172,82 @@ class ReportController extends Controller
         ));
     }
 
+    /* ── Sales Report — Export helpers ───────────────────────────────── */
+    private function buildSalesExportData(Request $request): array
+    {
+        $dateFrom      = $request->date_from ?? now()->startOfMonth()->format('Y-m-d');
+        $dateTo        = $request->date_to   ?? now()->format('Y-m-d');
+        $warehouseId   = $request->warehouse_id ? (int) $request->warehouse_id : null;
+        $itemType      = in_array($request->item_type, ['spare_part', 'vehicle']) ? $request->item_type : null;
+        $user          = auth()->user();
+        $accessibleIds = $user->accessibleWarehouseIds();
+        $warehouses    = $user->accessibleWarehouses()->get();
+        if ($warehouseId && ! in_array($warehouseId, $accessibleIds)) { $warehouseId = null; }
+
+        $scope     = fn($q) => $q->whereIn('warehouse_id', $accessibleIds)
+            ->when(! $user->seesAllUsers(), fn($q2) => $q2->where('user_id', $user->id))
+            ->when($warehouseId, fn($q2) => $q2->where('warehouse_id', $warehouseId));
+        $typeScope = fn($q) => $q->when($itemType, fn($q2) => $q2->whereHas('items', fn($q3) => $q3->where('item_type', $itemType)));
+
+        $salesQ = Sale::completed()->with('customer', 'user', 'warehouse', 'items')
+            ->whereBetween('sale_date', [$dateFrom, $dateTo]);
+        $scope($salesQ); $typeScope($salesQ);
+        $sales = $salesQ->latest('sale_date')->get(); // all records for export
+
+        $summaryQ = Sale::completed()->whereBetween('sale_date', [$dateFrom, $dateTo]);
+        $scope($summaryQ); $typeScope($summaryQ);
+        $summary = $summaryQ->selectRaw('COUNT(*) as total_invoices, SUM(total) as gross_revenue, SUM(discount) as total_discounts, SUM(tax) as total_tax, SUM(paid_amount) as total_collected, SUM(balance) as total_outstanding')->first();
+
+        // Total profit
+        $profitRows = DB::table('sale_items as si')
+            ->join('sales as s', 'si.sale_id', '=', 's.id')
+            ->leftJoin('vehicle_models as vm', 'si.vehicle_model_id', '=', 'vm.id')
+            ->where('s.status', 'completed')
+            ->whereBetween('s.sale_date', [$dateFrom, $dateTo])
+            ->whereIn('s.warehouse_id', $accessibleIds)
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('s.user_id', $user->id))
+            ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
+            ->when($itemType, fn($q) => $q->where('si.item_type', $itemType))
+            ->selectRaw("SUM(si.quantity * (si.unit_price - COALESCE(CASE WHEN si.item_type = 'vehicle' THEN vm.buying_price WHEN si.item_type = 'spare_part' THEN (SELECT pi2.unit_price FROM purchase_items pi2 JOIN purchases p2 ON pi2.purchase_id = p2.id WHERE pi2.spare_part_id = si.spare_part_id ORDER BY p2.purchase_date DESC LIMIT 1) ELSE 0 END, 0))) as profit")
+            ->value('profit');
+
+        $warehouseName = $warehouseId ? $warehouses->find($warehouseId)?->name : null;
+
+        return compact('sales', 'summary', 'dateFrom', 'dateTo', 'itemType', 'warehouseName', 'profitRows');
+    }
+
+    public function exportSalesExcel(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $data = $this->buildSalesExportData($request);
+        $export = new \App\Exports\SalesReportExport(
+            $data['sales'],
+            $data['summary'],
+            (float) ($data['profitRows'] ?? 0),
+            $data['dateFrom'],
+            $data['dateTo'],
+            $data['itemType'],
+            $data['warehouseName']
+        );
+        return $export->download();
+    }
+
+    public function exportSalesPdf(Request $request)
+    {
+        $data = $this->buildSalesExportData($request);
+        $pdf  = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.sales-pdf', [
+            'sales'         => $data['sales'],
+            'summary'       => $data['summary'],
+            'totalProfit'   => (float) ($data['profitRows'] ?? 0),
+            'dateFrom'      => $data['dateFrom'],
+            'dateTo'        => $data['dateTo'],
+            'itemType'      => $data['itemType'],
+            'warehouseName' => $data['warehouseName'],
+        ])->setPaper('a4', 'landscape');
+
+        $filename = 'sales-report-' . $data['dateFrom'] . '-' . $data['dateTo'] . '.pdf';
+        return $pdf->download($filename);
+    }
+
     /* ── Vehicles Report ──────────────────────────── */
     public function vehicles(Request $request)
     {
