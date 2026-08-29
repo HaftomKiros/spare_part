@@ -218,9 +218,11 @@ const allOutstanding = {{ (float)($summary->total_outstanding ?? 0) }};
 const allInvoices    = {{ (int)($summary->total_invoices ?? 0) }};
 
 // Daily data keyed by date for all methods
-const dailyLabels  = @json($daily->pluck('date')->map(fn($d)=>\Carbon\Carbon::parse($d)->format('M d')));
-const dailyRevAll  = @json($daily->pluck('total')->map(fn($v)=>(float)$v));
-const dailyProfit  = @json($daily->pluck('profit')->map(fn($v)=>(float)$v));
+const dailyLabels      = @json($daily->pluck('date')->map(fn($d)=>\Carbon\Carbon::parse($d)->format('M d')));
+const dailyRevAll      = @json($daily->pluck('total')->map(fn($v)=>(float)$v));
+const dailyProfit      = @json($daily->pluck('profit')->map(fn($v)=>(float)$v));
+const dailyVehicleRev  = @json($daily->pluck('vehicle_revenue')->map(fn($v)=>(float)$v));
+const dailySpareRev    = @json($daily->pluck('spare_part_revenue')->map(fn($v)=>(float)$v));
 
 // Per-method daily revenue: { cash: [...], bank_transfer: [...], ... }
 const methodLabels = @json(array_keys($paymentMethods));
@@ -253,6 +255,22 @@ if (ctx) {
                     borderRadius: 6,
                     borderSkipped: false,
                     order: 2
+                },
+                {
+                    label: 'Vehicles (Br)',
+                    data: dailyVehicleRev,
+                    backgroundColor: 'rgba(249,115,22,.65)',
+                    borderRadius: 4,
+                    borderSkipped: false,
+                    order: 3
+                },
+                {
+                    label: 'Spare Parts (Br)',
+                    data: dailySpareRev,
+                    backgroundColor: 'rgba(14,165,233,.65)',
+                    borderRadius: 4,
+                    borderSkipped: false,
+                    order: 4
                 },
                 {
                     label: 'Net Profit (Br)',
@@ -301,9 +319,12 @@ document.querySelectorAll('.pmt-toggle').forEach(card => {
             document.querySelector('.pmt-lbl').textContent    = 'Invoices';
             // Restore chart
             if (chart) {
-                chart.data.datasets[0].data  = dailyRevAll;
-                chart.data.datasets[0].label = 'Revenue (Br)';
-                chart.data.datasets[1].hidden = false; // show profit line for "all"
+                chart.data.datasets[0].data   = dailyRevAll;
+                chart.data.datasets[0].label  = 'Revenue (Br)';
+                chart.data.datasets[0].hidden = false;
+                chart.data.datasets[1].hidden = false; // vehicles
+                chart.data.datasets[2].hidden = false; // spare parts
+                chart.data.datasets[3].hidden = false; // profit line
                 chart.update();
             }
         } else {
@@ -319,11 +340,13 @@ document.querySelectorAll('.pmt-toggle').forEach(card => {
             document.querySelector('.pmt-val').textContent   = cnt.toLocaleString();
             document.querySelector('.pmt-lbl').textContent   = lbl + ' Invoices';
 
-            // Update chart to show only this method's revenue; hide profit line (not per-method)
+            // Update chart to show only this method's revenue; hide type breakdown and profit line
             if (chart) {
                 chart.data.datasets[0].data   = buildMethodDaily(method);
                 chart.data.datasets[0].label  = lbl + ' Revenue (Br)';
-                chart.data.datasets[1].hidden = true; // hide profit line when filtered
+                chart.data.datasets[1].hidden = true; // hide vehicles
+                chart.data.datasets[2].hidden = true; // hide spare parts
+                chart.data.datasets[3].hidden = true; // hide profit line
                 chart.update();
             }
         }

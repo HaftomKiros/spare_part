@@ -61,6 +61,28 @@ class ReportController extends Controller
         $daily = $daily->selectRaw('DATE(sale_date) as date, SUM(total) as total, COUNT(*) as count')
             ->groupBy('date')->orderBy('date')->get();
 
+        // ── Daily revenue split by item type for chart ───────────────────
+        $dailyItemType = DB::table('sale_items as si')
+            ->join('sales as s', 'si.sale_id', '=', 's.id')
+            ->where('s.status', 'completed')
+            ->whereBetween('s.sale_date', [$dateFrom, $dateTo])
+            ->whereIn('s.warehouse_id', $accessibleIds)
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('s.user_id', $user->id))
+            ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
+            ->selectRaw('DATE(s.sale_date) as date, si.item_type, SUM(si.total) as revenue')
+            ->groupByRaw('DATE(s.sale_date), si.item_type')
+            ->orderByRaw('DATE(s.sale_date)')
+            ->get()
+            ->groupBy('date');
+
+        // Attach per-type revenue to each daily row
+        $daily = $daily->map(function ($row) use ($dailyItemType) {
+            $byType = $dailyItemType[$row->date] ?? collect();
+            $row->vehicle_revenue    = (float) ($byType->firstWhere('item_type', 'vehicle')?->revenue    ?? 0);
+            $row->spare_part_revenue = (float) ($byType->firstWhere('item_type', 'spare_part')?->revenue ?? 0);
+            return $row;
+        });
+
         // ── Net Sales Profit per day (selling price − COGS) ──────────────
         $profitRows = DB::table('sale_items as si')
             ->join('sales as s', 'si.sale_id', '=', 's.id')
@@ -492,7 +514,39 @@ class ReportController extends Controller
             ->groupBy('suppliers.id', 'suppliers.name')
             ->orderByDesc('total')->limit(10)->get();
 
-        return view('reports.purchases', compact('purchases', 'summary', 'bySupplier', 'dateFrom', 'dateTo', 'warehouses', 'warehouseId'));
+        // Item type breakdown (vehicles vs spare parts)
+        $itemBreakdown = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->whereBetween('p.purchase_date', [$dateFrom, $dateTo])
+            ->whereIn('p.warehouse_id', $accessibleIds)
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('p.user_id', $user->id))
+            ->when($warehouseId, fn($q) => $q->where('p.warehouse_id', $warehouseId))
+            ->selectRaw("CASE WHEN pi.vehicle_model_id IS NOT NULL THEN 'vehicle' ELSE 'spare_part' END as item_type, SUM(pi.quantity) as qty, SUM(pi.total) as total")
+            ->groupByRaw("CASE WHEN pi.vehicle_model_id IS NOT NULL THEN 'vehicle' ELSE 'spare_part' END")
+            ->get()->keyBy('item_type');
+
+        // Daily split by item type for chart
+        $dailyRows = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->whereBetween('p.purchase_date', [$dateFrom, $dateTo])
+            ->whereIn('p.warehouse_id', $accessibleIds)
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('p.user_id', $user->id))
+            ->when($warehouseId, fn($q) => $q->where('p.warehouse_id', $warehouseId))
+            ->selectRaw("DATE(p.purchase_date) as date, CASE WHEN pi.vehicle_model_id IS NOT NULL THEN 'vehicle' ELSE 'spare_part' END as item_type, SUM(pi.total) as total")
+            ->groupByRaw("DATE(p.purchase_date), CASE WHEN pi.vehicle_model_id IS NOT NULL THEN 'vehicle' ELSE 'spare_part' END")
+            ->orderByRaw('DATE(p.purchase_date)')
+            ->get()->groupBy('date');
+
+        $chartDates      = $dailyRows->keys()->sort()->values();
+        $chartLabels     = $chartDates->map(fn($d) => \Carbon\Carbon::parse($d)->format('M d'));
+        $chartVehicles   = $chartDates->map(fn($d) => (float) ($dailyRows[$d]?->firstWhere('item_type','vehicle')?->total    ?? 0));
+        $chartSpareParts = $chartDates->map(fn($d) => (float) ($dailyRows[$d]?->firstWhere('item_type','spare_part')?->total ?? 0));
+
+        return view('reports.purchases', compact(
+            'purchases', 'summary', 'bySupplier',
+            'itemBreakdown', 'chartLabels', 'chartVehicles', 'chartSpareParts',
+            'dateFrom', 'dateTo', 'warehouses', 'warehouseId'
+        ));
     }
 
     /* ── Profit Report ────────────────────────────── */

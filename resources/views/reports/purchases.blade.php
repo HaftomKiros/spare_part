@@ -40,6 +40,37 @@
     <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon bg-danger-soft"><i class="fa fa-clock"></i></div><div class="stat-body"><div class="stat-value">Br {{ number_format($summary->total_balance,0) }}</div><div class="stat-label">Outstanding</div></div></div></div>
 </div>
 
+{{-- Item type breakdown --}}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning-soft"><i class="fa fa-motorcycle"></i></div>
+            <div class="stat-body">
+                <div class="stat-value">Br {{ number_format($itemBreakdown['vehicle']->total ?? 0, 0) }}</div>
+                <div class="stat-label">Vehicles <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:.65rem">{{ number_format($itemBreakdown['vehicle']->qty ?? 0) }} units</span></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-info-soft"><i class="fa fa-gears"></i></div>
+            <div class="stat-body">
+                <div class="stat-value">Br {{ number_format($itemBreakdown['spare_part']->total ?? 0, 0) }}</div>
+                <div class="stat-label">Spare Parts <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:.65rem">{{ number_format($itemBreakdown['spare_part']->qty ?? 0) }} units</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Daily purchases chart --}}
+<div class="card mb-4">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="fa fa-chart-bar text-primary"></i><span>Daily Purchases</span>
+        <span class="badge bg-primary-subtle text-primary-emphasis ms-auto" style="font-size:.72rem">{{ count($chartLabels) }} days</span>
+    </div>
+    <div class="card-body"><div class="chart-container"><canvas id="purchaseChart"></canvas></div></div>
+</div>
+
 <div class="row g-3">
 <div class="col-12 col-md-4">
 <div class="card h-100">
@@ -93,3 +124,46 @@
 </div>
 </div>
 @endsection
+@push('scripts')
+<script>
+const pCtx = document.getElementById('purchaseChart');
+if (pCtx) {
+    new Chart(pCtx, {
+        type: 'bar',
+        data: {
+            labels: @json($chartLabels),
+            datasets: [
+                {
+                    label: 'Vehicles (Br)',
+                    data: @json($chartVehicles),
+                    backgroundColor: 'rgba(249,115,22,.75)',
+                    borderRadius: 5,
+                    borderSkipped: false,
+                    stack: 'purchase'
+                },
+                {
+                    label: 'Spare Parts (Br)',
+                    data: @json($chartSpareParts),
+                    backgroundColor: 'rgba(14,165,233,.75)',
+                    borderRadius: 5,
+                    borderSkipped: false,
+                    stack: 'purchase'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, position: 'top' },
+                tooltip: { callbacks: { label: c => c.dataset.label + ': Br ' + parseFloat(c.raw).toLocaleString('en-US', { minimumFractionDigits: 2 }) } }
+            },
+            scales: {
+                x: { stacked: true, grid: { display: false } },
+                y: { stacked: true, beginAtZero: true, ticks: { callback: v => 'Br ' + v.toLocaleString() }, grid: { color: 'rgba(0,0,0,.04)' } }
+            }
+        }
+    });
+}
+</script>
+@endpush
