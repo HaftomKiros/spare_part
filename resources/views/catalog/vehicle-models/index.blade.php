@@ -56,7 +56,6 @@
             <th>Model</th>
             <th>Type</th>
             <th>Engine</th>
-            <th>Buy Price</th>
             <th>Sell Price</th>
             <th>Stock</th>
             <th>Status</th>
@@ -79,7 +78,6 @@
                 <span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:.72rem;padding:3px 8px;border-radius:5px">{{ $model->vehicleType->name }}</span>
             </td>
             <td class="text-muted">{{ $model->engine_cc ?? '—' }}</td>
-            <td>Br {{ number_format($model->buying_price, 2) }}</td>
             <td>
                 @if($model->selling_price_min > 0 || $model->selling_price_max > 0)
                     <span class="small">
