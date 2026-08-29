@@ -180,7 +180,18 @@
 <div class="card">
 <div class="card-header d-flex align-items-center gap-2 flex-wrap">
     <i class="fa fa-list text-primary"></i><span>Sales List</span>
-    <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:.72rem">{{ $sales->total() }} records</span>
+    <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:.72rem" id="records-count">{{ $sales->total() }} records</span>
+
+    {{-- View toggle: Invoices / Items --}}
+    <div class="d-flex gap-1 ms-2">
+        <button onclick="setView('invoices')" id="btn-view-invoices" class="btn btn-sm btn-primary">
+            <i class="fa fa-receipt me-1"></i>Invoices
+        </button>
+        <button onclick="setView('items')" id="btn-view-items" class="btn btn-sm btn-outline-secondary">
+            <i class="fa fa-list-ul me-1"></i>Items
+        </button>
+    </div>
+
     {{-- Item type toggle tabs --}}
     <div class="ms-auto d-flex gap-1">
         <a href="{{ request()->fullUrlWithQuery(['item_type' => '']) }}"
@@ -195,6 +206,14 @@
            class="btn btn-sm {{ $itemType === 'spare_part' ? 'btn-info' : 'btn-outline-secondary' }}">
             <i class="fa fa-gears me-1"></i>Spare Parts
         </a>
+    </div>
+
+    {{-- Export items buttons (shown in items view) --}}
+    <div id="export-items-btns" style="display:none" class="d-flex gap-1">
+        <a href="{{ route('reports.sales.export.items.excel') }}?date_from={{ $dateFrom }}&date_to={{ $dateTo }}{{ $warehouseId ? '&warehouse_id='.$warehouseId : '' }}{{ $itemType ? '&item_type='.$itemType : '' }}"
+           class="btn btn-sm btn-success"><i class="fa fa-file-excel me-1"></i>Excel Items</a>
+        <a href="{{ route('reports.sales.export.items.pdf') }}?date_from={{ $dateFrom }}&date_to={{ $dateTo }}{{ $warehouseId ? '&warehouse_id='.$warehouseId : '' }}{{ $itemType ? '&item_type='.$itemType : '' }}"
+           class="btn btn-sm btn-danger" target="_blank"><i class="fa fa-file-pdf me-1"></i>PDF Items</a>
     </div>
 </div>
 <div class="table-responsive">
@@ -215,27 +234,65 @@
 .item-type-spare_part { background:#f0f9ff; color:#0369a1; }
 .expand-icon { transition:transform .2s; color:#94a3b8; font-size:.75rem; }
 .sale-row.expanded .expand-icon { transform:rotate(90deg); color:#6366f1; }
+/* Column filter */
+.col-filter { font-size:.72rem; border:1px solid #e2e8f0; border-radius:6px; padding:2px 4px; color:#475569; background:#fff; cursor:pointer; }
+.col-filter:focus { outline:none; border-color:#6366f1; }
+th .th-inner { display:flex; align-items:center; gap:4px; }
+/* Items flat view */
+#items-flat-view { display:none; }
+#items-flat-view .ifv-row:hover { background:#f1f5ff; }
 </style>
-<table class="table mb-0">
+<table class="table mb-0" id="invoice-table">
     <thead>
         <tr>
             <th style="width:28px"></th>
-            <th>Invoice</th>
+            <th>
+                <div class="th-inner">Invoice
+                    <select class="col-filter" id="filter-invoice" onchange="applyFilters()">
+                        <option value="">All</option>
+                        @foreach($sales as $s)
+                        <option value="{{ $s->invoice_number }}">{{ $s->invoice_number }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </th>
             <th>Customer</th>
             <th>Date</th>
             <th>Items</th>
             <th>Total</th>
             <th>Paid</th>
             <th>Balance</th>
-            <th>Payment</th>
+            <th>
+                <div class="th-inner">Payment
+                    <select class="col-filter" id="filter-payment" onchange="applyFilters()">
+                        <option value="">All</option>
+                        <option value="cash">Cash</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="cheque">Cheque</option>
+                        <option value="credit">Credit</option>
+                    </select>
+                </div>
+            </th>
             <th class="d-none d-lg-table-cell">Warehouse</th>
-            <th>By</th>
+            <th>
+                <div class="th-inner">By
+                    <select class="col-filter" id="filter-by" onchange="applyFilters()">
+                        <option value="">All</option>
+                        @foreach($sales->unique(fn($s)=>$s->user->name) as $s)
+                        <option value="{{ $s->user->name }}">{{ $s->user->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </th>
         </tr>
     </thead>
-    <tbody>
+    <tbody id="invoice-tbody">
         @forelse($sales as $s)
         {{-- Invoice row --}}
-        <tr class="sale-row" onclick="toggleItems('items-{{ $s->id }}')" id="row-{{ $s->id }}">
+        <tr class="sale-row" onclick="toggleItems('items-{{ $s->id }}')" id="row-{{ $s->id }}"
+            data-invoice="{{ $s->invoice_number }}"
+            data-payment="{{ $s->payment_method }}"
+            data-by="{{ $s->user->name }}">
             <td class="text-center"><i class="fa fa-chevron-right expand-icon"></i></td>
             <td>
                 <a href="{{ route('sales.show',$s) }}" class="text-primary fw-semibold" onclick="event.stopPropagation()">{{ $s->invoice_number }}</a>
@@ -309,6 +366,57 @@
 </table>
 </div>
 @if($sales->hasPages())<div class="card-body border-top py-3">{{ $sales->links() }}</div>@endif
+
+{{-- ── Flat Items View ─────────────────────────────────────────────── --}}
+<div id="items-flat-view">
+<table class="table mb-0">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Invoice</th>
+            <th>Customer</th>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Item Name</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Total</th>
+            <th>Payment</th>
+            <th class="d-none d-lg-table-cell">Warehouse</th>
+            <th>By</th>
+        </tr>
+    </thead>
+    <tbody id="items-flat-tbody">
+        @php $flatIdx = 0; @endphp
+        @foreach($sales as $s)
+            @foreach($s->items as $item)
+            <tr class="ifv-row"
+                data-invoice="{{ $s->invoice_number }}"
+                data-payment="{{ $s->payment_method }}"
+                data-by="{{ $s->user->name }}"
+                data-type="{{ $item->item_type }}">
+                <td class="text-muted small">{{ ++$flatIdx }}</td>
+                <td><a href="{{ route('sales.show',$s) }}" class="text-primary fw-semibold">{{ $s->invoice_number }}</a></td>
+                <td class="text-muted small">{{ $s->customer_name ?? 'Walk-in' }}</td>
+                <td class="text-muted small">{{ $s->sale_date->format('M d, Y') }}</td>
+                <td><span class="item-type-badge item-type-{{ $item->item_type }}">
+                    @if($item->item_type === 'vehicle')<i class="fa fa-motorcycle"></i> Vehicle
+                    @else<i class="fa fa-gears"></i> Spare Part@endif
+                </span></td>
+                <td class="fw-semibold">{{ $item->item_name }}</td>
+                <td>{{ number_format($item->quantity) }}</td>
+                <td class="text-muted small">Br {{ number_format($item->unit_price,2) }}</td>
+                <td class="fw-semibold" style="color:#6366f1">Br {{ number_format($item->total,2) }}</td>
+                <td><span class="badge bg-{{ $s->payment_status_badge }}">{{ ucfirst(str_replace('_',' ',$s->payment_method??'')) }}</span></td>
+                <td class="text-muted small d-none d-lg-table-cell">{{ $s->warehouse?->name ?? '—' }}</td>
+                <td class="text-muted small">{{ $s->user->name }}</td>
+            </tr>
+            @endforeach
+        @endforeach
+    </tbody>
+</table>
+</div>
+
 </div>
 @endsection
 @push('scripts')
@@ -329,6 +437,48 @@ function toggleItems(id) {
     const isOpen = itemsRow.classList.contains('show');
     itemsRow.classList.toggle('show', !isOpen);
     if (saleRow) saleRow.classList.toggle('expanded', !isOpen);
+}
+
+// ── View toggle (Invoices / Items) ────────────────────────────────────
+function setView(view) {
+    const isItems = view === 'items';
+    document.getElementById('invoice-table').closest('.table-responsive').style.display = isItems ? 'none' : '';
+    document.getElementById('items-flat-view').style.display  = isItems ? '' : 'none';
+    document.getElementById('export-items-btns').style.display = isItems ? '' : 'none';
+    document.getElementById('btn-view-invoices').className = isItems ? 'btn btn-sm btn-outline-secondary' : 'btn btn-sm btn-primary';
+    document.getElementById('btn-view-items').className    = isItems ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline-secondary';
+    applyFilters();
+}
+
+// ── Column filters ────────────────────────────────────────────────────
+function applyFilters() {
+    const inv     = document.getElementById('filter-invoice').value.toLowerCase();
+    const payment = document.getElementById('filter-payment').value.toLowerCase();
+    const by      = document.getElementById('filter-by').value.toLowerCase();
+
+    // Filter invoice rows
+    let visibleCount = 0;
+    document.querySelectorAll('#invoice-tbody .sale-row').forEach(row => {
+        const matchInv     = !inv     || row.dataset.invoice?.toLowerCase() === inv;
+        const matchPayment = !payment || row.dataset.payment?.toLowerCase() === payment;
+        const matchBy      = !by      || row.dataset.by?.toLowerCase() === by;
+        const visible      = matchInv && matchPayment && matchBy;
+        row.style.display  = visible ? '' : 'none';
+        // Also hide/show the items sub-row
+        const itemsRow = document.getElementById('items-' + row.id.replace('row-',''));
+        if (itemsRow) itemsRow.style.display = visible && itemsRow.classList.contains('show') ? 'table-row' : (visible ? '' : 'none');
+        if (visible) visibleCount++;
+    });
+
+    // Filter flat items rows
+    document.querySelectorAll('#items-flat-tbody .ifv-row').forEach(row => {
+        const matchInv     = !inv     || row.dataset.invoice?.toLowerCase() === inv;
+        const matchPayment = !payment || row.dataset.payment?.toLowerCase() === payment;
+        const matchBy      = !by      || row.dataset.by?.toLowerCase() === by;
+        row.style.display  = matchInv && matchPayment && matchBy ? '' : 'none';
+    });
+
+    document.getElementById('records-count').textContent = visibleCount + ' records';
 }
 
 // ── Payment method filter toggle ─────────────────────────────────────

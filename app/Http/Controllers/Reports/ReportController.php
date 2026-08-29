@@ -248,6 +248,98 @@ class ReportController extends Controller
         return $pdf->download($filename);
     }
 
+    public function exportSalesItemsExcel(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $data      = $this->buildSalesExportData($request);
+        $dateFrom  = $data['dateFrom'];
+        $dateTo    = $data['dateTo'];
+        $itemType  = $data['itemType'];
+        $warehouse = $data['warehouseName'];
+
+        // Flatten all sale items
+        $rows = [];
+        foreach ($data['sales'] as $sale) {
+            foreach ($sale->items as $item) {
+                if ($itemType && $item->item_type !== $itemType) continue;
+                $rows[] = [
+                    $sale->invoice_number,
+                    $sale->customer_name ?? 'Walk-in',
+                    $sale->sale_date->format('M d, Y'),
+                    ucfirst(str_replace('_', ' ', $item->item_type)),
+                    $item->item_name,
+                    $item->quantity,
+                    number_format($item->unit_price, 2),
+                    number_format($item->total, 2),
+                    ucfirst(str_replace('_', ' ', $sale->payment_method ?? '')),
+                    $sale->warehouse?->name ?? '—',
+                    $sale->user->name,
+                ];
+            }
+        }
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Sales Items');
+
+        // Title
+        $sheet->mergeCells('A1:K1');
+        $sheet->setCellValue('A1', 'Sales Items Report — ' . \Carbon\Carbon::parse($dateFrom)->format('M d, Y') . ' to ' . \Carbon\Carbon::parse($dateTo)->format('M d, Y'));
+        $sheet->getStyle('A1')->applyFromArray([
+            'font'      => ['bold' => true, 'size' => 14, 'color' => ['argb' => 'FF6366F1']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+        ]);
+
+        // Headers
+        $headers = ['Invoice', 'Customer', 'Date', 'Type', 'Item Name', 'Qty', 'Unit Price (Br)', 'Total (Br)', 'Payment', 'Warehouse', 'By'];
+        foreach ($headers as $i => $h) {
+            $col = chr(65 + $i);
+            $sheet->setCellValue("{$col}2", $h);
+            $sheet->getStyle("{$col}2")->applyFromArray([
+                'font'      => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
+                'fill'      => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1E293B']],
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+            ]);
+        }
+
+        // Data rows
+        foreach ($rows as $r => $row) {
+            foreach ($row as $i => $val) {
+                $col = chr(65 + $i);
+                $sheet->setCellValue("{$col}" . ($r + 3), $val);
+            }
+            if ($r % 2 === 0) {
+                $sheet->getStyle("A" . ($r + 3) . ":K" . ($r + 3))->applyFromArray([
+                    'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF8FAFC']],
+                ]);
+            }
+        }
+
+        // Column widths
+        foreach ([16, 20, 12, 12, 28, 6, 16, 16, 14, 18, 14] as $i => $w) {
+            $sheet->getColumnDimension(chr(65 + $i))->setWidth($w);
+        }
+
+        $writer   = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $filename = 'sales-items-' . $dateFrom . '-' . $dateTo . '.xlsx';
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+    }
+
+    public function exportSalesItemsPdf(Request $request)
+    {
+        $data = $this->buildSalesExportData($request);
+        $pdf  = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.sales-items-pdf', [
+            'sales'         => $data['sales'],
+            'dateFrom'      => $data['dateFrom'],
+            'dateTo'        => $data['dateTo'],
+            'itemType'      => $data['itemType'],
+            'warehouseName' => $data['warehouseName'],
+        ])->setPaper('a4', 'landscape');
+        $filename = 'sales-items-' . $data['dateFrom'] . '-' . $data['dateTo'] . '.pdf';
+        return $pdf->download($filename);
+    }
+
     /* ── Vehicles Report ──────────────────────────── */
     public function vehicles(Request $request)
     {

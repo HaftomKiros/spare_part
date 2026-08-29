@@ -240,6 +240,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('expenses',    [ReportController::class, 'expenses'])  ->name('expenses')   ->middleware('perm:reports.expenses');
         Route::get('sales/export/excel', [ReportController::class, 'exportSalesExcel'])->name('sales.export.excel')->middleware('perm:reports.sales');
         Route::get('sales/export/pdf',   [ReportController::class, 'exportSalesPdf'])  ->name('sales.export.pdf')  ->middleware('perm:reports.sales');
+        Route::get('sales/export/items/excel', [ReportController::class, 'exportSalesItemsExcel'])->name('sales.export.items.excel')->middleware('perm:reports.sales');
+        Route::get('sales/export/items/pdf',   [ReportController::class, 'exportSalesItemsPdf'])  ->name('sales.export.items.pdf')  ->middleware('perm:reports.sales');
     });
 
     // ── SETTINGS ─────────────────────────────────────────────────────────
