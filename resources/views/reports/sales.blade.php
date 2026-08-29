@@ -42,42 +42,82 @@
 </div>
 
 <div class="row g-3 mb-4">
+
+    {{-- ── Invoices card — acts as the "All" toggle ── --}}
     <div class="col-6 col-md-2">
-        <div class="stat-card">
+        <div class="stat-card pmt-toggle active" data-method="all" role="button" style="cursor:pointer;border:2px solid transparent;transition:border-color .2s">
             <div class="stat-icon bg-primary-soft"><i class="fa fa-receipt"></i></div>
-            <div class="stat-body"><div class="stat-value">{{ number_format($summary->total_invoices) }}</div><div class="stat-label">Invoices</div></div>
+            <div class="stat-body">
+                <div class="stat-value pmt-val" data-all="{{ $summary->total_invoices }}">{{ number_format($summary->total_invoices) }}</div>
+                <div class="stat-label pmt-lbl" data-all="Invoices">Invoices</div>
+                {{-- per-method counts hidden --}}
+                @foreach($paymentMethods as $key => $pm)
+                    <span class="d-none pmt-count-{{ $key }}">{{ $paymentBreakdown[$key]->count ?? 0 }}</span>
+                @endforeach
+            </div>
         </div>
     </div>
+
+    {{-- ── Revenue ── --}}
     <div class="col-6 col-md-2">
         <div class="stat-card">
             <div class="stat-icon bg-success-soft"><i class="fa fa-chart-line"></i></div>
-            <div class="stat-body"><div class="stat-value">Br {{ number_format($summary->gross_revenue,0) }}</div><div class="stat-label">Revenue</div></div>
+            <div class="stat-body">
+                <div class="stat-value" id="rev-value">Br {{ number_format($summary->gross_revenue,0) }}</div>
+                <div class="stat-label">Revenue</div>
+            </div>
         </div>
     </div>
+
+    {{-- ── Discounts ── --}}
     <div class="col-6 col-md-2">
         <div class="stat-card">
             <div class="stat-icon bg-warning-soft"><i class="fa fa-tag"></i></div>
             <div class="stat-body"><div class="stat-value">Br {{ number_format($summary->total_discounts,0) }}</div><div class="stat-label">Discounts</div></div>
         </div>
     </div>
+
+    {{-- ── Tax ── --}}
     <div class="col-6 col-md-2">
         <div class="stat-card">
             <div class="stat-icon bg-info-soft"><i class="fa fa-percent"></i></div>
             <div class="stat-body"><div class="stat-value">Br {{ number_format($summary->total_tax,0) }}</div><div class="stat-label">Tax</div></div>
         </div>
     </div>
+
+    {{-- ── Collected + Outstanding combined toggle card ── --}}
     <div class="col-6 col-md-2">
-        <div class="stat-card">
-            <div class="stat-icon bg-success-soft"><i class="fa fa-circle-check"></i></div>
-            <div class="stat-body"><div class="stat-value">Br {{ number_format($summary->total_collected,0) }}</div><div class="stat-label">Collected</div></div>
+        <div class="stat-card" style="position:relative;min-height:90px">
+            {{-- Collected face --}}
+            <div id="face-collected" style="transition:opacity .25s">
+                <div class="stat-icon bg-success-soft"><i class="fa fa-circle-check"></i></div>
+                <div class="stat-body">
+                    <div class="stat-value" id="col-value">Br {{ number_format($summary->total_collected,0) }}</div>
+                    <div class="stat-label d-flex align-items-center gap-1">
+                        Collected
+                        <button onclick="toggleColOut()" class="btn btn-link btn-sm p-0 ms-1 text-muted" title="Show Outstanding" style="font-size:.7rem;line-height:1">
+                            <i class="fa fa-arrow-right-arrow-left"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {{-- Outstanding face --}}
+            <div id="face-outstanding" style="display:none">
+                <div class="stat-icon bg-danger-soft"><i class="fa fa-clock"></i></div>
+                <div class="stat-body">
+                    <div class="stat-value" id="out-value">Br {{ number_format($summary->total_outstanding,0) }}</div>
+                    <div class="stat-label d-flex align-items-center gap-1">
+                        Outstanding
+                        <button onclick="toggleColOut()" class="btn btn-link btn-sm p-0 ms-1 text-muted" title="Show Collected" style="font-size:.7rem;line-height:1">
+                            <i class="fa fa-arrow-right-arrow-left"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="col-6 col-md-2">
-        <div class="stat-card">
-            <div class="stat-icon bg-danger-soft"><i class="fa fa-clock"></i></div>
-            <div class="stat-body"><div class="stat-value">Br {{ number_format($summary->total_outstanding,0) }}</div><div class="stat-label">Outstanding</div></div>
-        </div>
-    </div>
+
+    {{-- ── Net Sales Profit ── --}}
     <div class="col-6 col-md-2">
         <div class="stat-card">
             <div class="stat-icon bg-success-soft"><i class="fa fa-sack-dollar"></i></div>
@@ -87,6 +127,29 @@
             </div>
         </div>
     </div>
+
+</div>
+
+{{-- ── Payment method breakdown row ── --}}
+<div class="row g-3 mb-4">
+    @foreach($paymentMethods as $key => $pm)
+    @php $row = $paymentBreakdown[$key] ?? null; @endphp
+    <div class="col-6 col-md-3">
+        <div class="stat-card pmt-toggle {{ $loop->first ? '' : '' }}"
+             data-method="{{ $key }}"
+             data-revenue="{{ $row?->revenue ?? 0 }}"
+             data-collected="{{ $row?->collected ?? 0 }}"
+             data-outstanding="{{ $row?->outstanding ?? 0 }}"
+             data-count="{{ $row?->count ?? 0 }}"
+             role="button" style="cursor:pointer;border:2px solid transparent;transition:border-color .2s">
+            <div class="stat-icon bg-{{ $pm['color'] }}-soft"><i class="fa {{ $pm['icon'] }}"></i></div>
+            <div class="stat-body">
+                <div class="stat-value">Br {{ number_format($row?->revenue ?? 0, 0) }}</div>
+                <div class="stat-label">{{ $pm['label'] }} <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:.65rem">{{ $row?->count ?? 0 }}</span></div>
+            </div>
+        </div>
+    </div>
+    @endforeach
 </div>
 
 <div class="card mb-4">
@@ -131,44 +194,130 @@
 @endsection
 @push('scripts')
 <script>
+// ── Collected / Outstanding toggle ───────────────────────────────────
+let showingCollected = true;
+function toggleColOut() {
+    showingCollected = !showingCollected;
+    document.getElementById('face-collected').style.display  = showingCollected ? '' : 'none';
+    document.getElementById('face-outstanding').style.display = showingCollected ? 'none' : '';
+}
+
+// ── Payment method filter toggle ─────────────────────────────────────
+// Data passed from PHP
+const allRevenue     = {{ (float)($summary->gross_revenue ?? 0) }};
+const allCollected   = {{ (float)($summary->total_collected ?? 0) }};
+const allOutstanding = {{ (float)($summary->total_outstanding ?? 0) }};
+const allInvoices    = {{ (int)($summary->total_invoices ?? 0) }};
+
+// Daily data keyed by date for all methods
+const dailyLabels  = @json($daily->pluck('date')->map(fn($d)=>\Carbon\Carbon::parse($d)->format('M d')));
+const dailyRevAll  = @json($daily->pluck('total')->map(fn($v)=>(float)$v));
+const dailyProfit  = @json($daily->pluck('profit')->map(fn($v)=>(float)$v));
+
+// Per-method daily revenue: { cash: [...], bank_transfer: [...], ... }
+const methodLabels = @json(array_keys($paymentMethods));
+const dailyDates   = @json($daily->pluck('date'));
+
+const dailyByMethod = @json($dailyByMethod->map(fn($rows)=>$rows->keyBy('payment_method')));
+
+function buildMethodDaily(method) {
+    return dailyDates.map(date => {
+        const byDate = dailyByMethod[date];
+        if (!byDate) return 0;
+        const row = byDate[method];
+        return row ? parseFloat(row.revenue) : 0;
+    });
+}
+
+// ── Chart setup ──────────────────────────────────────────────────────
 const ctx = document.getElementById('dailyChart');
-if(ctx) {
-    new Chart(ctx,{
-        type:'bar',
-        data:{
-            labels: @json($daily->pluck('date')->map(fn($d)=>\Carbon\Carbon::parse($d)->format('M d'))),
-            datasets:[
+let chart;
+if (ctx) {
+    chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dailyLabels,
+            datasets: [
                 {
-                    label:'Revenue (Br)',
-                    data:@json($daily->pluck('total')),
-                    backgroundColor:'rgba(99,102,241,.75)',
-                    borderRadius:6,
-                    borderSkipped:false,
-                    order:2
+                    label: 'Revenue (Br)',
+                    data: dailyRevAll,
+                    backgroundColor: 'rgba(99,102,241,.75)',
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    order: 2
                 },
                 {
-                    label:'Net Profit (Br)',
-                    data:@json($daily->pluck('profit')),
-                    type:'line',
-                    borderColor:'rgba(16,185,129,1)',
-                    backgroundColor:'rgba(16,185,129,.15)',
-                    pointBackgroundColor:'rgba(16,185,129,1)',
-                    pointRadius:4,
-                    fill:true,
-                    tension:0.3,
-                    order:1
+                    label: 'Net Profit (Br)',
+                    data: dailyProfit,
+                    type: 'line',
+                    borderColor: 'rgba(16,185,129,1)',
+                    backgroundColor: 'rgba(16,185,129,.15)',
+                    pointBackgroundColor: 'rgba(16,185,129,1)',
+                    pointRadius: 4,
+                    fill: true,
+                    tension: 0.3,
+                    order: 1
                 }
             ]
         },
-        options:{
-            responsive:true,maintainAspectRatio:false,
-            plugins:{
-                legend:{display:true,position:'top'},
-                tooltip:{callbacks:{label:c=>'Br '+parseFloat(c.raw).toLocaleString('en-US',{minimumFractionDigits:2})}}
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, position: 'top' },
+                tooltip: { callbacks: { label: c => 'Br ' + parseFloat(c.raw).toLocaleString('en-US', { minimumFractionDigits: 2 }) } }
             },
-            scales:{y:{beginAtZero:true,ticks:{callback:v=>'Br '+v.toLocaleString()},grid:{color:'rgba(0,0,0,.04)'}},x:{grid:{display:false}}}
+            scales: {
+                y: { beginAtZero: true, ticks: { callback: v => 'Br ' + v.toLocaleString() }, grid: { color: 'rgba(0,0,0,.04)' } },
+                x: { grid: { display: false } }
+            }
         }
     });
 }
+
+// ── Toggle click handler ──────────────────────────────────────────────
+document.querySelectorAll('.pmt-toggle').forEach(card => {
+    card.addEventListener('click', function () {
+        const method = this.dataset.method;
+
+        // Highlight active card
+        document.querySelectorAll('.pmt-toggle').forEach(c => c.style.borderColor = 'transparent');
+        this.style.borderColor = 'var(--bs-primary, #6366f1)';
+
+        if (method === 'all') {
+            // Restore all totals
+            document.getElementById('rev-value').textContent  = 'Br ' + allRevenue.toLocaleString('en-US', {maximumFractionDigits:0});
+            document.getElementById('col-value').textContent  = 'Br ' + allCollected.toLocaleString('en-US', {maximumFractionDigits:0});
+            document.getElementById('out-value').textContent  = 'Br ' + allOutstanding.toLocaleString('en-US', {maximumFractionDigits:0});
+            document.querySelector('.pmt-val').textContent    = allInvoices.toLocaleString();
+            document.querySelector('.pmt-lbl').textContent    = 'Invoices';
+            // Restore chart
+            if (chart) {
+                chart.data.datasets[0].data = dailyRevAll;
+                chart.data.datasets[0].label = 'Revenue (Br)';
+                chart.update();
+            }
+        } else {
+            const rev  = parseFloat(this.dataset.revenue  || 0);
+            const col  = parseFloat(this.dataset.collected || 0);
+            const out  = parseFloat(this.dataset.outstanding || 0);
+            const cnt  = parseInt(this.dataset.count || 0);
+            const lbl  = this.querySelector('.stat-label')?.textContent?.replace(/\d+/g,'').trim() ?? method;
+
+            document.getElementById('rev-value').textContent = 'Br ' + rev.toLocaleString('en-US', {maximumFractionDigits:0});
+            document.getElementById('col-value').textContent = 'Br ' + col.toLocaleString('en-US', {maximumFractionDigits:0});
+            document.getElementById('out-value').textContent = 'Br ' + out.toLocaleString('en-US', {maximumFractionDigits:0});
+            document.querySelector('.pmt-val').textContent   = cnt.toLocaleString();
+            document.querySelector('.pmt-lbl').textContent   = lbl + ' Invoices';
+
+            // Update chart to show only this method
+            if (chart) {
+                chart.data.datasets[0].data  = buildMethodDaily(method);
+                chart.data.datasets[0].label = lbl + ' Revenue (Br)';
+                chart.update();
+            }
+        }
+    });
+});
 </script>
 @endpush

@@ -97,7 +97,42 @@ class ReportController extends Controller
 
         $totalProfit = $daily->sum('profit');
 
-        return view('reports.sales', compact('sales', 'summary', 'daily', 'totalProfit', 'dateFrom', 'dateTo', 'warehouses', 'warehouseId'));
+        // ── Payment method breakdown ──────────────────────────────────────
+        $paymentBase = Sale::completed()->whereBetween('sale_date', [$dateFrom, $dateTo]);
+        $scope($paymentBase);
+        $paymentBreakdown = $paymentBase
+            ->selectRaw('payment_method, COUNT(*) as count, SUM(total) as revenue, SUM(paid_amount) as collected, SUM(balance) as outstanding')
+            ->groupBy('payment_method')
+            ->orderBy('revenue', 'desc')
+            ->get()
+            ->keyBy('payment_method');
+
+        // Known methods in display order
+        $paymentMethods = [
+            'cash'          => ['label' => 'Cash',          'icon' => 'fa-money-bill-wave',  'color' => 'success'],
+            'bank_transfer' => ['label' => 'Bank Transfer', 'icon' => 'fa-building-columns', 'color' => 'info'],
+            'cheque'        => ['label' => 'Cheque',        'icon' => 'fa-money-check',      'color' => 'primary'],
+            'credit'        => ['label' => 'Credit',        'icon' => 'fa-credit-card',      'color' => 'warning'],
+        ];
+
+        // Also attach per-day payment method data for chart
+        $dailyByMethod = DB::table('sales')
+            ->where('status', 'completed')
+            ->whereBetween('sale_date', [$dateFrom, $dateTo])
+            ->whereIn('warehouse_id', $accessibleIds)
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('user_id', $user->id))
+            ->when($warehouseId, fn($q) => $q->where('warehouse_id', $warehouseId))
+            ->selectRaw('DATE(sale_date) as date, payment_method, SUM(total) as revenue')
+            ->groupByRaw('DATE(sale_date), payment_method')
+            ->orderByRaw('DATE(sale_date)')
+            ->get()
+            ->groupBy('date');
+
+        return view('reports.sales', compact(
+            'sales', 'summary', 'daily', 'totalProfit',
+            'paymentBreakdown', 'paymentMethods', 'dailyByMethod',
+            'dateFrom', 'dateTo', 'warehouses', 'warehouseId'
+        ));
     }
 
     /* ── Vehicles Report ──────────────────────────── */
