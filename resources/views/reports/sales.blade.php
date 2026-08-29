@@ -400,8 +400,11 @@ th .th-inner { display:flex; align-items:center; gap:4px; }
                 <td class="text-muted small">{{ $s->customer_name ?? 'Walk-in' }}</td>
                 <td class="text-muted small">{{ $s->sale_date->format('M d, Y') }}</td>
                 <td><span class="item-type-badge item-type-{{ $item->item_type }}">
-                    @if($item->item_type === 'vehicle')<i class="fa fa-motorcycle"></i> Vehicle
-                    @else<i class="fa fa-gears"></i> Spare Part@endif
+                    @if($item->item_type === 'vehicle')
+                        <i class="fa fa-motorcycle"></i> Vehicle
+                    @else
+                        <i class="fa fa-gears"></i> Spare Part
+                    @endif
                 </span></td>
                 <td class="fw-semibold">{{ $item->item_name }}</td>
                 <td>{{ number_format($item->quantity) }}</td>
