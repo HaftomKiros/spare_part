@@ -106,7 +106,7 @@
             <div class="stat-value {{ $stats['month_profit'] < 0 ? 'text-danger' : '' }}">
                 <span class="stat-currency">Br</span>{{ number_format($stats['month_profit'], 0) }}
             </div>
-            <div class="stat-label">Month Profit</div>
+            <div class="stat-label">Monthly Sales Net Profit</div>
             <div class="stat-change {{ $stats['month_profit'] >= 0 ? 'up' : 'down' }}">
                 <i class="fa fa-{{ $stats['month_profit'] >= 0 ? 'arrow-up' : 'arrow-down' }}"></i>
                 Net earnings
