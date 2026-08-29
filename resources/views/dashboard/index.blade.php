@@ -83,7 +83,7 @@
             <div class="stat-value">
                 <span class="stat-currency">Br</span>{{ number_format($stats['month_sales'], 0) }}
             </div>
-            <div class="stat-label">Month Net Sales</div>
+            <div class="stat-label">Month Sales Revenue</div>
             <div class="stat-change {{ $stats['month_returns'] > 0 ? 'down' : 'neutral' }}">
                 @if($stats['month_returns'] > 0)
                     <i class="fa fa-rotate-left"></i>
