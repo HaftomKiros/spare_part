@@ -293,8 +293,9 @@ document.querySelectorAll('.pmt-toggle').forEach(card => {
             document.querySelector('.pmt-lbl').textContent    = 'Invoices';
             // Restore chart
             if (chart) {
-                chart.data.datasets[0].data = dailyRevAll;
+                chart.data.datasets[0].data  = dailyRevAll;
                 chart.data.datasets[0].label = 'Revenue (Br)';
+                chart.data.datasets[1].hidden = false; // show profit line for "all"
                 chart.update();
             }
         } else {
@@ -310,10 +311,11 @@ document.querySelectorAll('.pmt-toggle').forEach(card => {
             document.querySelector('.pmt-val').textContent   = cnt.toLocaleString();
             document.querySelector('.pmt-lbl').textContent   = lbl + ' Invoices';
 
-            // Update chart to show only this method
+            // Update chart to show only this method's revenue; hide profit line (not per-method)
             if (chart) {
-                chart.data.datasets[0].data  = buildMethodDaily(method);
-                chart.data.datasets[0].label = lbl + ' Revenue (Br)';
+                chart.data.datasets[0].data   = buildMethodDaily(method);
+                chart.data.datasets[0].label  = lbl + ' Revenue (Br)';
+                chart.data.datasets[1].hidden = true; // hide profit line when filtered
                 chart.update();
             }
         }
