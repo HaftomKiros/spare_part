@@ -38,7 +38,7 @@ class ReportController extends Controller
         // Item type scope — only include sales that have at least one item of the selected type
         $typeScope = fn($q) => $q->when($itemType, fn($q2) => $q2->whereHas('items', fn($q3) => $q3->where('item_type', $itemType)));
 
-        $query = Sale::completed()->with('customer', 'user')->whereBetween('sale_date', [$dateFrom, $dateTo]);
+        $query = Sale::completed()->with('customer', 'user', 'warehouse', 'items.sparePart', 'items.vehicleModel')->whereBetween('sale_date', [$dateFrom, $dateTo]);
         $scope($query);
         $typeScope($query);
         $sales = $query->latest('sale_date')->paginate(25)->withQueryString();

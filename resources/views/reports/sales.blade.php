@@ -198,14 +198,60 @@
     </div>
 </div>
 <div class="table-responsive">
-<table class="table">
-    <thead><tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th><th>Payment</th><th class="d-none d-lg-table-cell">Warehouse</th><th>By</th></tr></thead>
+<style>
+.sale-row { cursor:pointer; transition:background .15s; }
+.sale-row:hover { background: #f1f5ff !important; }
+.sale-row.expanded { background: #eef2ff !important; }
+.sale-row td:first-child { border-left: 3px solid transparent; }
+.sale-row.expanded td:first-child { border-left: 3px solid #6366f1; }
+.items-row { display:none; background:#f8fafc; }
+.items-row.show { display:table-row; }
+.items-table { width:100%; margin:0; font-size:.8rem; }
+.items-table th { background:#e0e7ff; color:#3730a3; padding:5px 10px; font-weight:600; font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; }
+.items-table td { padding:6px 10px; border-bottom:1px solid #e2e8f0; vertical-align:middle; }
+.items-table tr:last-child td { border-bottom:none; }
+.item-type-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:20px; font-size:.7rem; font-weight:600; }
+.item-type-vehicle    { background:#fff7ed; color:#c2410c; }
+.item-type-spare_part { background:#f0f9ff; color:#0369a1; }
+.expand-icon { transition:transform .2s; color:#94a3b8; font-size:.75rem; }
+.sale-row.expanded .expand-icon { transform:rotate(90deg); color:#6366f1; }
+</style>
+<table class="table mb-0">
+    <thead>
+        <tr>
+            <th style="width:28px"></th>
+            <th>Invoice</th>
+            <th>Customer</th>
+            <th>Date</th>
+            <th>Items</th>
+            <th>Total</th>
+            <th>Paid</th>
+            <th>Balance</th>
+            <th>Payment</th>
+            <th class="d-none d-lg-table-cell">Warehouse</th>
+            <th>By</th>
+        </tr>
+    </thead>
     <tbody>
         @forelse($sales as $s)
-        <tr>
-            <td><a href="{{ route('sales.show',$s) }}" class="text-primary fw-semibold">{{ $s->invoice_number }}</a></td>
+        {{-- Invoice row --}}
+        <tr class="sale-row" onclick="toggleItems('items-{{ $s->id }}')" id="row-{{ $s->id }}">
+            <td class="text-center"><i class="fa fa-chevron-right expand-icon"></i></td>
+            <td>
+                <a href="{{ route('sales.show',$s) }}" class="text-primary fw-semibold" onclick="event.stopPropagation()">{{ $s->invoice_number }}</a>
+            </td>
             <td class="text-muted small">{{ $s->customer_name ?? 'Walk-in' }}</td>
             <td class="text-muted small">{{ $s->sale_date->format('M d, Y') }}</td>
+            <td>
+                <span class="badge bg-primary-subtle text-primary" style="font-size:.72rem">{{ $s->items->count() }} item{{ $s->items->count() != 1 ? 's' : '' }}</span>
+                @php $types = $s->items->pluck('item_type')->unique(); @endphp
+                @if($types->contains('vehicle'))
+                    <span class="item-type-badge item-type-vehicle ms-1"><i class="fa fa-motorcycle"></i>V</span>
+                @endif
+                @if($types->contains('spare_part'))
+                    <span class="item-type-badge item-type-spare_part ms-1"><i class="fa fa-gears"></i>S</span>
+                @endif
+            </td>
             <td class="fw-semibold">Br {{ number_format($s->total,2) }}</td>
             <td class="text-success small">Br {{ number_format($s->paid_amount,2) }}</td>
             <td class="{{ $s->balance > 0 ? 'text-danger fw-semibold' : 'text-muted' }} small">{{ $s->balance > 0 ? 'Br '.number_format($s->balance,2) : '—' }}</td>
@@ -213,8 +259,49 @@
             <td class="small text-muted d-none d-lg-table-cell">{{ $s->warehouse?->name ?? '—' }}</td>
             <td class="small text-muted">{{ $s->user->name }}</td>
         </tr>
+        {{-- Expandable items row --}}
+        <tr class="items-row" id="items-{{ $s->id }}">
+            <td colspan="11" style="padding:0 0 6px 32px;">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Item</th>
+                            <th>Type</th>
+                            <th>Qty</th>
+                            <th>Unit Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($s->items as $idx => $item)
+                        <tr>
+                            <td class="text-muted">{{ $idx + 1 }}</td>
+                            <td class="fw-semibold">{{ $item->item_name }}</td>
+                            <td>
+                                <span class="item-type-badge item-type-{{ $item->item_type }}">
+                                    @if($item->item_type === 'vehicle')
+                                        <i class="fa fa-motorcycle"></i> Vehicle
+                                    @else
+                                        <i class="fa fa-gears"></i> Spare Part
+                                    @endif
+                                </span>
+                            </td>
+                            <td>{{ number_format($item->quantity) }}</td>
+                            <td class="text-muted">Br {{ number_format($item->unit_price, 2) }}</td>
+                            <td class="fw-semibold" style="color:#6366f1">Br {{ number_format($item->total, 2) }}</td>
+                        </tr>
+                        @endforeach
+                        <tr style="background:#e0e7ff">
+                            <td colspan="5" class="fw-bold text-end" style="color:#3730a3">Invoice Total</td>
+                            <td class="fw-bold" style="color:#3730a3">Br {{ number_format($s->total, 2) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </td>
+        </tr>
         @empty
-        <tr><td colspan="9" class="text-center text-muted py-5">
+        <tr><td colspan="11" class="text-center text-muted py-5">
             <i class="fa fa-chart-line fs-2 d-block mb-2 opacity-25"></i>No sales in this period.
         </td></tr>
         @endforelse
@@ -232,6 +319,16 @@ function toggleColOut() {
     showingCollected = !showingCollected;
     document.getElementById('face-collected').style.display  = showingCollected ? '' : 'none';
     document.getElementById('face-outstanding').style.display = showingCollected ? 'none' : '';
+}
+
+// ── Expandable invoice rows ───────────────────────────────────────────
+function toggleItems(id) {
+    const itemsRow = document.getElementById(id);
+    const saleRow  = document.getElementById('row-' + id.replace('items-',''));
+    if (!itemsRow) return;
+    const isOpen = itemsRow.classList.contains('show');
+    itemsRow.classList.toggle('show', !isOpen);
+    if (saleRow) saleRow.classList.toggle('expanded', !isOpen);
 }
 
 // ── Payment method filter toggle ─────────────────────────────────────
