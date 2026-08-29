@@ -54,7 +54,50 @@ class ReportController extends Controller
         $daily = $daily->selectRaw('DATE(sale_date) as date, SUM(total) as total, COUNT(*) as count')
             ->groupBy('date')->orderBy('date')->get();
 
-        return view('reports.sales', compact('sales', 'summary', 'daily', 'dateFrom', 'dateTo', 'warehouses', 'warehouseId'));
+        // ── Net Sales Profit per day (selling price − COGS) ──────────────
+        $profitRows = DB::table('sale_items as si')
+            ->join('sales as s', 'si.sale_id', '=', 's.id')
+            ->leftJoin('vehicle_models as vm', 'si.vehicle_model_id', '=', 'vm.id')
+            ->where('s.status', 'completed')
+            ->whereBetween('s.sale_date', [$dateFrom, $dateTo])
+            ->whereIn('s.warehouse_id', $accessibleIds)
+            ->when(! $user->seesAllUsers(), fn($q) => $q->where('s.user_id', $user->id))
+            ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
+            ->selectRaw("
+                DATE(s.sale_date) as date,
+                SUM(
+                    si.quantity * (
+                        si.unit_price - COALESCE(
+                            CASE
+                                WHEN si.item_type = 'vehicle'    THEN vm.buying_price
+                                WHEN si.item_type = 'spare_part' THEN (
+                                    SELECT pi2.unit_price
+                                    FROM purchase_items pi2
+                                    JOIN purchases p2 ON pi2.purchase_id = p2.id
+                                    WHERE pi2.spare_part_id = si.spare_part_id
+                                    ORDER BY p2.purchase_date DESC
+                                    LIMIT 1
+                                )
+                                ELSE 0
+                            END, 0
+                        )
+                    )
+                ) as profit
+            ")
+            ->groupByRaw('DATE(s.sale_date)')
+            ->orderByRaw('DATE(s.sale_date)')
+            ->get()
+            ->keyBy('date');
+
+        // Attach profit to each daily row
+        $daily = $daily->map(function ($row) use ($profitRows) {
+            $row->profit = $profitRows[$row->date]->profit ?? 0;
+            return $row;
+        });
+
+        $totalProfit = $daily->sum('profit');
+
+        return view('reports.sales', compact('sales', 'summary', 'daily', 'totalProfit', 'dateFrom', 'dateTo', 'warehouses', 'warehouseId'));
     }
 
     /* ── Vehicles Report ──────────────────────────── */

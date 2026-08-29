@@ -78,6 +78,15 @@
             <div class="stat-body"><div class="stat-value">Br {{ number_format($summary->total_outstanding,0) }}</div><div class="stat-label">Outstanding</div></div>
         </div>
     </div>
+    <div class="col-6 col-md-2">
+        <div class="stat-card">
+            <div class="stat-icon bg-success-soft"><i class="fa fa-sack-dollar"></i></div>
+            <div class="stat-body">
+                <div class="stat-value {{ $totalProfit < 0 ? 'text-danger' : 'text-success' }}">Br {{ number_format($totalProfit,0) }}</div>
+                <div class="stat-label">Net Sales Profit</div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="card mb-4">
@@ -128,11 +137,35 @@ if(ctx) {
         type:'bar',
         data:{
             labels: @json($daily->pluck('date')->map(fn($d)=>\Carbon\Carbon::parse($d)->format('M d'))),
-            datasets:[{label:'Sales (Br)',data:@json($daily->pluck('total')),backgroundColor:'rgba(99,102,241,.75)',borderRadius:6,borderSkipped:false}]
+            datasets:[
+                {
+                    label:'Revenue (Br)',
+                    data:@json($daily->pluck('total')),
+                    backgroundColor:'rgba(99,102,241,.75)',
+                    borderRadius:6,
+                    borderSkipped:false,
+                    order:2
+                },
+                {
+                    label:'Net Profit (Br)',
+                    data:@json($daily->pluck('profit')),
+                    type:'line',
+                    borderColor:'rgba(16,185,129,1)',
+                    backgroundColor:'rgba(16,185,129,.15)',
+                    pointBackgroundColor:'rgba(16,185,129,1)',
+                    pointRadius:4,
+                    fill:true,
+                    tension:0.3,
+                    order:1
+                }
+            ]
         },
         options:{
             responsive:true,maintainAspectRatio:false,
-            plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'Br '+parseFloat(c.raw).toLocaleString('en-US',{minimumFractionDigits:2})}}},
+            plugins:{
+                legend:{display:true,position:'top'},
+                tooltip:{callbacks:{label:c=>'Br '+parseFloat(c.raw).toLocaleString('en-US',{minimumFractionDigits:2})}}
+            },
             scales:{y:{beginAtZero:true,ticks:{callback:v=>'Br '+v.toLocaleString()},grid:{color:'rgba(0,0,0,.04)'}},x:{grid:{display:false}}}
         }
     });
