@@ -21,7 +21,7 @@ class StockInController extends Controller
         $user          = auth()->user();
         $accessibleIds = $user->accessibleWarehouseIds();
 
-        $query = StockMovement::with('user', 'vehicleModel.vehicleType', 'sparePart.category', 'warehouse')
+        $query = StockMovement::with('user', 'vehicleModel.vehicleType', 'sparePart.compatibleVehicles', 'warehouse')
             ->whereIn('movement_type', ['opening', 'purchase', 'return_in', 'adjustment_in'])
             ->whereIn('warehouse_id', $accessibleIds); // always scope
 

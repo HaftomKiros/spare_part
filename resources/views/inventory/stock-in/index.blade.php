@@ -61,7 +61,7 @@
             <th>Date & Time</th>
             <th>Item</th>
             <th>Type</th>
-            <th>Category</th>
+            <th>Vehicle Model</th>
             <th>Qty Added</th>
             <th>Before</th>
             <th>After</th>
@@ -83,7 +83,18 @@
             </td>
             <td><span class="badge bg-success">{{ $mv->movement_type_label }}</span></td>
             <td class="text-muted small">
-                {{ $mv->item_type === 'vehicle' ? ($mv->vehicleModel?->vehicleType?->name ?? '—') : ($mv->sparePart?->category?->name ?? '—') }}
+                @if($mv->item_type === 'vehicle')
+                    {{ $mv->vehicleModel ? $mv->vehicleModel->brand.' '.$mv->vehicleModel->model_name : '—' }}
+                @else
+                    @php $vehicles = $mv->sparePart?->compatibleVehicles; @endphp
+                    @if($vehicles && $vehicles->count() > 0)
+                        <span title="{{ $vehicles->map(fn($v)=>$v->brand.' '.$v->model_name)->join(', ') }}">
+                            {{ $vehicles->first()->brand }} {{ $vehicles->first()->model_name }}{{ $vehicles->count() > 1 ? ' +'.($vehicles->count()-1).' more' : '' }}
+                        </span>
+                    @else
+                        <span>—</span>
+                    @endif
+                @endif
             </td>
             <td class="fw-bold text-success">+{{ $mv->quantity }}</td>
             <td class="text-muted">{{ $mv->quantity_before }}</td>
