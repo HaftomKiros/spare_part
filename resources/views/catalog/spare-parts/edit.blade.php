@@ -28,6 +28,17 @@
         <label class="form-label">Part Name <span class="text-danger">*</span></label>
         <input type="text" name="name" class="form-control" value="{{ old('name', $sparePart->name) }}" required>
     </div>
+    <div class="col-12">
+        <label class="form-label">Vehicle Models</label>
+        <select name="compatible_vehicles[]" id="compatible_vehicles" class="form-select" multiple>
+            @foreach($vehicles as $v)
+            <option value="{{ $v->id }}" {{ $sparePart->compatibleVehicles->contains($v->id) || in_array($v->id, old('compatible_vehicles', [])) ? 'selected' : '' }}>
+                {{ $v->brand }} {{ $v->model_name }}{{ $v->model_code ? ' ('.$v->model_code.')' : '' }} — {{ $v->vehicleType->name }}
+            </option>
+            @endforeach
+        </select>
+        <div class="form-text">Search by brand, model name or type. Select all that apply.</div>
+    </div>
     <div class="col-md-6">
         <label class="form-label">Unit of Measure</label>
         <select name="unit_id" class="form-select" required>
@@ -48,18 +59,6 @@
 </div>
 </div>
 
-<div class="card">
-<div class="card-header"><i class="fa fa-motorcycle me-2 text-primary"></i>Compatible Vehicles</div>
-<div class="card-body">
-    <select name="compatible_vehicles[]" id="compatible_vehicles" class="form-select" multiple placeholder="Search and select compatible vehicles…">
-        @foreach($vehicles as $v)
-        <option value="{{ $v->id }}" {{ $sparePart->compatibleVehicles->contains($v->id) || in_array($v->id, old('compatible_vehicles', [])) ? 'selected' : '' }}>
-            {{ $v->brand }} {{ $v->model_name }}{{ $v->model_code ? ' ('.$v->model_code.')' : '' }} — {{ $v->vehicleType->name }}
-        </option>
-        @endforeach
-    </select>
-    <div class="form-text mt-1">Search by brand, model name or type. Select all that apply.</div>
-</div>
 </div>
 </div>
 
