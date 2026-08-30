@@ -276,6 +276,7 @@
 
     let VEHICLES        = [];
     let CATEGORIES      = [];
+    let SPARE_PARTS     = [];
     let loadedWarehouse = null;
     let rowCount        = 0;
 
@@ -298,14 +299,15 @@
 
     // ── Load warehouse items (only items with purchase batches) ────
     function loadWarehouseItems(warehouseId, callback) {
-        if (!warehouseId) { VEHICLES = []; CATEGORIES = []; if (callback) callback(); return; }
+        if (!warehouseId) { VEHICLES = []; CATEGORIES = []; SPARE_PARTS = []; if (callback) callback(); return; }
         if (loadedWarehouse === warehouseId) { if (callback) callback(); return; }
 
         fetch(WAREHOUSE_ITEMS_URL + '?warehouse_id=' + warehouseId)
             .then(r => r.json())
             .then(data => {
-                VEHICLES        = data.vehicles   || [];
-                CATEGORIES      = data.categories || [];
+                VEHICLES        = data.vehicles    || [];
+                CATEGORIES      = data.categories  || [];
+                SPARE_PARTS     = data.spare_parts || [];
                 loadedWarehouse = warehouseId;
 
                 // Rebuild type+item on existing cards
@@ -317,7 +319,7 @@
                 if (callback) callback();
                 recalcTotals();
             })
-            .catch(() => { VEHICLES = []; CATEGORIES = []; });
+            .catch(() => { VEHICLES = []; CATEGORIES = []; SPARE_PARTS = []; });
     }
 
     // ── Check if a type has any sellable items ────────────────────
@@ -325,7 +327,7 @@
         if (type === 'vehicle') {
             return VEHICLES.some(vt => vt.models && vt.models.length > 0);
         }
-        return CATEGORIES.some(cat => cat.parts && cat.parts.length > 0);
+        return SPARE_PARTS.length > 0 || CATEGORIES.some(cat => cat.parts && cat.parts.length > 0);
     }
 
     // ── Build item <option> HTML ───────────────────────────────────
@@ -348,21 +350,20 @@
                 html += '</optgroup>';
             });
         } else {
-            CATEGORIES.forEach(cat => {
-                if (!cat.parts.length) return;
-                html += '<optgroup label="' + esc(cat.name) + '">';
-                cat.parts.forEach(p => {
-                    html += '<option value="' + p.id
-                         +  '" data-price="'     + p.price_max
-                         +  '" data-price-min="' + p.price_min
-                         +  '" data-price-max="' + p.price_max
-                         +  '" data-buy-price="' + p.buy_price
-                         +  '" data-stock="'     + p.stock
-                         +  '" data-reorder="'   + (p.reorder||5)
-                         +  '" data-name="'      + esc(p.name) + '">'
-                         +  esc(p.name) + ' — Stock: ' + p.stock + (p.unit ? ' '+p.unit : '') + '</option>';
-                });
-                html += '</optgroup>';
+            const list = SPARE_PARTS.length ? SPARE_PARTS : CATEGORIES.flatMap(c => c.parts || []);
+            list.forEach(p => {
+                const vehText = p.vehicles ? ' | ' + p.vehicles : '';
+                html += '<option value="' + p.id
+                     +  '" data-price="'     + p.price_max
+                     +  '" data-price-min="' + p.price_min
+                     +  '" data-price-max="' + p.price_max
+                     +  '" data-buy-price="' + p.buy_price
+                     +  '" data-stock="'     + p.stock
+                     +  '" data-reorder="'   + (p.reorder||5)
+                     +  '" data-name="'      + esc(p.name)
+                     +  '" data-vehicles="'  + esc(p.vehicles || '') + '">'
+                     +  esc(p.name) + ' — Stock: ' + p.stock + (p.unit ? ' '+p.unit : '')
+                     +  (p.vehicles ? ' | ' + esc(p.vehicles) : '') + '</option>';
             });
         }
         return html;
@@ -411,6 +412,30 @@
                 selItem.disabled  = false;
                 noStock.style.display = 'none';
                 setCardInputsDisabled(card, false);
+                // Init / refresh Tom Select for searchable dropdown incl. vehicle names
+                if (selItem._tomSelect) {
+                    selItem._tomSelect.destroy();
+                }
+                if (type === 'spare_part') {
+                    new TomSelect(selItem, {
+                        maxOptions: 500,
+                        searchField: ['text'],
+                        render: {
+                            option: function(data, escape) {
+                                const veh = data.element?.dataset?.vehicles;
+                                return '<div>' + escape(data.text) + (veh ? '<div style="font-size:.7rem;color:#94a3b8">' + escape(veh) + '</div>' : '') + '</div>';
+                            }
+                        },
+                        score: function(search) {
+                            return function(item) {
+                                const t = (item.text || '').toLowerCase();
+                                const v = (item.element?.dataset?.vehicles || '').toLowerCase();
+                                const s = search.toLowerCase();
+                                return (t.includes(s) || v.includes(s)) ? 1 : 0;
+                            };
+                        }
+                    });
+                }
             }
             checkSubmitBtn();
         });

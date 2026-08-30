@@ -464,13 +464,16 @@ class SaleController extends Controller
             ->unique()
             ->toArray();
 
-        // Group parts by vehicle model — a part appears under each compatible model
-        $categories = [];
+        // Build flat parts list with compatible vehicle names as searchable text
+        $spareParts = [];
         foreach ($parts as $p) {
             $hasBatches = in_array($p->id, $partIdsWithBatches);
             if (!$hasBatches) continue;
 
-            $partData = [
+            $vmList   = $partVehicleMap[$p->id] ?? collect();
+            $vmNames  = $vmList->map(fn($v) => $v->brand . ' ' . $v->model_name)->join(', ');
+
+            $spareParts[] = [
                 'id'        => $p->id,
                 'name'      => $p->name . ' (' . $p->part_number . ')',
                 'price'     => $p->selling_price_max,
@@ -480,26 +483,11 @@ class SaleController extends Controller
                 'stock'     => $p->current_stock,
                 'reorder'   => $p->reorder_level,
                 'unit'      => $p->unit,
+                'vehicles'  => $vmNames,
             ];
-
-            $vmList = $partVehicleMap[$p->id] ?? collect();
-
-            if ($vmList->isEmpty()) {
-                if (!isset($categories['general'])) {
-                    $categories['general'] = ['id' => 'general', 'name' => 'General', 'parts' => []];
-                }
-                $categories['general']['parts'][] = $partData;
-            } else {
-                foreach ($vmList as $vm) {
-                    $key = 'vm_' . $vm->vm_id;
-                    if (!isset($categories[$key])) {
-                        $categories[$key] = ['id' => $key, 'name' => $vm->brand . ' ' . $vm->model_name, 'parts' => []];
-                    }
-                    $categories[$key]['parts'][] = $partData;
-                }
-            }
         }
-        usort($categories, fn($a, $b) => strcmp($a['name'], $b['name']));
+        // Keep $categories as empty array for backward compat
+        $categories = [];
 
         // Vehicle models in this warehouse with current_stock > 0
         $vehicles = DB::table('warehouse_vehicle_stock as wv')
@@ -556,8 +544,9 @@ class SaleController extends Controller
         }
 
         return response()->json([
-            'vehicles'   => array_values($vehicleTypes),
-            'categories' => array_values($categories),
+            'vehicles'    => array_values($vehicleTypes),
+            'categories'  => array_values($categories),
+            'spare_parts' => array_values($spareParts),
         ]);
     }
 
