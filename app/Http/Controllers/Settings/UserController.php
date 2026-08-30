@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
@@ -105,8 +106,26 @@ class UserController extends Controller
             return back()->with('error', 'You cannot delete your own account.');
         }
 
+        // Check if user has any related records that cannot be orphaned
+        $hasRecords = DB::table('sales')->where('user_id', $user->id)->exists()
+            || DB::table('purchases')->where('user_id', $user->id)->exists()
+            || DB::table('sale_returns')->where('user_id', $user->id)->exists()
+            || DB::table('expenses')->where('user_id', $user->id)->exists()
+            || DB::table('stock_movements')->where('user_id', $user->id)->exists()
+            || DB::table('stock_transfers')->where('user_id', $user->id)->exists();
+
+        if ($hasRecords) {
+            // Cannot delete — deactivate instead to preserve data integrity
+            $user->update(['status' => 'inactive']);
+            return redirect()->route('settings.users.index')
+                ->with('warning', "User '{$user->name}' has existing records and cannot be permanently deleted. The account has been deactivated instead.");
+        }
+
+        // Safe to delete — no related records
+        $user->warehouses()->detach();
         $user->delete();
+
         return redirect()->route('settings.users.index')
-            ->with('success', 'User deleted.');
+            ->with('success', "User '{$user->name}' deleted successfully.");
     }
 }
