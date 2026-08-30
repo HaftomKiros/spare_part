@@ -82,15 +82,21 @@
                 </div>
             </td>
             <td><span class="badge bg-success">{{ $mv->movement_type_label }}</span></td>
-            <td class="text-muted small">
+            <td class="text-muted small" style="max-width:160px">
                 @if($mv->item_type === 'vehicle')
                     {{ $mv->vehicleModel ? $mv->vehicleModel->brand.' '.$mv->vehicleModel->model_name : '—' }}
                 @else
                     @php $vehicles = $mv->sparePart?->compatibleVehicles; @endphp
                     @if($vehicles && $vehicles->count() > 0)
-                        <span title="{{ $vehicles->map(fn($v)=>$v->brand.' '.$v->model_name)->join(', ') }}">
-                            {{ $vehicles->first()->brand }} {{ $vehicles->first()->model_name }}{{ $vehicles->count() > 1 ? ' +'.($vehicles->count()-1).' more' : '' }}
-                        </span>
+                        <div style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:150px;font-size:.75rem;color:#3730a3">
+                            {{ $vehicles->first()->brand }} {{ $vehicles->first()->model_name }}@if($vehicles->count() > 1)&hellip;@endif
+                        </div>
+                        @if($vehicles->count() > 1)
+                            <span style="font-size:.68rem;cursor:pointer;text-decoration:underline;color:#64748b"
+                                  onclick="openSiVehicleModal('{{ addslashes($mv->sparePart->name) }}', '{{ addslashes($vehicles->map(fn($v)=>$v->brand.' '.$v->model_name)->join('||')) }}')">
+                                +{{ $vehicles->count() - 1 }} more
+                            </span>
+                        @endif
                     @else
                         <span>—</span>
                     @endif
@@ -120,4 +126,42 @@
 <div class="card-body border-top py-3">{{ $movements->links() }}</div>
 @endif
 </div>
+
+{{-- Vehicle Models Modal --}}
+<div class="modal fade" id="siVehicleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold"><i class="fa fa-motorcycle me-2 text-primary"></i><span id="siVehModalPartName"></span></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Compatible vehicle models:</p>
+                <div id="siVehModalList" class="d-flex flex-wrap gap-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
+@push('scripts')
+<script>
+function openSiVehicleModal(partName, vehicles) {
+    document.getElementById('siVehModalPartName').textContent = partName;
+    const list = document.getElementById('siVehModalList');
+    list.innerHTML = '';
+    vehicles.split('||').forEach(function(v) {
+        if (!v.trim()) return;
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.style = 'background:#e0e7ff;color:#3730a3;font-size:.8rem;padding:5px 10px;border-radius:6px';
+        badge.textContent = v.trim();
+        list.appendChild(badge);
+    });
+    new bootstrap.Modal(document.getElementById('siVehicleModal')).show();
+}
+</script>
+@endpush
