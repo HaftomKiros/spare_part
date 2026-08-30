@@ -11,12 +11,13 @@
 @csrf
 <div class="row g-3">
 
-<!-- Main Info -->
+{{-- ── Left column ─────────────────────────────────────────────── --}}
 <div class="col-12 col-lg-8">
-<div class="card mb-3">
+<div class="card">
 <div class="card-header"><i class="fa fa-gears me-2 text-primary"></i>Part Information</div>
 <div class="card-body">
 <div class="row g-3">
+
     <div class="col-md-6">
         <label class="form-label">Part Number <span class="text-danger">*</span></label>
         <input type="text" name="part_number" class="form-control @error('part_number') is-invalid @enderror"
@@ -27,12 +28,14 @@
         <label class="form-label">OEM Number</label>
         <input type="text" name="oem_number" class="form-control" value="{{ old('oem_number') }}" placeholder="Original part number">
     </div>
+
     <div class="col-12">
         <label class="form-label">Part Name <span class="text-danger">*</span></label>
         <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
                value="{{ old('name') }}" placeholder="e.g. Piston Ring Set (Boxer)" required>
         @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
+
     <div class="col-12">
         <label class="form-label">Vehicle Models</label>
         <select name="compatible_vehicles[]" id="compatible_vehicles" class="form-select" multiple>
@@ -44,6 +47,7 @@
         </select>
         <div class="form-text">Search by brand, model name or type. Select all that apply.</div>
     </div>
+
     <div class="col-md-6">
         <label class="form-label">Unit of Measure <span class="text-danger">*</span></label>
         <select name="unit_id" class="form-select ts-select @error('unit_id') is-invalid @enderror" required>
@@ -56,23 +60,24 @@
         </select>
         @error('unit_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6">
         <label class="form-label">Shelf</label>
         <input type="text" name="location" class="form-control" value="{{ old('location') }}" placeholder="e.g. A-3, Shelf 2B">
     </div>
+
     <div class="col-12">
         <label class="form-label">Description</label>
-        <textarea name="description" class="form-control" rows="2">{{ old('description') }}</textarea>
+        <textarea name="description" class="form-control" rows="3">{{ old('description') }}</textarea>
     </div>
-</div>
-</div>
-</div>
 
 </div>
 </div>
+</div>
+</div>{{-- end col-12 col-lg-8 --}}
 
-<!-- Side Panel -->
+{{-- ── Right column ────────────────────────────────────────────── --}}
 <div class="col-12 col-lg-4">
+
 <div class="card mb-3">
 <div class="card-header"><i class="fa fa-warehouse me-2 text-primary"></i>Stock</div>
 <div class="card-body">
@@ -121,11 +126,11 @@
     <a href="{{ route('catalog.spare-parts.index') }}" class="btn btn-outline-secondary w-100 mt-2">Cancel</a>
 </div>
 </div>
-</div>
 
-</div>
+</div>{{-- end col-12 col-lg-4 --}}
+
+</div>{{-- end row --}}
 </form>
-
 @endsection
 
 @push('scripts')

@@ -58,9 +58,7 @@
 </div>
 </div>
 </div>
-
-</div>
-</div>
+</div>{{-- end col-12 col-lg-8 --}}
 
 <div class="col-12 col-lg-4">
 <div class="card mb-3">
@@ -109,8 +107,9 @@
     <a href="{{ route('catalog.spare-parts.index') }}" class="btn btn-outline-secondary w-100 mt-2">Cancel</a>
 </div>
 </div>
-</div>
-</div>
+</div>{{-- end col-12 col-lg-4 --}}
+
+</div>{{-- end row --}}
 </form>
 @endsection
 @push('scripts')
