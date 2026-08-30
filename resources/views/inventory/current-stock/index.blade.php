@@ -137,7 +137,7 @@
     <thead>
         <tr>
             <th>Part</th>
-            <th>Category</th>
+            <th style="width:160px">Vehicle Models</th>
             <th>Unit</th>
             <th>Current Stock (Unsold)</th>
             <th>Reorder Level</th>
@@ -165,7 +165,27 @@
                     <div class="text-muted" style="font-size:.75rem">{{ $part->part_number }}</div>
                 @endif
             </td>
-            <td class="text-muted small">{{ $isWarehouseView ? $part->category_name : $part->category->name }}</td>
+            <td style="max-width:160px">
+                @php
+                    $vlist = $isWarehouseView ? ($part->vehicle_model_list ?? collect()) : $part->compatibleVehicles->map(fn($v)=>$v->brand.' '.$v->model_name);
+                    $vcount = $vlist->count();
+                    $partIdStr = $isWarehouseView ? $part->id : $part->id;
+                    $partNameStr = addslashes($part->name);
+                @endphp
+                @if($vcount === 0)
+                    <span class="text-muted small">—</span>
+                @else
+                    <div style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:150px;font-size:.75rem;color:#3730a3">
+                        {{ $vlist->first() }}@if($vcount > 1) &hellip;@endif
+                    </div>
+                    @if($vcount > 1)
+                        <span class="text-muted" style="font-size:.68rem;cursor:pointer;text-decoration:underline"
+                              onclick="openCsVehicleModal('{{ $partNameStr }}', '{{ addslashes($vlist->join('||')) }}')">
+                            +{{ $vcount - 1 }} more
+                        </span>
+                    @endif
+                @endif
+            </td>
             <td class="text-muted small">{{ $isWarehouseView ? $part->unit_abbr : $part->unit->abbreviation }}</td>
             <td>
                 <span class="fw-bold fs-6 {{ $isOut ? 'text-danger' : ($isLow ? 'text-warning' : 'text-success') }}">
@@ -261,4 +281,42 @@
 </div>
 @endif
 
+
+{{-- Vehicle Models Modal --}}
+<div class="modal fade" id="csVehicleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold"><i class="fa fa-motorcycle me-2 text-primary"></i><span id="csVehModalPartName"></span></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Compatible vehicle models:</p>
+                <div id="csVehModalList" class="d-flex flex-wrap gap-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
+@push('scripts')
+<script>
+function openCsVehicleModal(partName, vehicles) {
+    document.getElementById('csVehModalPartName').textContent = partName;
+    const list = document.getElementById('csVehModalList');
+    list.innerHTML = '';
+    vehicles.split('||').forEach(function(v) {
+        if (!v.trim()) return;
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.style = 'background:#e0e7ff;color:#3730a3;font-size:.8rem;padding:5px 10px;border-radius:6px';
+        badge.textContent = v.trim();
+        list.appendChild(badge);
+    });
+    new bootstrap.Modal(document.getElementById('csVehicleModal')).show();
+}
+</script>
+@endpush

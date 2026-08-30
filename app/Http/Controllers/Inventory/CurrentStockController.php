@@ -110,8 +110,16 @@ class CurrentStockController extends Controller
             // Attach stock value to each part row (purchase value - sale value for this part)
             $partIds  = $parts->pluck('id')->toArray();
             $valueMap = \App\Services\StockService::partsStockValueMap($partIds, [$warehouseId]);
+            // Attach compatible vehicles to warehouse part rows
+            $compatMap = \App\Models\VehicleModel::whereHas('spareParts', fn($q) => $q->whereIn('spare_parts.id', $partIds))
+                ->with('spareParts')
+                ->get()
+                ->flatMap(fn($vm) => $vm->spareParts->map(fn($sp) => ['part_id' => $sp->id, 'vehicle' => $vm->brand.' '.$vm->model_name]))
+                ->groupBy('part_id')
+                ->map(fn($items) => $items->pluck('vehicle'));
             foreach ($parts as $part) {
-                $part->stock_value = $valueMap[$part->id] ?? 0;
+                $part->stock_value        = $valueMap[$part->id] ?? 0;
+                $part->vehicle_model_list = $compatMap[$part->id] ?? collect();
             }
 
             // Attach stock value to vehicle rows
@@ -124,7 +132,7 @@ class CurrentStockController extends Controller
             $isWarehouseView = true;
         } else {
             // ── Global spare parts stock ──────────────────
-            $partsQuery = SparePart::with('category', 'unit')->where('status', 'active');
+            $partsQuery = SparePart::with('unit', 'compatibleVehicles')->where('status', 'active');
 
             if ($request->search) {
                 $partsQuery->where(fn($q) =>
