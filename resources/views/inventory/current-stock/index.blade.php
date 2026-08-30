@@ -94,10 +94,12 @@
     </div>
     @if($tab === 'parts')
     <div class="col-auto">
-        <select name="category" class="form-select form-select-sm ts-select">
-            <option value="">All Categories</option>
-            @foreach($categories as $cat)
-                <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+        <select name="vehicle_model" class="form-select form-select-sm ts-select" style="min-width:200px">
+            <option value="">All Vehicle Models</option>
+            @foreach($vehicleModels as $vm)
+                <option value="{{ $vm->id }}" {{ request('vehicle_model') == $vm->id ? 'selected' : '' }}>
+                    {{ $vm->brand }} {{ $vm->model_name }}{{ $vm->model_code ? ' ('.$vm->model_code.')' : '' }}
+                </option>
             @endforeach
         </select>
     </div>
@@ -121,7 +123,7 @@
     </div>
     <div class="col-auto">
         <button type="submit" class="btn btn-sm btn-primary"><i class="fa fa-filter me-1"></i>Filter</button>
-        @if(request()->hasAny(['search','category','vehicle_type','stock_filter','warehouse_id']))
+        @if(request()->hasAny(['search','vehicle_model','vehicle_type','stock_filter','warehouse_id']))
             <a href="?tab={{ $tab }}" class="btn btn-sm btn-outline-secondary ms-1"><i class="fa fa-xmark"></i></a>
         @endif
     </div>

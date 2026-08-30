@@ -46,8 +46,12 @@ class CurrentStockController extends Controller
                       ->orWhere('sp.part_number', 'like', "%{$request->search}%")
                 );
             }
-            if ($request->category) {
-                $partsQuery->where('sp.part_category_id', $request->category);
+            if ($request->vehicle_model) {
+                $partsQuery->whereExists(function($sub) use ($request) {
+                    $sub->select(DB::raw(1))->from('spare_part_vehicle_model as spvm')
+                        ->whereColumn('spvm.spare_part_id', 'sp.id')
+                        ->where('spvm.vehicle_model_id', $request->vehicle_model);
+                });
             }
             if ($request->stock_filter === 'low') {
                 $partsQuery->where('ws.current_stock', '>', 0)->whereColumn('ws.current_stock', '<=', 'ws.reorder_level');
@@ -140,8 +144,8 @@ class CurrentStockController extends Controller
                       ->orWhere('part_number', 'like', "%{$request->search}%")
                 );
             }
-            if ($request->category) {
-                $partsQuery->where('part_category_id', $request->category);
+            if ($request->vehicle_model) {
+                $partsQuery->whereHas('compatibleVehicles', fn($q) => $q->where('vehicle_models.id', $request->vehicle_model));
             }
             if ($request->stock_filter === 'low') {
                 $partsQuery->lowStock();
@@ -235,11 +239,12 @@ class CurrentStockController extends Controller
             });
         }
 
-        $categories   = PartCategory::active()->orderBy('name')->get();
-        $vehicleTypes = VehicleType::active()->get();
+        $categories    = PartCategory::active()->orderBy('name')->get();
+        $vehicleTypes  = VehicleType::active()->get();
+        $vehicleModels = \App\Models\VehicleModel::active()->orderBy('brand')->orderBy('model_name')->get();
 
         return view('inventory.current-stock.index', compact(
-            'parts', 'vehicles', 'summary', 'categories', 'vehicleTypes', 'tab',
+            'parts', 'vehicles', 'summary', 'categories', 'vehicleTypes', 'vehicleModels', 'tab',
             'warehouses', 'warehouseId', 'isWarehouseView'
         ));
     }
