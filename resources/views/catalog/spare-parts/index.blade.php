@@ -54,7 +54,7 @@
         <tr>
             <th>#</th>
             <th>Part</th>
-            <th>Vehicle Models</th>
+            <th style="width:140px">Vehicle Models</th>
             <th>Stock</th>
             <th>Reorder</th>
             <th>Sell Price</th>
@@ -74,16 +74,30 @@
                     @if($part->oem_number) · OEM: {{ $part->oem_number }} @endif
                 </div>
             </td>
-            <td>
-                @forelse($part->compatibleVehicles->take(3) as $v)
-                    <span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:.68rem;padding:2px 7px;border-radius:5px;margin-bottom:2px;display:inline-block">
-                        {{ $v->brand }} {{ $v->model_name }}
-                    </span>
-                @empty
+            <td style="max-width:140px">
+                @php $vc = $part->compatibleVehicles; @endphp
+                @if($vc->count() === 0)
                     <span class="text-muted small">—</span>
-                @endforelse
-                @if($part->compatibleVehicles->count() > 3)
-                    <span class="text-muted small">+{{ $part->compatibleVehicles->count() - 3 }} more</span>
+                @else
+                    <div style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:130px;font-size:.75rem;color:#3730a3;cursor:pointer"
+                         @if($vc->count() > 2)
+                         onclick="openVehicleModal('{{ addslashes($part->name) }}', {{ $part->id }})"
+                         title="Click to see all {{ $vc->count() }} models"
+                         @endif
+                    >
+                        {{ $vc->first()->brand }} {{ $vc->first()->model_name }}@if($vc->count() > 1) &hellip;@endif
+                    </div>
+                    @if($vc->count() > 2)
+                        <span class="text-muted" style="font-size:.68rem;cursor:pointer"
+                              onclick="openVehicleModal('{{ addslashes($part->name) }}', {{ $part->id }})">
+                            +{{ $vc->count() - 1 }} more
+                        </span>
+                    @endif
+                    {{-- hidden data for modal --}}
+                    <span class="d-none veh-data" data-id="{{ $part->id }}"
+                          data-name="{{ addslashes($part->name) }}"
+                          data-vehicles="{{ addslashes($vc->map(fn($v)=>$v->brand.' '.$v->model_name.($v->model_code?' ('.$v->model_code.')':'')).implode('||')) }}">
+                    </span>
                 @endif
             </td>
             <td>
@@ -130,4 +144,44 @@
 </div>
 
 @include('partials.delete-modal')
+
+{{-- Vehicle Models Modal --}}
+<div class="modal fade" id="vehicleModelsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold"><i class="fa fa-motorcycle me-2 text-primary"></i><span id="vehModalPartName"></span></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Compatible vehicle models:</p>
+                <div id="vehModalList" class="d-flex flex-wrap gap-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
+@push('scripts')
+<script>
+function openVehicleModal(partName, partId) {
+    const data = document.querySelector('.veh-data[data-id="' + partId + '"]');
+    if (!data) return;
+    document.getElementById('vehModalPartName').textContent = partName;
+    const list = document.getElementById('vehModalList');
+    list.innerHTML = '';
+    data.dataset.vehicles.split('||').forEach(function(v) {
+        if (!v.trim()) return;
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.style = 'background:#e0e7ff;color:#3730a3;font-size:.8rem;padding:5px 10px;border-radius:6px';
+        badge.textContent = v.trim();
+        list.appendChild(badge);
+    });
+    new bootstrap.Modal(document.getElementById('vehicleModelsModal')).show();
+}
+</script>
+@endpush
