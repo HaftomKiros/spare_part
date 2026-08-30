@@ -24,14 +24,6 @@
         </div>
     </div>
     <div class="col-auto">
-        <select name="category" class="form-select form-select-sm ts-select">
-            <option value="">All Categories</option>
-            @foreach($categories as $cat)
-                <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-            @endforeach
-        </select>
-    </div>
-    <div class="col-auto">
         <select name="stock_status" class="form-select form-select-sm ts-select">
             <option value="">All Stock</option>
             <option value="low" {{ request('stock_status') === 'low' ? 'selected' : '' }}>Low Stock</option>
@@ -62,7 +54,7 @@
         <tr>
             <th>#</th>
             <th>Part</th>
-            <th>Category</th>
+            <th>Vehicle Models</th>
             <th>Stock</th>
             <th>Reorder</th>
             <th>Sell Price</th>
@@ -83,7 +75,16 @@
                 </div>
             </td>
             <td>
-                <span class="badge" style="background:#f1f5f9;color:#475569;font-size:.72rem;padding:3px 8px;border-radius:5px">{{ $part->category->name }}</span>
+                @forelse($part->compatibleVehicles->take(3) as $v)
+                    <span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:.68rem;padding:2px 7px;border-radius:5px;margin-bottom:2px;display:inline-block">
+                        {{ $v->brand }} {{ $v->model_name }}
+                    </span>
+                @empty
+                    <span class="text-muted small">—</span>
+                @endforelse
+                @if($part->compatibleVehicles->count() > 3)
+                    <span class="text-muted small">+{{ $part->compatibleVehicles->count() - 3 }} more</span>
+                @endif
             </td>
             <td>
                 <span class="stock-pill {{ $part->stock_status === 'out_of_stock' ? 'out' : ($part->stock_status === 'low' ? 'low' : 'in-stock') }}">

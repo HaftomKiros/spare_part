@@ -14,7 +14,7 @@ class SparePartController extends Controller
 {
     public function index(Request $request)
     {
-        $query = SparePart::with('category', 'unit');
+        $query = SparePart::with('unit', 'compatibleVehicles');
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {
