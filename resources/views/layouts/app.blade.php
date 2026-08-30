@@ -734,14 +734,7 @@
                     <span class="sb-label">Vehicle Models</span>
                 </a>
                 @endif
-                @if($canSeePartCategories)
-                <a href="{{ route('catalog.part-categories.index') }}"
-                   class="sb-item {{ request()->routeIs('catalog.part-categories*') ? 'active' : '' }}"
-                   data-tooltip="Part Categories">
-                    <span class="sb-icon"><i class="fa-solid fa-layer-group"></i></span>
-                    <span class="sb-label">Part Categories</span>
-                </a>
-                @endif
+                {{-- Part Categories hidden from sidebar --}}
                 @if($canSeeSpareParts)
                 <a href="{{ route('catalog.spare-parts.index') }}"
                    class="sb-item {{ request()->routeIs('catalog.spare-parts*') ? 'active' : '' }}"
