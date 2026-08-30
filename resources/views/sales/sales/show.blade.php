@@ -104,7 +104,7 @@
 <div class="card-header"><i class="fa fa-list me-2 text-primary"></i>Items Sold ({{ $sale->items->count() }})</div>
 <div class="table-responsive">
 <table class="table">
-    <thead><tr><th>#</th><th>Item</th><th>Type</th><th>PO #</th><th>Price</th><th>Qty</th><th>Disc</th><th>Total</th></tr></thead>
+    <thead><tr><th>#</th><th>Item</th><th>Type</th><th>Vehicle Model</th><th>PO #</th><th>Price</th><th>Qty</th><th>Disc</th><th>Total</th></tr></thead>
     <tbody>
         @foreach($sale->items as $i => $item)
         @php
@@ -117,6 +117,23 @@
                 <div class="text-muted small">{{ $item->item_type === 'vehicle' ? $item->vehicleModel?->vehicleType?->name : $item->sparePart?->part_number }}</div>
             </td>
             <td><span class="badge bg-{{ $item->item_type==='vehicle'?'primary':'success' }} bg-opacity-15 text-{{ $item->item_type==='vehicle'?'primary':'success' }}">{{ ucfirst(str_replace('_',' ',$item->item_type)) }}</span></td>
+            <td class="small" style="max-width:150px">
+                @if($item->item_type === 'vehicle')
+                    <span style="color:#3730a3;font-weight:600">
+                        {{ $item->vehicleModel?->brand }} {{ $item->vehicleModel?->model_name }}
+                    </span>
+                @else
+                    @php $vms = $item->sparePart?->compatibleVehicles; @endphp
+                    @if($vms && $vms->count() > 0)
+                        <span style="color:#3730a3;font-size:.8rem">{{ $vms->first()->brand }} {{ $vms->first()->model_name }}</span>
+                        @if($vms->count() > 1)
+                            <span class="text-muted" style="font-size:.7rem">, +{{ $vms->count()-1 }} more</span>
+                        @endif
+                    @else
+                        <span class="text-muted">—</span>
+                    @endif
+                @endif
+            </td>
             <td class="small">
                 @if($poNumber)
                     <a href="{{ route('purchases.show', $item->purchaseItem->purchase_id) }}" class="text-primary fw-semibold text-decoration-none">

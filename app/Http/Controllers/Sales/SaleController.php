@@ -301,7 +301,7 @@ class SaleController extends Controller
 
     public function show(Sale $sale)
     {
-        $sale->load('customer', 'user', 'items.vehicleModel.vehicleType', 'items.sparePart.category', 'items.purchaseItem.purchase', 'returns');
+        $sale->load('customer', 'user', 'items.vehicleModel.vehicleType', 'items.sparePart.compatibleVehicles', 'items.purchaseItem.purchase', 'returns');
         $totalReturned = $sale->returns->where('status', 'approved')->sum('total_amount');
         $fullyReturned = $totalReturned >= $sale->total;
         return view('sales.sales.show', compact('sale', 'totalReturned', 'fullyReturned'));
