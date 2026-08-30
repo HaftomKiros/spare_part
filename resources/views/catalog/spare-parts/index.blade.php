@@ -96,7 +96,7 @@
                     {{-- hidden data for modal --}}
                     <span class="d-none veh-data" data-id="{{ $part->id }}"
                           data-name="{{ addslashes($part->name) }}"
-                          data-vehicles="{{ addslashes($vc->map(fn($v)=>$v->brand.' '.$v->model_name.($v->model_code?' ('.$v->model_code.')':'')).implode('||')) }}">
+                          data-vehicles="{{ addslashes($vc->map(fn($v)=>$v->brand.' '.$v->model_name.($v->model_code?' ('.$v->model_code.')':''))->join('||')) }}">
                     </span>
                 @endif
             </td>
