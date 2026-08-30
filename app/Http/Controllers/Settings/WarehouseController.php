@@ -82,7 +82,7 @@ class WarehouseController extends Controller
             ->join('vehicle_types as vt', 'vm.vehicle_type_id', '=', 'vt.id')
             ->where('wv.warehouse_id', $warehouse->id)
             ->select('vm.id', 'vm.brand', 'vm.model_name', 'vm.model_code',
-                     'vm.selling_price', 'vm.buying_price',
+                     'vm.selling_price_min', 'vm.selling_price_max', 'vm.buying_price',
                      'vt.name as type_name',
                      'wv.current_stock', 'wv.reorder_level')
             ->orderBy('wv.current_stock')

@@ -50,8 +50,8 @@
         </div>
         <div class="col-6">
             <div class="p-3 rounded-3 bg-success bg-opacity-10">
-                <div class="fw-bold fs-5 text-success">Br {{ number_format($vehicleModel->selling_price, 2) }}</div>
-                <div class="small text-muted">Selling Price</div>
+                <div class="fw-bold fs-5 text-success">Br {{ number_format($vehicleModel->selling_price_min, 2) }} — Br {{ number_format($vehicleModel->selling_price_max, 2) }}</div>
+                <div class="small text-muted">Selling Price (Min — Max)</div>
             </div>
         </div>
         <div class="col-6">

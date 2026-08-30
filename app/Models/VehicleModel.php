@@ -106,7 +106,7 @@ class VehicleModel extends Model
     public function getProfitMarginAttribute(): float
     {
         if ($this->buying_price <= 0) return 0;
-        return round((($this->selling_price - $this->buying_price) / $this->buying_price) * 100, 2);
+        return round((($this->selling_price_max - $this->buying_price) / $this->buying_price) * 100, 2);
     }
 
     public function isLowStock(): bool
