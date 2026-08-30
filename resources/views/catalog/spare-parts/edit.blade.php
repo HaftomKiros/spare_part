@@ -29,21 +29,6 @@
         <input type="text" name="name" class="form-control" value="{{ old('name', $sparePart->name) }}" required>
     </div>
     <div class="col-md-6">
-        <label class="form-label">Category <span class="text-danger">*</span></label>
-        <select name="part_category_id" class="form-select" required>
-            @foreach($categories as $cat)
-                <optgroup label="{{ $cat->name }}">
-                    <option value="{{ $cat->id }}" {{ old('part_category_id', $sparePart->part_category_id) == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-                    @foreach($cat->children as $child)
-                        <option value="{{ $child->id }}" {{ old('part_category_id', $sparePart->part_category_id) == $child->id ? 'selected' : '' }}>
-                            &nbsp;&nbsp;↳ {{ $child->name }}
-                        </option>
-                    @endforeach
-                </optgroup>
-            @endforeach
-        </select>
-    </div>
-    <div class="col-md-6">
         <label class="form-label">Unit of Measure</label>
         <select name="unit_id" class="form-select" required>
             @foreach($units as $u)
@@ -52,8 +37,8 @@
         </select>
     </div>
     <div class="col-md-6">
-        <label class="form-label">Storage Location</label>
-        <input type="text" name="location" class="form-control" value="{{ old('location', $sparePart->location) }}">
+        <label class="form-label">Shelf</label>
+        <input type="text" name="location" class="form-control" value="{{ old('location', $sparePart->location) }}" placeholder="e.g. A-3, Shelf 2B">
     </div>
     <div class="col-12">
         <label class="form-label">Description</label>
@@ -66,20 +51,14 @@
 <div class="card">
 <div class="card-header"><i class="fa fa-motorcycle me-2 text-primary"></i>Compatible Vehicles</div>
 <div class="card-body">
-    <div class="row g-2" style="max-height:200px;overflow-y:auto">
+    <select name="compatible_vehicles[]" id="compatible_vehicles" class="form-select" multiple placeholder="Search and select compatible vehicles…">
         @foreach($vehicles as $v)
-        <div class="col-6 col-md-4">
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="compatible_vehicles[]"
-                       value="{{ $v->id }}" id="veh_{{ $v->id }}"
-                       {{ $sparePart->compatibleVehicles->contains($v->id) ? 'checked' : '' }}>
-                <label class="form-check-label small" for="veh_{{ $v->id }}">
-                    {{ $v->brand }} {{ $v->model_name }}
-                </label>
-            </div>
-        </div>
+        <option value="{{ $v->id }}" {{ $sparePart->compatibleVehicles->contains($v->id) || in_array($v->id, old('compatible_vehicles', [])) ? 'selected' : '' }}>
+            {{ $v->brand }} {{ $v->model_name }}{{ $v->model_code ? ' ('.$v->model_code.')' : '' }} — {{ $v->vehicleType->name }}
+        </option>
         @endforeach
-    </div>
+    </select>
+    <div class="form-text mt-1">Search by brand, model name or type. Select all that apply.</div>
 </div>
 </div>
 </div>
@@ -135,3 +114,17 @@
 </div>
 </form>
 @endsection
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var el = document.getElementById('compatible_vehicles');
+    if (el && !el._tomSelect) {
+        new TomSelect(el, {
+            plugins: ['remove_button'],
+            placeholder: 'Search by brand, model name or type…',
+            maxOptions: 500,
+        });
+    }
+});
+</script>
+@endpush

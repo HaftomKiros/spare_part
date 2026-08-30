@@ -62,7 +62,7 @@
 </div>
 <div class="table-responsive">
 <table class="table">
-    <thead><tr><th>Part</th><th>Category</th><th>Unit</th><th>In Stock</th><th>Reorder</th><th>Sales</th><th>Status</th><th>Value</th></tr></thead>
+    <thead><tr><th>Part</th><th>Unit</th><th>In Stock</th><th>Reorder</th><th>Sales</th><th>Status</th><th>Value</th></tr></thead>
     <tbody id="parts-tbody">
         @forelse($parts as $p)
         <tr>
@@ -70,7 +70,6 @@
                 <div class="fw-semibold small">{{ $p->name }}</div>
                 <div class="text-muted" style="font-size:.72rem">{{ $p->part_number }}</div>
             </td>
-            <td class="text-muted small">{{ $p->category }}</td>
             <td class="text-muted small">{{ $p->unit }}</td>
             <td>
                 <span class="fw-bold {{ $p->current_stock <= 0 ? 'text-danger' : ($p->current_stock <= $p->reorder_level ? 'text-warning' : 'text-success') }}">
@@ -100,7 +99,7 @@
             </td>
         </tr>
         @empty
-        <tr><td colspan="8" class="text-center text-muted py-4">No spare parts in this warehouse yet.</td></tr>
+        <tr><td colspan="7" class="text-center text-muted py-4">No spare parts in this warehouse yet.</td></tr>
         @endforelse
     </tbody>
 </table>

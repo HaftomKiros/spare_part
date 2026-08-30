@@ -58,7 +58,6 @@ class SparePartController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'part_category_id' => 'required|exists:part_categories,id',
             'unit_id'          => 'required|exists:units,id',
             'part_number'      => 'required|string|max:50|unique:spare_parts,part_number',
             'oem_number'       => 'nullable|string|max:100',
@@ -74,6 +73,9 @@ class SparePartController extends Controller
             'compatible_vehicles' => 'nullable|array',
             'compatible_vehicles.*' => 'exists:vehicle_models,id',
         ]);
+
+        // Auto-assign default category (first available)
+        $data['part_category_id'] = PartCategory::orderBy('id')->value('id');
 
         $compatibleVehicles = $data['compatible_vehicles'] ?? [];
         unset($data['compatible_vehicles']);
@@ -121,7 +123,6 @@ class SparePartController extends Controller
     public function update(Request $request, SparePart $sparePart)
     {
         $data = $request->validate([
-            'part_category_id' => 'required|exists:part_categories,id',
             'unit_id'          => 'required|exists:units,id',
             'part_number'      => 'required|string|max:50|unique:spare_parts,part_number,' . $sparePart->id,
             'oem_number'       => 'nullable|string|max:100',
@@ -136,6 +137,10 @@ class SparePartController extends Controller
             'compatible_vehicles'   => 'nullable|array',
             'compatible_vehicles.*' => 'exists:vehicle_models,id',
         ]);
+
+        // Preserve existing category on update
+        $data['part_category_id'] = $sparePart->part_category_id
+            ?? PartCategory::orderBy('id')->value('id');
 
         $compatibleVehicles = $data['compatible_vehicles'] ?? [];
         unset($data['compatible_vehicles']);
