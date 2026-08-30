@@ -82,8 +82,10 @@
 <div class="card-header"><i class="fa fa-warehouse me-2 text-primary"></i>Stock</div>
 <div class="card-body">
     <div class="mb-3">
-        <label class="form-label">Opening Stock <span class="text-danger">*</span></label>
-        <input type="number" name="current_stock" class="form-control" value="{{ old('current_stock', 0) }}" min="0" required>
+        <label class="form-label">Opening Stock</label>
+        <input type="number" name="current_stock" class="form-control" value="0" disabled>
+        <input type="hidden" name="current_stock" value="0">
+        <div class="form-text">Stock is added via Inventory → Stock Entry after saving.</div>
     </div>
     <div>
         <label class="form-label">Reorder Level <span class="text-danger">*</span></label>

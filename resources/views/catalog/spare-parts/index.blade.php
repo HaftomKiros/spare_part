@@ -65,7 +65,6 @@
             <th>Category</th>
             <th>Stock</th>
             <th>Reorder</th>
-            <th>Purchase Price</th>
             <th>Sell Price</th>
             <th>Status</th>
             <th class="text-end">Actions</th>
@@ -92,13 +91,6 @@
                 </span>
             </td>
             <td class="text-muted">{{ $part->reorder_level }}</td>
-            <td class="small">
-                @if($part->buying_price > 0)
-                    <span class="fw-semibold" style="color:#f59e0b">Br {{ number_format($part->buying_price, 2) }}</span>
-                @else
-                    <span class="text-muted">—</span>
-                @endif
-            </td>
             <td class="small">
                 @if($part->selling_price_min > 0 || $part->selling_price_max > 0)
                     <span class="text-muted">Br {{ number_format($part->selling_price_min, 2) }}</span>
