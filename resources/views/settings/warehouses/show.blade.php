@@ -59,7 +59,7 @@
 <div class="card">
 <div class="table-responsive">
 <table class="table">
-    <thead><tr><th>Part</th><th>Category</th><th>Unit</th><th>In Stock</th><th>Reorder</th><th>Status</th><th>Value</th></tr></thead>
+    <thead><tr><th>Part</th><th>Category</th><th>Unit</th><th>In Stock</th><th>Reorder</th><th>Sales</th><th>Status</th><th>Value</th></tr></thead>
     <tbody>
         @forelse($parts as $p)
         <tr>
@@ -76,6 +76,14 @@
             </td>
             <td class="text-muted">{{ $p->reorder_level }}</td>
             <td>
+                @if($p->qty_sold > 0)
+                    <span class="fw-semibold text-primary">{{ number_format($p->qty_sold) }}</span>
+                    <div class="text-muted" style="font-size:.7rem">{{ $p->times_sold }} invoice{{ $p->times_sold != 1 ? 's' : '' }}</div>
+                @else
+                    <span class="text-muted">—</span>
+                @endif
+            </td>
+            <td>
                 @if($p->current_stock <= 0)
                     <span class="stock-pill out">Out of Stock</span>
                 @elseif($p->current_stock <= $p->reorder_level)
@@ -89,7 +97,7 @@
             </td>
         </tr>
         @empty
-        <tr><td colspan="7" class="text-center text-muted py-4">No spare parts in this warehouse yet.</td></tr>
+        <tr><td colspan="8" class="text-center text-muted py-4">No spare parts in this warehouse yet.</td></tr>
         @endforelse
     </tbody>
 </table>
@@ -102,7 +110,7 @@
 <div class="card">
 <div class="table-responsive">
 <table class="table">
-    <thead><tr><th>Model</th><th>Type</th><th>In Stock</th><th>Reorder</th><th>Status</th><th>Value</th></tr></thead>
+    <thead><tr><th>Model</th><th>Type</th><th>In Stock</th><th>Reorder</th><th>Sales</th><th>Status</th><th>Value</th></tr></thead>
     <tbody>
         @forelse($vehicles as $v)
         <tr>
@@ -115,6 +123,14 @@
             </td>
             <td class="text-muted">{{ $v->reorder_level }}</td>
             <td>
+                @if($v->qty_sold > 0)
+                    <span class="fw-semibold text-primary">{{ number_format($v->qty_sold) }}</span>
+                    <div class="text-muted" style="font-size:.7rem">{{ $v->times_sold }} invoice{{ $v->times_sold != 1 ? 's' : '' }}</div>
+                @else
+                    <span class="text-muted">—</span>
+                @endif
+            </td>
+            <td>
                 @if($v->current_stock <= 0)
                     <span class="stock-pill out">Out of Stock</span>
                 @elseif($v->current_stock <= $v->reorder_level)
@@ -125,7 +141,7 @@
             </td>
             <td class="text-muted small">Br {{ number_format($v->current_stock * $v->last_purchase_price, 2) }}</td>
         @empty
-        <tr><td colspan="6" class="text-center text-muted py-4">No vehicles in this warehouse yet.</td></tr>
+        <tr><td colspan="7" class="text-center text-muted py-4">No vehicles in this warehouse yet.</td></tr>
         @endforelse
     </tbody>
 </table>

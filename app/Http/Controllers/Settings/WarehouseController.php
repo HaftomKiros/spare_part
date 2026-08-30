@@ -69,11 +69,25 @@ class WarehouseController extends Controller
             ->orderBy('ws.current_stock')
             ->get();
 
-        // Attach last purchase price to each part row
+        // Attach last purchase price and total qty sold to each part row
         $partIds    = $parts->pluck('id')->toArray();
         $priceMap   = \App\Services\StockService::lastPurchasePriceMap($partIds);
-        $parts->each(function ($p) use ($priceMap) {
+
+        // Sales count per spare part for this warehouse
+        $partSalesMap = DB::table('sale_items as si')
+            ->join('sales as s', 'si.sale_id', '=', 's.id')
+            ->where('s.warehouse_id', $warehouse->id)
+            ->where('s.status', 'completed')
+            ->where('si.item_type', 'spare_part')
+            ->whereIn('si.spare_part_id', $partIds)
+            ->selectRaw('si.spare_part_id, SUM(si.quantity) as qty_sold, COUNT(DISTINCT s.id) as times_sold')
+            ->groupBy('si.spare_part_id')
+            ->get()->keyBy('spare_part_id');
+
+        $parts->each(function ($p) use ($priceMap, $partSalesMap) {
             $p->last_purchase_price = $priceMap[$p->id] ?? 0;
+            $p->qty_sold   = $partSalesMap[$p->id]->qty_sold   ?? 0;
+            $p->times_sold = $partSalesMap[$p->id]->times_sold ?? 0;
         });
 
         // Per-warehouse vehicle stock
@@ -104,8 +118,22 @@ class WarehouseController extends Controller
         // Attach last purchase price to vehicle rows
         $vehicleIds    = $vehicles->pluck('id')->toArray();
         $vehiclePrices = \App\Services\StockService::lastVehiclePriceMap($vehicleIds);
-        $vehicles->each(function ($v) use ($vehiclePrices) {
+
+        // Sales count per vehicle model for this warehouse
+        $vehicleSalesMap = DB::table('sale_items as si')
+            ->join('sales as s', 'si.sale_id', '=', 's.id')
+            ->where('s.warehouse_id', $warehouse->id)
+            ->where('s.status', 'completed')
+            ->where('si.item_type', 'vehicle')
+            ->whereIn('si.vehicle_model_id', $vehicleIds)
+            ->selectRaw('si.vehicle_model_id, SUM(si.quantity) as qty_sold, COUNT(DISTINCT s.id) as times_sold')
+            ->groupBy('si.vehicle_model_id')
+            ->get()->keyBy('vehicle_model_id');
+
+        $vehicles->each(function ($v) use ($vehiclePrices, $vehicleSalesMap) {
             $v->last_purchase_price = $vehiclePrices[$v->id] ?? $v->buying_price;
+            $v->qty_sold   = $vehicleSalesMap[$v->id]->qty_sold   ?? 0;
+            $v->times_sold = $vehicleSalesMap[$v->id]->times_sold ?? 0;
         });
 
         return view('settings.warehouses.show', compact('warehouse', 'parts', 'vehicles', 'movements'));
