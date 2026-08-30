@@ -430,7 +430,6 @@ class SaleController extends Controller
         // Spare parts in this warehouse with current_stock > 0
         $parts = DB::table('warehouse_spare_part_stock as ws')
             ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
-            ->join('part_categories as pc', 'sp.part_category_id', '=', 'pc.id')
             ->join('units as u', 'sp.unit_id', '=', 'u.id')
             ->where('ws.warehouse_id', $warehouseId)
             ->where('ws.current_stock', '>', 0)
@@ -439,12 +438,20 @@ class SaleController extends Controller
                 'sp.id', 'sp.name', 'sp.part_number', 'sp.buying_price',
                 'sp.selling_price_min', 'sp.selling_price_max',
                 'ws.current_stock', 'ws.reorder_level',
-                'pc.id as category_id', 'pc.name as category_name',
                 'u.abbreviation as unit'
             )
-            ->orderBy('pc.name')
             ->orderBy('sp.name')
             ->get();
+
+        // Get compatible vehicle models for each part
+        $partIds = $parts->pluck('id')->toArray();
+        $partVehicleMap = DB::table('spare_part_vehicle_model as spvm')
+            ->join('vehicle_models as vm', 'spvm.vehicle_model_id', '=', 'vm.id')
+            ->whereIn('spvm.spare_part_id', $partIds)
+            ->select('spvm.spare_part_id', 'vm.id as vm_id', 'vm.brand', 'vm.model_name')
+            ->orderBy('vm.brand')->orderBy('vm.model_name')
+            ->get()
+            ->groupBy('spare_part_id');
 
         // Which spare_part_ids have at least one purchase batch with remaining stock
         $partIdsWithBatches = DB::table('purchase_items as pi')
@@ -457,22 +464,13 @@ class SaleController extends Controller
             ->unique()
             ->toArray();
 
-        // Group parts by category — only include parts that have batches
+        // Group parts by vehicle model — a part appears under each compatible model
         $categories = [];
         foreach ($parts as $p) {
             $hasBatches = in_array($p->id, $partIdsWithBatches);
-            // Only include parts that have unsold purchase batches
             if (!$hasBatches) continue;
 
-            $catId = $p->category_id;
-            if (!isset($categories[$catId])) {
-                $categories[$catId] = [
-                    'id'    => $catId,
-                    'name'  => $p->category_name,
-                    'parts' => [],
-                ];
-            }
-            $categories[$catId]['parts'][] = [
+            $partData = [
                 'id'        => $p->id,
                 'name'      => $p->name . ' (' . $p->part_number . ')',
                 'price'     => $p->selling_price_max,
@@ -483,7 +481,25 @@ class SaleController extends Controller
                 'reorder'   => $p->reorder_level,
                 'unit'      => $p->unit,
             ];
+
+            $vmList = $partVehicleMap[$p->id] ?? collect();
+
+            if ($vmList->isEmpty()) {
+                if (!isset($categories['general'])) {
+                    $categories['general'] = ['id' => 'general', 'name' => 'General', 'parts' => []];
+                }
+                $categories['general']['parts'][] = $partData;
+            } else {
+                foreach ($vmList as $vm) {
+                    $key = 'vm_' . $vm->vm_id;
+                    if (!isset($categories[$key])) {
+                        $categories[$key] = ['id' => $key, 'name' => $vm->brand . ' ' . $vm->model_name, 'parts' => []];
+                    }
+                    $categories[$key]['parts'][] = $partData;
+                }
+            }
         }
+        usort($categories, fn($a, $b) => strcmp($a['name'], $b['name']));
 
         // Vehicle models in this warehouse with current_stock > 0
         $vehicles = DB::table('warehouse_vehicle_stock as wv')
