@@ -22,9 +22,6 @@
         <a href="{{ route('catalog.spare-parts.edit', $sparePart) }}" class="btn btn-outline-primary btn-sm">
             <i class="fa fa-pen me-1"></i>Edit Part
         </a>
-        <a href="{{ route('inventory.stock-in.index') }}" class="btn btn-success btn-sm">
-            <i class="fa fa-plus me-1"></i>Add Stock
-        </a>
     </div>
 </div>
 
@@ -136,9 +133,6 @@
                     </div>
                 </div>
             </div>
-            <a href="{{ route('inventory.stock-in.index') }}" class="btn btn-success btn-sm w-100">
-                <i class="fa fa-plus me-1"></i>Add Stock
-            </a>
         </div>
     </div>
 </div>
