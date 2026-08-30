@@ -169,9 +169,21 @@
             </td>
             <td style="max-width:160px">
                 @php
-                    $vlist = $isWarehouseView ? ($part->vehicle_model_list ?? collect()) : $part->compatibleVehicles->map(fn($v)=>$v->brand.' '.$v->model_name);
-                    $vcount = $vlist->count();
-                    $partIdStr = $isWarehouseView ? $part->id : $part->id;
+                    $vlist = $isWarehouseView
+                        ? ($part->vehicle_model_list ?? collect())
+                        : $part->compatibleVehicles->map(fn($v) => $v->brand.' '.$v->model_name);
+
+                    // If a vehicle model filter is active, put that model first
+                    $filteredVmId = request('vehicle_model');
+                    if ($filteredVmId && !$isWarehouseView) {
+                        $filteredVm = $part->compatibleVehicles->firstWhere('id', $filteredVmId);
+                        if ($filteredVm) {
+                            $filteredName = $filteredVm->brand.' '.$filteredVm->model_name;
+                            $vlist = collect([$filteredName])->merge($vlist->reject(fn($n) => $n === $filteredName));
+                        }
+                    }
+
+                    $vcount      = $vlist->count();
                     $partNameStr = addslashes($part->name);
                 @endphp
                 @if($vcount === 0)
