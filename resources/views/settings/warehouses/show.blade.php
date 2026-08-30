@@ -57,10 +57,13 @@
 {{-- Spare Parts --}}
 <div class="tab-pane fade show active" id="parts-tab">
 <div class="card">
+<div class="px-3 pt-3">
+    <input type="text" id="parts-search" class="form-control form-control-sm" placeholder="Search by part name or part number..." oninput="filterTable('parts-tbody','parts-search')" style="max-width:340px">
+</div>
 <div class="table-responsive">
 <table class="table">
     <thead><tr><th>Part</th><th>Category</th><th>Unit</th><th>In Stock</th><th>Reorder</th><th>Sales</th><th>Status</th><th>Value</th></tr></thead>
-    <tbody>
+    <tbody id="parts-tbody">
         @forelse($parts as $p)
         <tr>
             <td>
@@ -108,10 +111,13 @@
 {{-- Vehicles --}}
 <div class="tab-pane fade" id="vehicles-tab">
 <div class="card">
+<div class="px-3 pt-3">
+    <input type="text" id="vehicles-search" class="form-control form-control-sm" placeholder="Search by brand, model name or code..." oninput="filterTable('vehicles-tbody','vehicles-search')" style="max-width:340px">
+</div>
 <div class="table-responsive">
 <table class="table">
     <thead><tr><th>Model</th><th>Type</th><th>In Stock</th><th>Reorder</th><th>Sales</th><th>Status</th><th>Value</th></tr></thead>
-    <tbody>
+    <tbody id="vehicles-tbody">
         @forelse($vehicles as $v)
         <tr>
             <td class="fw-semibold small">{{ $v->brand }} {{ $v->model_name }} {{ $v->model_code ? '('.$v->model_code.')' : '' }}</td>
@@ -241,6 +247,22 @@
 @endsection
 @push('scripts')
 <script>
+// ── Live search filter for tables ────────────────────────────────────
+function filterTable(tbodyId, inputId) {
+    const q     = document.getElementById(inputId).value.toLowerCase();
+    const rows  = document.querySelectorAll('#' + tbodyId + ' tr');
+    let visible = 0;
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        const show = !q || text.includes(q);
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+    // Update the tab badge count
+    const badgeMap = { 'parts-tbody': 'parts-badge', 'vehicles-tbody': 'vehicles-badge' };
+    const badge = document.getElementById(badgeMap[tbodyId]);
+    if (badge) badge.textContent = visible;
+}
 // Auto-open transfer modal from button
 document.querySelector('a[href="#transferModal"]')?.addEventListener('click', function(e) {
     e.preventDefault();
