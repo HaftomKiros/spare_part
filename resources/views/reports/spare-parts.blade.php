@@ -55,7 +55,25 @@
                 <div class="fw-semibold small">{{ $p->name }}</div>
                 <div class="text-muted" style="font-size:.72rem">{{ $p->part_number }}</div>
             </td>
-            <td><span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:.72rem;padding:3px 8px;border-radius:5px">{{ $p->vehicles }}</span></td>
+            <td style="max-width:180px">
+                @php
+                    $vmList = $p->vehicles && $p->vehicles !== '—' ? explode(', ', $p->vehicles) : [];
+                    $vmCount = count($vmList);
+                @endphp
+                @if($vmCount === 0)
+                    <span class="text-muted">—</span>
+                @else
+                    <span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:.72rem;padding:3px 8px;border-radius:5px">
+                        {{ $vmList[0] }}@if($vmCount > 1) &hellip;@endif
+                    </span>
+                    @if($vmCount > 1)
+                        <span style="font-size:.68rem;color:#6366f1;cursor:pointer;text-decoration:underline"
+                              onclick="openSpVehicleModal('{{ addslashes($p->name) }}', '{{ addslashes($p->vehicles) }}')">
+                            +{{ $vmCount - 1 }} more
+                        </span>
+                    @endif
+                @endif
+            </td>
             <td class="text-muted small">{{ $p->unit }}</td>
             <td class="fw-semibold text-primary">{{ number_format($p->qty_sold) }}</td>
             <td class="fw-semibold">Br {{ number_format($p->revenue,2) }}</td>
@@ -91,4 +109,42 @@
 </table>
 </div>
 </div>
+
+{{-- Vehicle Models Modal --}}
+<div class="modal fade" id="spVehicleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold"><i class="fa fa-motorcycle me-2 text-primary"></i><span id="spVehModalPartName"></span></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Compatible vehicle models:</p>
+                <div id="spVehModalList" class="d-flex flex-wrap gap-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
+@push('scripts')
+<script>
+function openSpVehicleModal(partName, vehicles) {
+    document.getElementById('spVehModalPartName').textContent = partName;
+    const list = document.getElementById('spVehModalList');
+    list.innerHTML = '';
+    vehicles.split(', ').forEach(function(v) {
+        if (!v.trim()) return;
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.style = 'background:#e0e7ff;color:#3730a3;font-size:.8rem;padding:5px 10px;border-radius:6px';
+        badge.textContent = v.trim();
+        list.appendChild(badge);
+    });
+    new bootstrap.Modal(document.getElementById('spVehicleModal')).show();
+}
+</script>
+@endpush
