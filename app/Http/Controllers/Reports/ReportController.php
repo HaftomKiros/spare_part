@@ -55,6 +55,19 @@ class ReportController extends Controller
             SUM(balance) as total_outstanding
         ')->first();
 
+        // Deduct approved returns from summary figures
+        $returnsTotal = DB::table('sale_returns as sr')
+            ->join('sales as s', 'sr.sale_id', '=', 's.id')
+            ->where('sr.status', 'approved')
+            ->whereBetween('s.sale_date', [$dateFrom, $dateTo])
+            ->whereIn('s.warehouse_id', $accessibleIds)
+            ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
+            ->sum('sr.total_amount');
+        if ($summary) {
+            $summary->gross_revenue    = max(0, $summary->gross_revenue    - $returnsTotal);
+            $summary->total_collected  = max(0, $summary->total_collected  - $returnsTotal);
+        }
+
         $daily = Sale::completed()->whereBetween('sale_date', [$dateFrom, $dateTo]);
         $scope($daily);
         $typeScope($daily);
@@ -373,6 +386,30 @@ class ReportController extends Controller
                       'vm.buying_price', 'vt.name')
             ->orderByDesc('qty_sold')->get();
 
+
+        // Subtract approved returns per vehicle model
+        $vehicleReturnMap = DB::table('sale_return_items as sri')
+            ->join('sale_returns as sr', 'sri.sale_return_id', '=', 'sr.id')
+            ->join('sales as s', 'sr.sale_id', '=', 's.id')
+            ->where('sr.status', 'approved')
+            ->where('sri.item_type', 'vehicle')
+            ->whereBetween('s.sale_date', [$dateFrom, $dateTo])
+            ->whereIn('s.warehouse_id', $accessibleIds)
+            ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
+            ->selectRaw('sri.vehicle_model_id, SUM(sri.quantity) as ret_qty, SUM(sri.total) as ret_revenue')
+            ->groupBy('sri.vehicle_model_id')
+            ->get()->keyBy('vehicle_model_id');
+        $vehicles = $vehicles->map(function ($v) use ($vehicleReturnMap) {
+            $ret = $vehicleReturnMap[$v->id] ?? null;
+            if ($ret) {
+                $v->qty_sold -= $ret->ret_qty;
+                $v->revenue  -= $ret->ret_revenue;
+                $v->cost      = max(0, $v->qty_sold) * $v->buying_price;
+                $v->profit    = $v->revenue - $v->cost;
+            }
+            return $v;
+        })->filter(fn($v) => $v->qty_sold > 0);
+
         $totalRevenue = $vehicles->sum('revenue');
         $totalProfit  = $vehicles->sum('profit');
         $totalQty     = $vehicles->sum('qty_sold');
@@ -414,6 +451,30 @@ class ReportController extends Controller
             ')
             ->groupBy('sp.id', 'sp.name', 'sp.part_number', 'sp.buying_price', 'u.abbreviation')
             ->orderByDesc('qty_sold')->get();
+
+        // Subtract approved returns per spare part
+        $partReturnMap = DB::table('sale_return_items as sri')
+            ->join('sale_returns as sr', 'sri.sale_return_id', '=', 'sr.id')
+            ->join('sales as s', 'sr.sale_id', '=', 's.id')
+            ->where('sr.status', 'approved')
+            ->where('sri.item_type', 'spare_part')
+            ->whereBetween('s.sale_date', [$dateFrom, $dateTo])
+            ->whereIn('s.warehouse_id', $accessibleIds)
+            ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
+            ->selectRaw('sri.spare_part_id, SUM(sri.quantity) as ret_qty, SUM(sri.total) as ret_revenue')
+            ->groupBy('sri.spare_part_id')
+            ->get()->keyBy('spare_part_id');
+        $parts = $parts->map(function ($p) use ($partReturnMap) {
+            $ret = $partReturnMap[$p->id] ?? null;
+            if ($ret) {
+                $p->qty_sold -= $ret->ret_qty;
+                $p->revenue  -= $ret->ret_revenue;
+                $p->cost      = max(0, $p->qty_sold) * $p->buying_price;
+                $p->profit    = $p->revenue - $p->cost;
+            }
+            return $p;
+        })->filter(fn($p) => $p->qty_sold > 0);
+
 
         // Attach compatible vehicle names to each part
         $partIds = $parts->pluck('id');
@@ -749,7 +810,7 @@ class ReportController extends Controller
                 SUM(
                     si.quantity * CASE
                         WHEN si.item_type = "vehicle"    THEN COALESCE(vm.buying_price, 0)
-                        WHEN si.item_type = "spare_part" THEN COALESCE(si.unit_price * 0, 0)
+                        WHEN si.item_type = "spare_part" THEN COALESCE(sp.buying_price, 0)
                         ELSE 0
                     END
                 ) as cost
