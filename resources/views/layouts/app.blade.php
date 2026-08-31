@@ -1312,7 +1312,7 @@
     <footer class="main-footer">
         <span class="text-muted">&copy; {{ date('Y') }} {{ $company->company_name ?? 'Abush Spare Part' }}. All rights reserved.</span>
         <span class="ms-auto text-muted small">v1.0.0</span>
-    </footer>>
+    </footer>
 
 </div>
 
