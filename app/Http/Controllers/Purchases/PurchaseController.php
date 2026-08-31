@@ -89,24 +89,24 @@ class PurchaseController extends Controller
 
         // Pre-encode JSON for JS (avoids PHP 8.5 parse issues with @json + arrow functions)
 
-        // Total unsold per spare part: SUM(quantity - total_sold) from purchase_items
+        // Unsold scoped to selected warehouse (default on page load, updated via AJAX)
+        $defaultWarehouseId = $defaultWarehouse?->id;
         $partUnsold = DB::table('purchase_items as pi')
             ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
             ->where('pi.item_type', 'spare_part')
             ->where('p.status', 'received')
+            ->when($defaultWarehouseId, fn($q) => $q->where('p.warehouse_id', $defaultWarehouseId))
             ->selectRaw('pi.spare_part_id, SUM(pi.quantity - pi.total_sold) as unsold')
             ->groupBy('pi.spare_part_id')
             ->pluck('unsold', 'spare_part_id');
-
-        // Total unsold per vehicle model
         $vehicleUnsold = DB::table('purchase_items as pi')
             ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
             ->where('pi.item_type', 'vehicle')
             ->where('p.status', 'received')
+            ->when($defaultWarehouseId, fn($q) => $q->where('p.warehouse_id', $defaultWarehouseId))
             ->selectRaw('pi.vehicle_model_id, SUM(pi.quantity - pi.total_sold) as unsold')
             ->groupBy('pi.vehicle_model_id')
             ->pluck('unsold', 'vehicle_model_id');
-
         $vehicleTypesJson = json_encode($vehicleTypes->map(function ($vt) use ($vehicleUnsold) {
             return [
                 'id'     => $vt->id,
@@ -172,7 +172,47 @@ class PurchaseController extends Controller
         return view('purchases.purchases.create', compact('suppliers', 'vehicleTypes', 'categories', 'number', 'vehicleTypesJson', 'categoriesJson', 'sparePartsJson', 'warehouses', 'defaultWarehouse'));
     }
 
-    public function store(Request $request)
+    // ── AJAX: get items (unsold) scoped to a warehouse ─────────────
+    public function getItemsByWarehouse(\Illuminate\Http\Request $request)
+    {
+        $warehouseId = (int) $request->warehouse_id;
+        $user        = auth()->user();
+        if (!$warehouseId || !in_array($warehouseId, $user->accessibleWarehouseIds())) {
+            return response()->json(['vehicles' => [], 'spare_parts' => []]);
+        }
+
+        $partUnsold = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('pi.item_type', 'spare_part')->where('p.status', 'received')
+            ->where('p.warehouse_id', $warehouseId)
+            ->selectRaw('pi.spare_part_id, SUM(pi.quantity - pi.total_sold) as unsold')
+            ->groupBy('pi.spare_part_id')->pluck('unsold', 'spare_part_id');
+
+        $vehicleUnsold = DB::table('purchase_items as pi')
+            ->join('purchases as p', 'pi.purchase_id', '=', 'p.id')
+            ->where('pi.item_type', 'vehicle')->where('p.status', 'received')
+            ->where('p.warehouse_id', $warehouseId)
+            ->selectRaw('pi.vehicle_model_id, SUM(pi.quantity - pi.total_sold) as unsold')
+            ->groupBy('pi.vehicle_model_id')->pluck('unsold', 'vehicle_model_id');
+
+        $categories = PartCategory::active()->with('spareParts.unit','spareParts.compatibleVehicles')->orderBy('name')->get();
+        $allParts   = $categories->flatMap(fn($c) => $c->spareParts);
+        $vmGroups   = [];
+        foreach ($allParts as $p) {
+            $pd = ['id'=>$p->id,'name'=>$p->name.' ('.$p->part_number.')','price'=>$p->buying_price,'stock'=>$p->current_stock,'unsold'=>(int)($partUnsold[$p->id]??0),'unit'=>$p->unit->abbreviation,'vehicles'=>$p->compatibleVehicles->map(fn($v)=>$v->brand.' '.$v->model_name)->join(', ')];
+            $vmList = $p->compatibleVehicles;
+            if ($vmList->isEmpty()) { $vmGroups['general'] = $vmGroups['general']??['id'=>'general','name'=>'General','parts'=>[]]; $vmGroups['general']['parts'][] = $pd; }
+            else { foreach ($vmList as $vm) { $key='vm_'.$vm->id; $vmGroups[$key]=$vmGroups[$key]??['id'=>$key,'name'=>$vm->brand.' '.$vm->model_name,'parts'=>[]]; $vmGroups[$key]['parts'][]=$pd; } }
+        }
+        usort($vmGroups, fn($a,$b)=>strcmp($a['name'],$b['name']));
+
+        $vehicleTypes = VehicleType::active()->with('activeVehicleModels')->get();
+        $vehicles = $vehicleTypes->map(fn($vt) => ['id'=>$vt->id,'name'=>$vt->name,'models'=>$vt->activeVehicleModels->map(fn($m)=>['id'=>$m->id,'name'=>$m->brand.' '.$m->model_name.($m->model_code?' ('.$m->model_code.')':''),'price'=>$m->buying_price,'stock'=>0,'unsold'=>(int)($vehicleUnsold[$m->id]??0)])->values()])->values();
+
+        return response()->json(['vehicles'=>$vehicles,'spare_parts'=>array_values($vmGroups)]);
+    }
+
+    public function store(\Illuminate\Http\Request $request)
     {
         $request->validate([
             'supplier_id'    => 'required|exists:suppliers,id',

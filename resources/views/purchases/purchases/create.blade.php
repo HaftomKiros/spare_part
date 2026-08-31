@@ -180,11 +180,39 @@
 (function () {
     'use strict';
 
-    const VEHICLES   = {!! $vehicleTypesJson !!};
-    const CATEGORIES = {!! $categoriesJson !!};
-    const SPARE_PARTS_VM = {!! $sparePartsJson !!};
+    let VEHICLES   = {!! $vehicleTypesJson !!};
+    let CATEGORIES = {!! $categoriesJson !!};
+    let SPARE_PARTS_VM = {!! $sparePartsJson !!};
+    const AJAX_ITEMS_URL = '{{ route("purchases.ajax.items") }}';
 
     let rowCount = 0;
+
+    // Reload unsold counts when warehouse changes
+    document.addEventListener('DOMContentLoaded', function () {
+        const whSel = document.querySelector('select[name="warehouse_id"]');
+        if (whSel) {
+            whSel.addEventListener('change', function () {
+                const wid = this.value;
+                if (!wid) return;
+                fetch(AJAX_ITEMS_URL + '?warehouse_id=' + wid)
+                    .then(r => r.json())
+                    .then(data => {
+                        VEHICLES       = data.vehicles    || [];
+                        SPARE_PARTS_VM = data.spare_parts || [];
+                        CATEGORIES     = [];
+                        document.querySelectorAll('.item-card').forEach(card => {
+                            const type = card.querySelector('.inp-type')?.value;
+                            if (type) {
+                                const selItem = card.querySelector('.sel-item');
+                                if (selItem && selItem._tomSelect) selItem._tomSelect.destroy();
+                                if (selItem) { selItem.innerHTML = buildOptionsHtml(type, card); selItem.disabled = false; }
+                            }
+                        });
+                    });
+            });
+        }
+    });
+
 
     const container     = document.getElementById('itemsContainer');
     const subtotalEl    = document.getElementById('subtotalDisplay');

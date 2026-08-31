@@ -207,6 +207,7 @@ Route::middleware(['auth'])->group(function () {
         // Main Purchases
         Route::get('/',                   [PurchaseController::class, 'index'])  ->name('index')  ->middleware('perm:purchases.view');
         Route::get('/create',             [PurchaseController::class, 'create']) ->name('create') ->middleware('perm:purchases.create');
+        Route::get('/ajax/items',         [PurchaseController::class, 'getItemsByWarehouse'])->name('ajax.items')->middleware('perm:purchases.create');
         Route::post('/',                  [PurchaseController::class, 'store'])  ->name('store')  ->middleware('perm:purchases.create');
         Route::get('/{purchase}',         [PurchaseController::class, 'show'])   ->name('show')   ->middleware('perm:purchases.view');
         Route::get('/{purchase}/edit',    [PurchaseController::class, 'edit'])   ->name('edit')   ->middleware('perm:purchases.edit');
