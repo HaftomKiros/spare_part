@@ -88,14 +88,6 @@ class ReportController extends Controller
             ->get()
             ->groupBy('date');
 
-        // Attach per-type revenue to each daily row
-        $daily = $daily->map(function ($row) use ($dailyItemType) {
-            $byType = $dailyItemType[$row->date] ?? collect();
-            $row->vehicle_revenue    = (float) ($byType->firstWhere('item_type', 'vehicle')?->revenue    ?? 0);
-            $row->spare_part_revenue = (float) ($byType->firstWhere('item_type', 'spare_part')?->revenue ?? 0);
-            return $row;
-        });
-
         // ── Net Sales Profit per day (selling price − COGS) ──────────────
         $profitRows = DB::table('sale_items as si')
             ->join('sales as s', 'si.sale_id', '=', 's.id')
@@ -166,11 +158,27 @@ class ReportController extends Controller
             ->pluck('ret_profit', 'date');
 
         // Attach profit to each daily row and deduct returns
-        $daily = $daily->map(function ($row) use ($profitRows, $dailyReturnMap, $dailyReturnProfitMap) {
+        $daily = $daily->map(function ($row) use ($profitRows, $dailyReturnMap, $dailyReturnProfitMap, $dailyItemType) {
             $retTotal  = (float)($dailyReturnMap[$row->date]  ?? 0);
             $retProfit = (float)($dailyReturnProfitMap[$row->date] ?? 0);
+            $byType    = $dailyItemType[$row->date] ?? collect();
+
+            // Net daily revenue (deduct all returns from total)
             $row->total  = max(0, (float)$row->total  - $retTotal);
             $row->profit = max(0, (float)($profitRows[$row->date]->profit ?? 0) - $retProfit);
+
+            // Per-type revenue — use net total, split proportionally if both types exist
+            $grossVehicle   = (float)($byType->firstWhere('item_type', 'vehicle')?->revenue    ?? 0);
+            $grossSparePart = (float)($byType->firstWhere('item_type', 'spare_part')?->revenue ?? 0);
+            $grossTotal     = $grossVehicle + $grossSparePart;
+            if ($grossTotal > 0) {
+                $scale = $row->total / $grossTotal;
+                $row->vehicle_revenue    = round($grossVehicle    * $scale, 2);
+                $row->spare_part_revenue = round($grossSparePart  * $scale, 2);
+            } else {
+                $row->vehicle_revenue    = 0;
+                $row->spare_part_revenue = 0;
+            }
             return $row;
         });
 
