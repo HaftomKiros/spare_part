@@ -182,6 +182,7 @@
 
     const VEHICLES   = {!! $vehicleTypesJson !!};
     const CATEGORIES = {!! $categoriesJson !!};
+    const SPARE_PARTS_VM = {!! $sparePartsJson !!};
 
     let rowCount = 0;
 
@@ -224,16 +225,18 @@
                 html += '<optgroup label="' + esc(vt.name) + '">' + opts + '</optgroup>';
             });
         } else {
-            if (!CATEGORIES.length) return html + '<option disabled>No spare parts available</option>';
-            CATEGORIES.forEach(cat => {
-                if (!cat.parts.length) return;
-                const opts = cat.parts.map(p => {
+            const groups = SPARE_PARTS_VM.length ? SPARE_PARTS_VM : CATEGORIES;
+            if (!groups.length) return html + '<option disabled>No spare parts available</option>';
+            groups.forEach(group => {
+                if (!group.parts.length) return;
+                const opts = group.parts.map(p => {
                     const disabled = taken.has(String(p.id)) ? ' disabled' : '';
                     const label    = taken.has(String(p.id)) ? ' (already in another row)' : '';
-                    return '<option value="' + p.id + '" data-price="' + p.price + '"' + disabled + '>'
-                         + esc(p.name) + ' — Unsold: ' + p.unsold + (p.unit ? ' ' + p.unit : '') + label + '</option>';
+                    const vehText  = p.vehicles ? ' | ' + p.vehicles : '';
+                    return '<option value="' + p.id + '" data-price="' + p.price + '" data-vehicles="' + esc(p.vehicles||'') + '"' + disabled + '>'
+                         + esc(p.name) + ' — Unsold: ' + p.unsold + (p.unit ? ' ' + p.unit : '') + vehText + label + '</option>';
                 }).join('');
-                html += '<optgroup label="' + esc(cat.name) + '">' + opts + '</optgroup>';
+                html += '<optgroup label="' + esc(group.name) + '">' + opts + '</optgroup>';
             });
         }
         return html;
@@ -359,6 +362,27 @@
             if (type) {
                 selItem.innerHTML = buildOptionsHtml(type, card);
                 selItem.disabled  = false;
+                // Init Tom Select for spare_part with vehicle name search
+                if (type === 'spare_part') {
+                    if (selItem._tomSelect) selItem._tomSelect.destroy();
+                    new TomSelect(selItem, {
+                        maxOptions: 500,
+                        render: {
+                            option: function(data, escape) {
+                                const veh = data.element && data.element.dataset.vehicles;
+                                return '<div>' + escape(data.text) + (veh ? '<div style="font-size:.7rem;color:#94a3b8">' + escape(veh) + '</div>' : '') + '</div>';
+                            }
+                        },
+                        score: function(search) {
+                            return function(item) {
+                                const t = (item.text || '').toLowerCase();
+                                const v = (item.element && item.element.dataset.vehicles || '').toLowerCase();
+                                const s = search.toLowerCase();
+                                return (t.includes(s) || v.includes(s)) ? 1 : 0;
+                            };
+                        }
+                    });
+                }
             } else {
                 selItem.innerHTML = '<option value="">— Choose type first —</option>';
                 selItem.disabled  = true;

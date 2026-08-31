@@ -82,7 +82,7 @@ class PurchaseController extends Controller
     {
         $suppliers        = Supplier::active()->orderBy('name')->get();
         $vehicleTypes     = VehicleType::active()->with('activeVehicleModels.stock')->get();
-        $categories       = PartCategory::active()->with('spareParts.unit')->orderBy('name')->get();
+        $categories       = PartCategory::active()->with('spareParts.unit', 'spareParts.compatibleVehicles')->orderBy('name')->get();
         $number           = Purchase::generateNumber();
         $warehouses       = auth()->user()->accessibleWarehouses()->get();
         $defaultWarehouse = $warehouses->firstWhere('is_default', true) ?? $warehouses->first();
@@ -129,18 +129,47 @@ class PurchaseController extends Controller
                 'name'  => $cat->name,
                 'parts' => $cat->spareParts->map(function ($p) use ($partUnsold) {
                     return [
-                        'id'     => $p->id,
-                        'name'   => $p->name . ' (' . $p->part_number . ')',
-                        'price'  => $p->buying_price,
-                        'stock'  => $p->current_stock,
-                        'unsold' => (int) ($partUnsold[$p->id] ?? 0),
-                        'unit'   => $p->unit->abbreviation,
+                        'id'       => $p->id,
+                        'name'     => $p->name . ' (' . $p->part_number . ')',
+                        'price'    => $p->buying_price,
+                        'stock'    => $p->current_stock,
+                        'unsold'   => (int) ($partUnsold[$p->id] ?? 0),
+                        'unit'     => $p->unit->abbreviation,
+                        'vehicles' => $p->compatibleVehicles->map(fn($v) => $v->brand.' '.$v->model_name)->join(', '),
                     ];
                 })->values(),
             ];
         })->values());
 
-        return view('purchases.purchases.create', compact('suppliers', 'vehicleTypes', 'categories', 'number', 'vehicleTypesJson', 'categoriesJson', 'warehouses', 'defaultWarehouse'));
+        // Flat spare parts list grouped by vehicle model for JS dropdown
+        $allParts = $categories->flatMap(fn($c) => $c->spareParts);
+        $vmGroups = [];
+        foreach ($allParts as $p) {
+            $partData = [
+                'id'       => $p->id,
+                'name'     => $p->name . ' (' . $p->part_number . ')',
+                'price'    => $p->buying_price,
+                'stock'    => $p->current_stock,
+                'unsold'   => (int) ($partUnsold[$p->id] ?? 0),
+                'unit'     => $p->unit->abbreviation,
+                'vehicles' => $p->compatibleVehicles->map(fn($v) => $v->brand.' '.$v->model_name)->join(', '),
+            ];
+            $vmList = $p->compatibleVehicles;
+            if ($vmList->isEmpty()) {
+                $vmGroups['general'] = $vmGroups['general'] ?? ['id'=>'general','name'=>'General','parts'=>[]];
+                $vmGroups['general']['parts'][] = $partData;
+            } else {
+                foreach ($vmList as $vm) {
+                    $key = 'vm_'.$vm->id;
+                    $vmGroups[$key] = $vmGroups[$key] ?? ['id'=>$key,'name'=>$vm->brand.' '.$vm->model_name,'parts'=>[]];
+                    $vmGroups[$key]['parts'][] = $partData;
+                }
+            }
+        }
+        usort($vmGroups, fn($a,$b) => strcmp($a['name'],$b['name']));
+        $sparePartsJson = json_encode(array_values($vmGroups));
+
+        return view('purchases.purchases.create', compact('suppliers', 'vehicleTypes', 'categories', 'number', 'vehicleTypesJson', 'categoriesJson', 'sparePartsJson', 'warehouses', 'defaultWarehouse'));
     }
 
     public function store(Request $request)
@@ -240,7 +269,7 @@ class PurchaseController extends Controller
 
     public function show(Purchase $purchase)
     {
-        $purchase->load('supplier', 'user', 'warehouse', 'items.vehicleModel.vehicleType', 'items.sparePart.category');
+        $purchase->load('supplier', 'user', 'warehouse', 'items.vehicleModel.vehicleType', 'items.sparePart.compatibleVehicles');
 
         // Load transfers that consumed batches from this purchase
         // Each source purchase_item links to a stock_transfer via the stub purchase

@@ -179,7 +179,7 @@
 </div>
 <div class="table-responsive">
 <table class="table">
-    <thead><tr><th>#</th><th>Item</th><th>Type</th><th>Unit Cost</th><th>Orig Qty</th><th>Transferred</th><th>Sold (Direct)</th><th>Remaining</th><th>Disc</th><th>Total</th></tr></thead>
+    <thead><tr><th>#</th><th>Item</th><th>Type</th><th>Vehicle Model</th><th>Unit Cost</th><th>Orig Qty</th><th>Transferred</th><th>Sold (Direct)</th><th>Remaining</th><th>Disc</th><th>Total</th></tr></thead>
     <tbody>
         @foreach($purchase->items as $i => $item)
         @php
@@ -199,6 +199,19 @@
                 <div class="text-muted small">{{ $item->item_type === 'vehicle' ? $item->vehicleModel?->vehicleType?->name : $item->sparePart?->part_number }}</div>
             </td>
             <td><span class="badge bg-{{ $item->item_type==='vehicle'?'primary':'success' }} bg-opacity-15 text-{{ $item->item_type==='vehicle'?'primary':'success' }}">{{ ucfirst(str_replace('_',' ',$item->item_type)) }}</span></td>
+            <td class="small" style="max-width:150px">
+                @if($item->item_type === 'vehicle')
+                    <span style="color:#3730a3;font-weight:600">{{ $item->vehicleModel?->brand }} {{ $item->vehicleModel?->model_name }}</span>
+                @else
+                    @php $vms = $item->sparePart?->compatibleVehicles; @endphp
+                    @if($vms && $vms->count() > 0)
+                        <span style="color:#3730a3;font-size:.8rem">{{ $vms->first()->brand }} {{ $vms->first()->model_name }}</span>
+                        @if($vms->count() > 1)<span class="text-muted" style="font-size:.7rem">, +{{ $vms->count()-1 }} more</span>@endif
+                    @else
+                        <span class="text-muted">—</span>
+                    @endif
+                @endif
+            </td>
             <td>Br {{ number_format($item->unit_price,2) }}</td>
             <td class="fw-semibold">{{ $origQty }}</td>
             <td>
@@ -230,19 +243,19 @@
     </tbody>
     <tfoot>
         <tr class="table-light">
-            <td colspan="9" class="text-end fw-bold">Original Total</td>
+            <td colspan="10" class="text-end fw-bold">Original Total</td>
             <td class="fw-bold text-primary fs-6">Br {{ number_format($purchase->total,2) }}</td>
         </tr>
         @if($totalTransferredValue > 0)
         <tr class="table-light">
-            <td colspan="9" class="text-end fw-semibold text-warning">
+            <td colspan="10" class="text-end fw-semibold text-warning">
                 <i class="fa fa-right-left me-1"></i>Transferred Value
             </td>
             <td class="fw-semibold text-warning">Br {{ number_format($totalTransferredValue, 2) }}</td>
         </tr>
         @endif
         <tr class="table-light">
-            <td colspan="9" class="text-end fw-semibold text-success">Remaining Stock Value</td>
+            <td colspan="10" class="text-end fw-semibold text-success">Remaining Stock Value</td>
             <td class="fw-bold text-success">Br {{ number_format($remainingValue, 2) }}</td>
         </tr>
     </tfoot>
