@@ -68,9 +68,9 @@
             </div>
         </div>
     </div>
-    @if($stock)
+    @if($vehicleModel->stock)
     <div class="mt-3 text-muted small text-center">
-        Reorder level: <strong>{{ $stock->reorder_level }}</strong>
+        Reorder level: <strong>{{ $vehicleModel->stock->reorder_level }}</strong>
     </div>
     @endif
 </div>
