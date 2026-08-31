@@ -52,7 +52,7 @@
 <div class="card-header text-danger"><i class="fa fa-circle-xmark me-2"></i>Out of Stock — Spare Parts ({{ count($outParts) }})</div>
 <div class="table-responsive">
 <table class="table">
-    <thead><tr><th>Part</th><th>Category</th><th>Unit</th><th>Stock</th><th>Reorder</th><th class="text-end">Action</th></tr></thead>
+    <thead><tr><th>Part</th><th>Vehicle Models</th><th>Unit</th><th>Stock</th><th>Reorder</th><th class="text-end">Action</th></tr></thead>
     <tbody>
         @foreach($outParts as $p)
         <tr>
@@ -60,7 +60,7 @@
                 <div class="fw-semibold small">{{ $p->name }}</div>
                 <div class="text-muted" style="font-size:.72rem">{{ $p->part_number }}</div>
             </td>
-            <td class="text-muted small">{{ $p->category->name ?? $p->category ?? '—' }}</td>
+            <td class="text-muted small" style="max-width:140px">{{ $p->vehicles ?? '—' }}</td>
             <td class="text-muted small">{{ $p->unit->abbreviation ?? $p->unit_abbr ?? '—' }}</td>
             <td><span class="stock-pill out">0</span></td>
             <td class="text-muted">{{ $p->reorder_level }}</td>
@@ -81,7 +81,7 @@
 <div class="card-header text-warning"><i class="fa fa-triangle-exclamation me-2"></i>Low Stock — Spare Parts ({{ count($lowParts) }})</div>
 <div class="table-responsive">
 <table class="table">
-    <thead><tr><th>Part</th><th>Category</th><th>Unit</th><th>Stock</th><th>Reorder</th><th>Deficit</th><th class="text-end">Action</th></tr></thead>
+    <thead><tr><th>Part</th><th>Vehicle Models</th><th>Unit</th><th>Stock</th><th>Reorder</th><th>Deficit</th><th class="text-end">Action</th></tr></thead>
     <tbody>
         @foreach($lowParts as $p)
         <tr>
@@ -89,7 +89,7 @@
                 <div class="fw-semibold small">{{ $p->name }}</div>
                 <div class="text-muted" style="font-size:.72rem">{{ $p->part_number }}</div>
             </td>
-            <td class="text-muted small">{{ $p->category->name ?? $p->category ?? '—' }}</td>
+            <td class="text-muted small" style="max-width:140px">{{ $p->vehicles ?? '—' }}</td>
             <td class="text-muted small">{{ $p->unit->abbreviation ?? $p->unit_abbr ?? '—' }}</td>
             <td><span class="stock-pill low">{{ $p->current_stock }}</span></td>
             <td class="text-muted">{{ $p->reorder_level }}</td>

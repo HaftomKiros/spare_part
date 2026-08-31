@@ -397,7 +397,6 @@ class ReportController extends Controller
         $parts = DB::table('sale_items as si')
             ->join('sales as s', 'si.sale_id', '=', 's.id')
             ->join('spare_parts as sp', 'si.spare_part_id', '=', 'sp.id')
-            ->join('part_categories as pc', 'sp.part_category_id', '=', 'pc.id')
             ->join('units as u', 'sp.unit_id', '=', 'u.id')
             ->where('si.item_type', 'spare_part')
             ->where('s.status', 'completed')
@@ -407,15 +406,24 @@ class ReportController extends Controller
             ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
             ->selectRaw('
                 sp.id, sp.name, sp.part_number, sp.buying_price,
-                pc.name as category_name,
                 u.abbreviation as unit,
                 SUM(si.quantity) as qty_sold,
                 SUM(si.total) as revenue,
                 SUM(si.quantity * sp.buying_price) as cost,
                 SUM(si.total - (si.quantity * sp.buying_price)) as profit
             ')
-            ->groupBy('sp.id', 'sp.name', 'sp.part_number', 'sp.buying_price', 'pc.name', 'u.abbreviation')
+            ->groupBy('sp.id', 'sp.name', 'sp.part_number', 'sp.buying_price', 'u.abbreviation')
             ->orderByDesc('qty_sold')->get();
+
+        // Attach compatible vehicle names to each part
+        $partIds = $parts->pluck('id');
+        $vmMap = DB::table('spare_part_vehicle_model as spvm')
+            ->join('vehicle_models as vm', 'spvm.vehicle_model_id', '=', 'vm.id')
+            ->whereIn('spvm.spare_part_id', $partIds)
+            ->selectRaw('spvm.spare_part_id, GROUP_CONCAT(vm.brand, " ", vm.model_name ORDER BY vm.brand SEPARATOR ", ") as vehicles')
+            ->groupBy('spvm.spare_part_id')
+            ->pluck('vehicles', 'spare_part_id');
+        $parts->each(fn($p) => $p->vehicles = $vmMap[$p->id] ?? '—');
 
         $totalRevenue = $parts->sum('revenue');
         $totalProfit  = $parts->sum('profit');
@@ -555,23 +563,21 @@ class ReportController extends Controller
         if ($warehouseId) {
             $lowParts = DB::table('warehouse_spare_part_stock as ws')
                 ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
-                ->join('part_categories as pc', 'sp.part_category_id', '=', 'pc.id')
                 ->join('units as u', 'sp.unit_id', '=', 'u.id')
                 ->where('ws.warehouse_id', $warehouseId)
                 ->where('ws.current_stock', '>', 0)
                 ->whereColumn('ws.current_stock', '<=', 'ws.reorder_level')
                 ->where('sp.status', 'active')
-                ->selectRaw('sp.id, sp.name, sp.part_number, pc.name as category, u.abbreviation as unit_abbr, ws.current_stock, ws.reorder_level')
+                ->selectRaw('sp.id, sp.name, sp.part_number, u.abbreviation as unit_abbr, ws.current_stock, ws.reorder_level, (SELECT GROUP_CONCAT(vm2.brand, " ", vm2.model_name ORDER BY vm2.brand SEPARATOR ", ") FROM spare_part_vehicle_model spvm2 JOIN vehicle_models vm2 ON spvm2.vehicle_model_id = vm2.id WHERE spvm2.spare_part_id = sp.id) as vehicles')
                 ->orderBy('ws.current_stock')->get();
 
             $outParts = DB::table('warehouse_spare_part_stock as ws')
                 ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
-                ->join('part_categories as pc', 'sp.part_category_id', '=', 'pc.id')
                 ->join('units as u', 'sp.unit_id', '=', 'u.id')
                 ->where('ws.warehouse_id', $warehouseId)
                 ->where('ws.current_stock', '<=', 0)
                 ->where('sp.status', 'active')
-                ->selectRaw('sp.id, sp.name, sp.part_number, pc.name as category, u.abbreviation as unit_abbr, ws.current_stock, ws.reorder_level')
+                ->selectRaw('sp.id, sp.name, sp.part_number, u.abbreviation as unit_abbr, ws.current_stock, ws.reorder_level, (SELECT GROUP_CONCAT(vm2.brand, " ", vm2.model_name ORDER BY vm2.brand SEPARATOR ", ") FROM spare_part_vehicle_model spvm2 JOIN vehicle_models vm2 ON spvm2.vehicle_model_id = vm2.id WHERE spvm2.spare_part_id = sp.id) as vehicles')
                 ->get();
 
             $lowVehicles = DB::table('warehouse_vehicle_stock as wv')
@@ -598,27 +604,26 @@ class ReportController extends Controller
         // the notification badge uses so counts always match what is displayed.
         $lowParts = DB::table('warehouse_spare_part_stock as ws')
             ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
-            ->join('part_categories as pc', 'sp.part_category_id', '=', 'pc.id')
             ->join('units as u', 'sp.unit_id', '=', 'u.id')
             ->whereIn('ws.warehouse_id', $accessibleIds)
             ->where('ws.current_stock', '>', 0)
             ->whereColumn('ws.current_stock', '<=', 'ws.reorder_level')
             ->where('sp.status', 'active')
-            ->selectRaw('sp.id, sp.name, sp.part_number, pc.name as category, u.abbreviation as unit_abbr,
-                         MAX(ws.current_stock) as current_stock, MAX(ws.reorder_level) as reorder_level')
-            ->groupBy('sp.id', 'sp.name', 'sp.part_number', 'pc.name', 'u.abbreviation')
+            ->selectRaw('sp.id, sp.name, sp.part_number, u.abbreviation as unit_abbr,
+                         MAX(ws.current_stock) as current_stock, MAX(ws.reorder_level) as reorder_level,
+                         (SELECT GROUP_CONCAT(vm2.brand, " ", vm2.model_name ORDER BY vm2.brand SEPARATOR ", ") FROM spare_part_vehicle_model spvm2 JOIN vehicle_models vm2 ON spvm2.vehicle_model_id = vm2.id WHERE spvm2.spare_part_id = sp.id) as vehicles')
+            ->groupBy('sp.id', 'sp.name', 'sp.part_number', 'u.abbreviation')
             ->orderBy('current_stock')
             ->get();
 
         $outParts = DB::table('warehouse_spare_part_stock as ws')
             ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
-            ->join('part_categories as pc', 'sp.part_category_id', '=', 'pc.id')
             ->join('units as u', 'sp.unit_id', '=', 'u.id')
             ->whereIn('ws.warehouse_id', $accessibleIds)
             ->where('ws.current_stock', '<=', 0)
             ->where('sp.status', 'active')
-            ->selectRaw('sp.id, sp.name, sp.part_number, pc.name as category, u.abbreviation as unit_abbr,
-                         ws.current_stock, ws.reorder_level')
+            ->selectRaw('sp.id, sp.name, sp.part_number, u.abbreviation as unit_abbr, ws.current_stock, ws.reorder_level,
+                         (SELECT GROUP_CONCAT(vm2.brand, " ", vm2.model_name ORDER BY vm2.brand SEPARATOR ", ") FROM spare_part_vehicle_model spvm2 JOIN vehicle_models vm2 ON spvm2.vehicle_model_id = vm2.id WHERE spvm2.spare_part_id = sp.id) as vehicles')
             ->get();
 
         $lowVehicles = DB::table('warehouse_vehicle_stock as wv')

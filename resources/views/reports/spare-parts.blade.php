@@ -46,7 +46,7 @@
 </div>
 <div class="table-responsive">
 <table class="table">
-    <thead><tr><th>Part</th><th>Category</th><th>Unit</th><th>Qty Sold</th><th>Revenue</th><th>Cost</th><th>Profit</th><th>Margin</th></tr></thead>
+    <thead><tr><th>Part</th><th>Vehicle Models</th><th>Unit</th><th>Qty Sold</th><th>Revenue</th><th>Cost</th><th>Profit</th><th>Margin</th></tr></thead>
     <tbody>
         @forelse($parts as $p)
         @php $margin = $p->revenue > 0 ? round(($p->profit/$p->revenue)*100,1) : 0; @endphp
@@ -55,7 +55,7 @@
                 <div class="fw-semibold small">{{ $p->name }}</div>
                 <div class="text-muted" style="font-size:.72rem">{{ $p->part_number }}</div>
             </td>
-            <td><span class="badge" style="background:#f1f5f9;color:#475569;font-size:.72rem;padding:3px 8px;border-radius:5px">{{ $p->category_name }}</span></td>
+            <td><span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:.72rem;padding:3px 8px;border-radius:5px">{{ $p->vehicles }}</span></td>
             <td class="text-muted small">{{ $p->unit }}</td>
             <td class="fw-semibold text-primary">{{ number_format($p->qty_sold) }}</td>
             <td class="fw-semibold">Br {{ number_format($p->revenue,2) }}</td>
