@@ -49,10 +49,10 @@
 <div class="row g-3">
 <div class="col-12 col-md-6">
 <div class="card">
-<div class="card-header d-flex align-items-center gap-2"><i class="fa fa-gears text-primary"></i><span>Spare Parts by Category</span></div>
+<div class="card-header d-flex align-items-center gap-2"><i class="fa fa-gears text-primary"></i><span>Spare Parts by Vehicle Model</span></div>
 <div class="table-responsive">
 <table class="table">
-    <thead><tr><th>Category</th><th>Parts</th><th>Qty (Unsold)</th><th>Value</th></tr></thead>
+    <thead><tr><th>Vehicle Model</th><th>Parts</th><th>Qty (Unsold)</th><th>Value</th></tr></thead>
     <tbody>
         @forelse($byCat as $cat)
         <tr>

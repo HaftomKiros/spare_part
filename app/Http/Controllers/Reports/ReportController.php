@@ -467,19 +467,19 @@ class ReportController extends Controller
             $vehiclesValue->buying_value  = \App\Services\StockService::vehiclesStockValue([$warehouseId]);
             $vehiclesValue->selling_value = 0;
 
-            $byCat = DB::table('warehouse_spare_part_stock as ws')
-                ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
-                ->join('part_categories as pc', 'sp.part_category_id', '=', 'pc.id')
+            $byCat = DB::table('spare_part_vehicle_model as spvm')
+                ->join('vehicle_models as vm', 'spvm.vehicle_model_id', '=', 'vm.id')
+                ->join('warehouse_spare_part_stock as ws', 'spvm.spare_part_id', '=', 'ws.spare_part_id')
                 ->where('ws.warehouse_id', $warehouseId)
-                ->selectRaw('pc.name, pc.id as cat_id, COUNT(sp.id) as parts_count, SUM(ws.current_stock) as total_qty')
-                ->groupBy('pc.id', 'pc.name')->orderByDesc('total_qty')
+                ->selectRaw('vm.id as model_id, CONCAT(vm.brand, " ", vm.model_name) as name, COUNT(DISTINCT spvm.spare_part_id) as parts_count, SUM(ws.current_stock) as total_qty')
+                ->groupBy('vm.id', 'vm.brand', 'vm.model_name')->orderByDesc('total_qty')
                 ->get()
                 ->map(function ($row) use ($warehouseId) {
-                    $partIds = DB::table('warehouse_spare_part_stock as ws')
-                        ->join('spare_parts as sp', 'ws.spare_part_id', '=', 'sp.id')
+                    $partIds = DB::table('spare_part_vehicle_model as spvm')
+                        ->join('warehouse_spare_part_stock as ws', 'spvm.spare_part_id', '=', 'ws.spare_part_id')
                         ->where('ws.warehouse_id', $warehouseId)
-                        ->where('sp.part_category_id', $row->cat_id)
-                        ->pluck('ws.spare_part_id')->toArray();
+                        ->where('spvm.vehicle_model_id', $row->model_id)
+                        ->pluck('spvm.spare_part_id')->unique()->toArray();
                     $valueMap = \App\Services\StockService::partsStockValueMap($partIds, [$warehouseId]);
                     $row->value = array_sum($valueMap);
                     return $row;
@@ -514,13 +514,14 @@ class ReportController extends Controller
             $vehiclesValue->buying_value  = \App\Services\StockService::vehiclesStockValue();
             $vehiclesValue->selling_value = 0;
 
-            $byCat = DB::table('part_categories as pc')
-                ->join('spare_parts as sp', 'pc.id', '=', 'sp.part_category_id')
-                ->selectRaw('pc.name, pc.id as cat_id, COUNT(sp.id) as parts_count, SUM(sp.current_stock) as total_qty')
-                ->groupBy('pc.id', 'pc.name')->orderByDesc('total_qty')
+            $byCat = DB::table('spare_part_vehicle_model as spvm')
+                ->join('vehicle_models as vm', 'spvm.vehicle_model_id', '=', 'vm.id')
+                ->join('spare_parts as sp', 'spvm.spare_part_id', '=', 'sp.id')
+                ->selectRaw('vm.id as model_id, CONCAT(vm.brand, " ", vm.model_name) as name, COUNT(DISTINCT spvm.spare_part_id) as parts_count, SUM(sp.current_stock) as total_qty')
+                ->groupBy('vm.id', 'vm.brand', 'vm.model_name')->orderByDesc('total_qty')
                 ->get()
                 ->map(function ($row) {
-                    $partIds  = DB::table('spare_parts')->where('part_category_id', $row->cat_id)->pluck('id')->toArray();
+                    $partIds  = DB::table('spare_part_vehicle_model')->where('vehicle_model_id', $row->model_id)->pluck('spare_part_id')->unique()->toArray();
                     $valueMap = \App\Services\StockService::partsStockValueMap($partIds);
                     $row->value = array_sum($valueMap);
                     return $row;
