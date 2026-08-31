@@ -25,6 +25,18 @@
     </div>
 </div>
 
+
+@if($sparePart->compatibleVehicles->count() === 0)
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3" role="alert">
+    <i class="fa fa-triangle-exclamation fa-lg"></i>
+    <div>
+        <strong>No Vehicle Models assigned.</strong>
+        This spare part has no compatible vehicle models linked.
+        <a href="{{ route('catalog.spare-parts.edit', $sparePart) }}" class="alert-link">Edit part</a> to assign vehicle models.
+    </div>
+</div>
+@endif
+
 <div class="row g-3">
 
 {{-- ── Left: Details + Pricing ─────────────────────────────────────── --}}

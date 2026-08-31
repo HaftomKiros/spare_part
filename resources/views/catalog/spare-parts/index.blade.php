@@ -100,7 +100,9 @@
             <td style="max-width:140px">
                 @php $vc = $part->compatibleVehicles; @endphp
                 @if($vc->count() === 0)
-                    <span class="text-muted small">—</span>
+                    <span class="badge" style="background:#fef3c7;color:#92400e;font-size:.68rem;padding:3px 7px;border-radius:5px">
+                        <i class="fa fa-triangle-exclamation me-1"></i>No model
+                    </span>
                 @else
                     <div style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:130px;font-size:.75rem;color:#3730a3;cursor:pointer"
                          @if($vc->count() > 2)

@@ -37,7 +37,11 @@
             </option>
             @endforeach
         </select>
-        <div class="form-text">Search by brand, model name or type. Select all that apply.</div>
+        @if($sparePart->compatibleVehicles->count() === 0)
+            <div class="form-text text-warning"><i class="fa fa-triangle-exclamation me-1"></i>No vehicle models assigned. Please select at least one.</div>
+        @else
+            <div class="form-text"><i class="fa fa-triangle-exclamation text-warning me-1"></i>Currently {{ $sparePart->compatibleVehicles->count() }} model(s) assigned. Update as needed.</div>
+        @endif
     </div>
     <div class="col-md-6">
         <label class="form-label">Unit of Measure</label>

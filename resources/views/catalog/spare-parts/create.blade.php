@@ -45,7 +45,7 @@
             </option>
             @endforeach
         </select>
-        <div class="form-text">Search by brand, model name or type. Select all that apply.</div>
+        <div class="form-text"><i class="fa fa-triangle-exclamation text-warning me-1"></i>Required — select at least one compatible vehicle model.</div>
     </div>
 
     <div class="col-md-6">
