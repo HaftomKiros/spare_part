@@ -140,6 +140,27 @@ class ReportController extends Controller
 
         $totalProfit = $daily->sum('profit');
 
+
+        // Deduct profit lost from approved returns
+        $returnedProfit = DB::table('sale_return_items as sri')
+            ->join('sale_returns as sr', 'sri.sale_return_id', '=', 'sr.id')
+            ->join('sales as s', 'sr.sale_id', '=', 's.id')
+            ->leftJoin('vehicle_models as vm', 'sri.vehicle_model_id', '=', 'vm.id')
+            ->where('sr.status', 'approved')
+            ->whereBetween('s.sale_date', [$dateFrom, $dateTo])
+            ->whereIn('s.warehouse_id', $accessibleIds)
+            ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
+            ->when($itemType, fn($q) => $q->where('sri.item_type', $itemType))
+            ->selectRaw("SUM(sri.quantity * (sri.unit_price - COALESCE(CASE
+                WHEN sri.item_type = 'vehicle' THEN vm.buying_price
+                WHEN sri.item_type = 'spare_part' THEN (
+                    SELECT pi2.unit_price FROM purchase_items pi2
+                    JOIN purchases p2 ON pi2.purchase_id = p2.id
+                    WHERE pi2.spare_part_id = sri.spare_part_id
+                    ORDER BY p2.purchase_date DESC LIMIT 1)
+                ELSE 0 END, 0))) as returned_profit")
+            ->value('returned_profit');
+        $totalProfit = max(0, $totalProfit - (float)($returnedProfit ?? 0));
         // ── Payment method breakdown ──────────────────────────────────────
         $paymentBase = Sale::completed()->whereBetween('sale_date', [$dateFrom, $dateTo]);
         $scope($paymentBase);
