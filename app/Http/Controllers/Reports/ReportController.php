@@ -38,7 +38,7 @@ class ReportController extends Controller
         // Item type scope — only include sales that have at least one item of the selected type
         $typeScope = fn($q) => $q->when($itemType, fn($q2) => $q2->whereHas('items', fn($q3) => $q3->where('item_type', $itemType)));
 
-        $query = Sale::completed()->with('customer', 'user', 'warehouse', 'items.sparePart', 'items.vehicleModel')->whereBetween('sale_date', [$dateFrom, $dateTo]);
+        $query = Sale::completed()->with('customer', 'user', 'warehouse', 'items.sparePart', 'items.vehicleModel', 'returns')->whereBetween('sale_date', [$dateFrom, $dateTo]);
         $scope($query);
         $typeScope($query);
         $sales = $query->latest('sale_date')->paginate(25)->withQueryString();
@@ -132,9 +132,45 @@ class ReportController extends Controller
             ->get()
             ->keyBy('date');
 
-        // Attach profit to each daily row
-        $daily = $daily->map(function ($row) use ($profitRows) {
-            $row->profit = $profitRows[$row->date]->profit ?? 0;
+
+        // ── Deduct daily returns for correct chart values ───────────────
+        $dailyReturnMap = DB::table('sale_returns as sr')
+            ->join('sales as s', 'sr.sale_id', '=', 's.id')
+            ->where('sr.status', 'approved')
+            ->whereBetween('s.sale_date', [$dateFrom, $dateTo])
+            ->whereIn('s.warehouse_id', $accessibleIds)
+            ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
+            ->selectRaw('DATE(s.sale_date) as date, SUM(sr.total_amount) as ret_total')
+            ->groupByRaw('DATE(s.sale_date)')
+            ->pluck('ret_total', 'date');
+
+        // Daily returned profit per day
+        $dailyReturnProfitMap = DB::table('sale_return_items as sri')
+            ->join('sale_returns as sr', 'sri.sale_return_id', '=', 'sr.id')
+            ->join('sales as s', 'sr.sale_id', '=', 's.id')
+            ->leftJoin('vehicle_models as vm', 'sri.vehicle_model_id', '=', 'vm.id')
+            ->where('sr.status', 'approved')
+            ->whereBetween('s.sale_date', [$dateFrom, $dateTo])
+            ->whereIn('s.warehouse_id', $accessibleIds)
+            ->when($warehouseId, fn($q) => $q->where('s.warehouse_id', $warehouseId))
+            ->selectRaw("DATE(s.sale_date) as date,
+                SUM(sri.quantity * (sri.unit_price - COALESCE(CASE
+                    WHEN sri.item_type = 'vehicle' THEN vm.buying_price
+                    WHEN sri.item_type = 'spare_part' THEN (
+                        SELECT pi2.unit_price FROM purchase_items pi2
+                        JOIN purchases p2 ON pi2.purchase_id = p2.id
+                        WHERE pi2.spare_part_id = sri.spare_part_id
+                        ORDER BY p2.purchase_date DESC LIMIT 1)
+                    ELSE 0 END, 0))) as ret_profit")
+            ->groupByRaw('DATE(s.sale_date)')
+            ->pluck('ret_profit', 'date');
+
+        // Attach profit to each daily row and deduct returns
+        $daily = $daily->map(function ($row) use ($profitRows, $dailyReturnMap, $dailyReturnProfitMap) {
+            $retTotal  = (float)($dailyReturnMap[$row->date]  ?? 0);
+            $retProfit = (float)($dailyReturnProfitMap[$row->date] ?? 0);
+            $row->total  = max(0, (float)$row->total  - $retTotal);
+            $row->profit = max(0, (float)($profitRows[$row->date]->profit ?? 0) - $retProfit);
             return $row;
         });
 

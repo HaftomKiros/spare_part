@@ -312,7 +312,15 @@ th .th-inner { display:flex; align-items:center; gap:4px; }
             <td class="fw-semibold">Br {{ number_format($s->total,2) }}</td>
             <td class="text-success small">Br {{ number_format($s->paid_amount,2) }}</td>
             <td class="{{ $s->balance > 0 ? 'text-danger fw-semibold' : 'text-muted' }} small">{{ $s->balance > 0 ? 'Br '.number_format($s->balance,2) : '—' }}</td>
-            <td><span class="badge bg-{{ $s->payment_status_badge }}">{{ ucfirst($s->payment_status) }}</span></td>
+            <td>
+                <span class="badge bg-{{ $s->payment_status_badge }}">{{ ucfirst($s->payment_status) }}</span>
+                @php $approvedReturns = $s->returns->where('status','approved'); @endphp
+                @if($approvedReturns->count() > 0)
+                    <span class="badge bg-warning text-dark ms-1" title="{{ $approvedReturns->count() }} return(s) — Br {{ number_format($approvedReturns->sum('total_amount'),2) }} returned">
+                        <i class="fa fa-rotate-left me-1"></i>Returned
+                    </span>
+                @endif
+            </td>
             <td class="small text-muted d-none d-lg-table-cell">{{ $s->warehouse?->name ?? '—' }}</td>
             <td class="small text-muted">{{ $s->user->name }}</td>
         </tr>
