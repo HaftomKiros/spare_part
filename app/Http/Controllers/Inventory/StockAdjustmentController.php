@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\Controller;
 use App\Models\PartCategory;
+use App\Models\Purchase;
+use App\Models\PurchaseItem;
 use App\Models\SparePart;
 use App\Models\StockAdjustment;
 use App\Models\StockAdjustmentItem;
@@ -109,6 +111,34 @@ class StockAdjustmentController extends Controller
                     if ($isIncrease) {
                         $this->stockService->increaseVehicleStock($model, $qty, $movementType, auth()->id(), 0,
                             StockAdjustment::class, $adjustment->id, $request->reason, $warehouseId);
+                        // Create synthetic purchase record so FIFO batch accounting stays balanced
+                        $syntheticPurchase = Purchase::create([
+                            'purchase_number' => 'ADJ-' . $adjustment->adjustment_number . '-V' . $model->id,
+                            'supplier_id'     => DB::table('suppliers')->orderBy('id')->value('id') ?? 1,
+                            'user_id'         => auth()->id(),
+                            'warehouse_id'    => $warehouseId,
+                            'purchase_date'   => now()->toDateString(),
+                            'subtotal'        => $model->buying_price * $qty,
+                            'discount'        => 0, 'tax' => 0,
+                            'total'           => $model->buying_price * $qty,
+                            'paid_amount'     => $model->buying_price * $qty,
+                            'balance'         => 0,
+                            'payment_status'  => 'paid',
+                            'status'          => 'received',
+                            'notes'           => 'Auto-created from stock adjustment #' . $adjustment->adjustment_number,
+                            'purchase_type'   => 'adjustment',
+                        ]);
+                        PurchaseItem::create([
+                            'purchase_id'      => $syntheticPurchase->id,
+                            'item_type'        => 'vehicle',
+                            'vehicle_model_id' => $model->id,
+                            'spare_part_id'    => null,
+                            'quantity'         => $qty,
+                            'unit_price'       => $model->buying_price,
+                            'discount'         => 0,
+                            'total'            => $model->buying_price * $qty,
+                            'total_sold'       => 0,
+                        ]);
                     } else {
                         $this->stockService->decreaseVehicleStock($model, $qty, $movementType, auth()->id(), 0,
                             StockAdjustment::class, $adjustment->id, $request->reason, $warehouseId);
@@ -133,6 +163,35 @@ class StockAdjustmentController extends Controller
                     if ($isIncrease) {
                         $this->stockService->increasePartStock($part, $qty, $movementType, auth()->id(), 0,
                             StockAdjustment::class, $adjustment->id, $request->reason, $warehouseId);
+                        // Create synthetic purchase record so FIFO batch accounting stays balanced
+                        $costPrice = $part->buying_price > 0 ? $part->buying_price : 0;
+                        $syntheticPurchase = Purchase::create([
+                            'purchase_number' => 'ADJ-' . $adjustment->adjustment_number . '-P' . $part->id,
+                            'supplier_id'     => DB::table('suppliers')->orderBy('id')->value('id') ?? 1,
+                            'user_id'         => auth()->id(),
+                            'warehouse_id'    => $warehouseId,
+                            'purchase_date'   => now()->toDateString(),
+                            'subtotal'        => $costPrice * $qty,
+                            'discount'        => 0, 'tax' => 0,
+                            'total'           => $costPrice * $qty,
+                            'paid_amount'     => $costPrice * $qty,
+                            'balance'         => 0,
+                            'payment_status'  => 'paid',
+                            'status'          => 'received',
+                            'notes'           => 'Auto-created from stock adjustment #' . $adjustment->adjustment_number,
+                            'purchase_type'   => 'adjustment',
+                        ]);
+                        PurchaseItem::create([
+                            'purchase_id'      => $syntheticPurchase->id,
+                            'item_type'        => 'spare_part',
+                            'vehicle_model_id' => null,
+                            'spare_part_id'    => $part->id,
+                            'quantity'         => $qty,
+                            'unit_price'       => $costPrice,
+                            'discount'         => 0,
+                            'total'            => $costPrice * $qty,
+                            'total_sold'       => 0,
+                        ]);
                     } else {
                         $this->stockService->decreasePartStock($part, $qty, $movementType, auth()->id(), 0,
                             StockAdjustment::class, $adjustment->id, $request->reason, $warehouseId);
