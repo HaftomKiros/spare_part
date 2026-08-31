@@ -87,6 +87,9 @@ Route::middleware(['auth'])->group(function () {
         Route::put('vehicle-models/{vehicleModel}',      [VehicleModelController::class, 'update']) ->name('vehicle-models.update') ->middleware('perm:catalog.vehicle-models.edit');
         Route::patch('vehicle-models/{vehicleModel}',    [VehicleModelController::class, 'update']) ->middleware('perm:catalog.vehicle-models.edit');
         Route::delete('vehicle-models/{vehicleModel}',   [VehicleModelController::class, 'destroy'])->name('vehicle-models.destroy')->middleware('perm:catalog.vehicle-models.delete');
+        Route::get('vehicle-models/export/excel',        [VehicleModelController::class, 'exportExcel'])->name('vehicle-models.export.excel')->middleware('perm:catalog.vehicle-models.view');
+        Route::get('vehicle-models/export/template',     [VehicleModelController::class, 'exportTemplate'])->name('vehicle-models.export.template')->middleware('perm:catalog.vehicle-models.view');
+        Route::post('vehicle-models/import',             [VehicleModelController::class, 'import'])->name('vehicle-models.import')->middleware('perm:catalog.vehicle-models.create');
 
         // Part Categories
         Route::get('part-categories',            [PartCategoryController::class, 'index'])  ->name('part-categories.index')  ->middleware('perm:catalog.part-categories.view');
@@ -106,6 +109,9 @@ Route::middleware(['auth'])->group(function () {
         Route::put('spare-parts/{sparePart}',         [SparePartController::class, 'update']) ->name('spare-parts.update') ->middleware('perm:catalog.spare-parts.edit');
         Route::patch('spare-parts/{sparePart}',       [SparePartController::class, 'update']) ->middleware('perm:catalog.spare-parts.edit');
         Route::delete('spare-parts/{sparePart}',      [SparePartController::class, 'destroy'])->name('spare-parts.destroy')->middleware('perm:catalog.spare-parts.delete');
+        Route::get('spare-parts/export/excel',        [SparePartController::class, 'exportExcel'])->name('spare-parts.export.excel')->middleware('perm:catalog.spare-parts.view');
+        Route::get('spare-parts/export/template',     [SparePartController::class, 'exportTemplate'])->name('spare-parts.export.template')->middleware('perm:catalog.spare-parts.view');
+        Route::post('spare-parts/import',             [SparePartController::class, 'import'])->name('spare-parts.import')->middleware('perm:catalog.spare-parts.create');
 
         // Units
         Route::get('units',                      [UnitController::class, 'index'])  ->name('units.index')  ->middleware('perm:catalog.units.view');

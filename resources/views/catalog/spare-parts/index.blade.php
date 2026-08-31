@@ -13,6 +13,29 @@
     'actions'  => [['label' => 'Add Part', 'route' => 'catalog.spare-parts.create', 'icon' => 'fa-plus']],
 ])
 
+{{-- Import / Export bar --}}
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+    <a href="{{ route('catalog.spare-parts.export.excel') }}" class="btn btn-sm btn-success">
+        <i class="fa fa-file-excel me-1"></i>Export Excel
+    </a>
+    <a href="{{ route('catalog.spare-parts.export.template') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="fa fa-download me-1"></i>Download Template
+    </a>
+    <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#importSpForm">
+        <i class="fa fa-file-import me-1"></i>Import Excel
+    </button>
+</div>
+<div class="collapse mb-3" id="importSpForm">
+    <div class="card card-body py-3">
+        <form method="POST" action="{{ route('catalog.spare-parts.import') }}" enctype="multipart/form-data" class="d-flex align-items-center gap-2 flex-wrap">
+            @csrf
+            <input type="file" name="file" accept=".xlsx,.xls,.csv" class="form-control form-control-sm" style="max-width:300px" required>
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fa fa-upload me-1"></i>Upload & Import</button>
+            <span class="text-muted small">Columns: Part Number, Part Name, OEM, Unit, Shelf, Min Price, Max Price, Reorder, Status, Compatible Vehicles</span>
+        </form>
+    </div>
+</div>
+
 <!-- Filters -->
 <div class="card mb-3">
 <div class="card-body py-3">
