@@ -99,12 +99,6 @@
 <div class="card-header"><i class="fa fa-tag me-2 text-primary"></i>Pricing</div>
 <div class="card-body">
     <div class="mb-3">
-        <label class="form-label">Purchase Price (Br)</label>
-        <input type="number" name="buying_price" class="form-control"
-               value="{{ old('buying_price', 0) }}" min="0" step="0.01">
-        <div class="form-text">Default cost price when purchasing this part.</div>
-    </div>
-    <div class="mb-3">
         <label class="form-label">Min Selling Price (Br) <span class="text-danger">*</span></label>
         <input type="number" name="selling_price_min" class="form-control @error('selling_price_min') is-invalid @enderror"
                value="{{ old('selling_price_min', 0) }}" min="0" step="0.01" required>
